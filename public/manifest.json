@@ -1,0 +1,22 @@
+{
+  "name": "Kobocent — Send, spend, trade and earn",
+  "short_name": "Kobocent",
+  "description": "Your local kobo, working globally. Buy stablecoins with local currency, send across borders, pay bills, withdraw to any bank, trade and earn.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#F7F3EE",
+  "theme_color": "#C1502E",
+  "categories": ["finance", "business", "productivity"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Send money", "url": "/app?action=send" },
+    { "name": "Add money", "url": "/app?action=fund" },
+    { "name": "Earn", "url": "/app?action=stake" }
+  ]
+}

@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { scroll-behavior: smooth; }
+  body {
+    @apply bg-cream text-ink-soft antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04';
+  }
+  .dark body { @apply bg-night text-cream-warm; }
+  ::selection { @apply bg-terracotta text-white; }
+  ::-webkit-scrollbar { width: 10px; }
+  ::-webkit-scrollbar-track { @apply bg-cream; }
+  .dark ::-webkit-scrollbar-track { @apply bg-night; }
+  ::-webkit-scrollbar-thumb { @apply bg-cream-border rounded-full; }
+  .dark ::-webkit-scrollbar-thumb { @apply bg-night-border; }
+}
+
+@layer components {
+  .container-page { @apply mx-auto w-full max-w-[1200px] px-5 sm:px-8; }
+
+  .surface { @apply bg-white border border-cream-border; }
+  .dark .surface { @apply bg-night-card border-night-border; }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3.5
+           text-[15px] font-semibold transition-all duration-200 whitespace-nowrap;
+  }
+  .btn-primary { @apply btn bg-terracotta text-white hover:bg-terracotta-dark hover:-translate-y-0.5 shadow-soft hover:shadow-card; }
+  .btn-secondary { @apply btn bg-ink text-cream hover:-translate-y-0.5; }
+  .dark .btn-secondary { @apply bg-cream-warm text-ink; }
+  .btn-ghost { @apply btn border border-cream-border text-ink hover:border-terracotta hover:text-terracotta; }
+  .dark .btn-ghost { @apply border-night-border text-cream-warm hover:border-terracotta-light hover:text-terracotta-light; }
+
+  .eyebrow {
+    @apply font-mono text-[11px] uppercase tracking-[0.14em] text-warmgray-light;
+  }
+  .dark .eyebrow { @apply text-warmgray-dark; }
+
+  .h-display { @apply font-display font-bold leading-[1.1] tracking-[-0.02em] text-ink; }
+  .dark .h-display { @apply text-cream-warm; }
+
+  .muted { @apply text-warmgray; }
+  .dark .muted { @apply text-warmgray-dark; }
+
+  .reveal { @apply opacity-0 translate-y-6 transition-all duration-700 ease-out; }
+  .reveal.in { @apply opacity-100 translate-y-0; }
+}
+
+/* Respect users who prefer less motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  .reveal { @apply opacity-100 translate-y-0; }
+}
