@@ -21,6 +21,8 @@ import { Rewards } from '@/components/sections/Rewards';
 import { LiveStats } from '@/components/sections/LiveStats';
 import { Testimonials } from '@/components/sections/Testimonials';
 import { Pricing } from '@/components/sections/Pricing';
+import { Roadmap } from '@/components/sections/Roadmap';
+import { Faq } from '@/components/sections/Faq';
 import { DownloadApp } from '@/components/sections/DownloadApp';
 import { FinalCTA } from '@/components/sections/FinalCTA';
 import { Footer } from '@/components/sections/Footer';
@@ -55,6 +57,8 @@ export default function Home() {
         <LiveStats />
         <Testimonials />
         <Pricing />
+        <Roadmap />
+        <Faq />
         <DownloadApp />
         <FinalCTA />
       </main>

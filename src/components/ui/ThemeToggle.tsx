@@ -1,13 +1,13 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { applyTheme, getStoredTheme, systemTheme, type Theme } from '@/lib/theme';
+import { applyTheme, getStoredTheme, type Theme } from '@/lib/theme';
 
 export function ThemeToggle({ compact = false }: { compact?: boolean }) {
   const [theme, setTheme] = useState<Theme>('light');
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setTheme(getStoredTheme() ?? systemTheme());
+    setTheme(getStoredTheme() ?? 'light');   // light is the default
     setMounted(true);
   }, []);
 

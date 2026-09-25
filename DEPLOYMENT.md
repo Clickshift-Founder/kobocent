@@ -297,3 +297,107 @@ majority have moved.
 
 Set `NEXT_PUBLIC_TELEGRAM_BOT=kobocentbot` in Vercel. Every Telegram link on the
 site reads that one variable, so the whole site switches at once.
+
+---
+
+## 10. Google Analytics — where to get it, where it goes
+
+1. Go to **analytics.google.com** → Admin → **Create property**.
+2. Name it Kobocent, set your timezone and currency.
+3. Choose **Web** as the platform, enter `https://kobocent.com`.
+4. It gives you a **Measurement ID** that looks like `G-XXXXXXXXXX`.
+5. In Vercel → Settings → Environment Variables, add:
+
+   | Key | Value |
+   |---|---|
+   | `NEXT_PUBLIC_GA_ID` | `G-XXXXXXXXXX` |
+
+6. Redeploy.
+
+That is the whole integration — you do not paste any script into the code. The
+`Analytics` component reads that variable and does nothing when it is unset, so
+local development and preview deploys stay out of your data.
+
+### Events already wired
+
+- `signup_submitted` — fires when someone completes the signup form (includes whether they gave an email)
+- `telegram_click` — fires on Telegram buttons, with `from` telling you which one
+
+Add more anywhere with:
+
+```ts
+import { track } from '@/components/Analytics';
+track('download_app_clicked', { platform: 'android' });
+```
+
+---
+
+## 11. Getting indexed quickly
+
+The site already generates `/sitemap.xml` and `/robots.txt` automatically. To get
+Google to actually look:
+
+1. **Google Search Console** → search.google.com/search-console
+2. Add property → **Domain** → `kobocent.com`
+3. It asks for a DNS TXT record — add it at Namecheap, then verify
+4. Once verified: **Sitemaps** → submit `sitemap.xml`
+5. **URL Inspection** → paste `https://kobocent.com` → **Request indexing**
+
+Realistically indexing takes a few days to a couple of weeks. To speed it up:
+
+- Link to kobocent.com from anywhere you already have presence — your X bio,
+  LinkedIn, the Telegram group description, the old ClickBot page
+- The 301 redirect from the old domain (§5) passes existing ranking signals across
+- Post the link publicly a few times; crawlers follow social links
+- **Bing Webmaster Tools** takes a sitemap too and is much faster to index
+
+### Already handled for you
+
+- Server-rendered HTML (crawlers see full content, not an empty shell)
+- Open Graph and Twitter card metadata
+- Semantic headings and a real `<title>`/description
+- All FAQ content is in the HTML, not hidden behind JavaScript — this is why the
+  FAQ tabs keep every answer in the DOM
+
+---
+
+## 12. Storing early signups
+
+The signup form POSTs to `/api/waitlist`. Point it somewhere by setting **one** of:
+
+| Key | Use |
+|---|---|
+| `WAITLIST_ENDPOINT` | Your own backend, e.g. `https://api.clickshift.io/api/waitlist` |
+| `WAITLIST_WEBHOOK` | A Google Apps Script or Zapier webhook, if you want something in 5 minutes |
+| `WAITLIST_SECRET` | Optional bearer token sent with the request |
+
+The payload is:
+
+```json
+{ "phone": "+234...", "email": "you@example.com", "source": "signup_page",
+  "created_at": 1790000000000, "user_agent": "...", "referer": "..." }
+```
+
+**Recommended:** add a table to your existing Postgres and expose one endpoint —
+you already have the database and the backend, so this is the least new machinery.
+
+```sql
+CREATE TABLE IF NOT EXISTS waitlist (
+  id SERIAL PRIMARY KEY,
+  phone TEXT NOT NULL,
+  email TEXT,
+  source TEXT,
+  user_agent TEXT,
+  referer TEXT,
+  created_at BIGINT NOT NULL,
+  notified_at BIGINT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_waitlist_phone ON waitlist(phone);
+```
+
+`notified_at` is there so you can email everyone exactly once when the app opens
+and know who you already reached.
+
+> Until you set one of those variables the form still works and still tells the
+> person they are on the list — but nothing is stored. Set it before you drive
+> any traffic.

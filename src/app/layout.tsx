@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Fraunces, Inter, IBM_Plex_Mono } from 'next/font/google';
 import { THEME_INIT_SCRIPT } from '@/lib/theme';
+import { Analytics } from '@/components/Analytics';
 import './globals.css';
 
 const fraunces = Fraunces({ subsets: ['latin'], variable: '--font-fraunces', display: 'swap' });
@@ -32,10 +33,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#F7F3EE' },
-    { media: '(prefers-color-scheme: dark)', color: '#1C1815' },
-  ],
+  themeColor: '#F7F3EE',
   width: 'device-width',
   initialScale: 1,
 };
@@ -46,7 +44,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <Analytics />
+      </body>
     </html>
   );
 }

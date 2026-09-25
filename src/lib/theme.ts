@@ -8,11 +8,6 @@ export function getStoredTheme(): Theme | null {
   return v === 'dark' || v === 'light' ? v : null;
 }
 
-export function systemTheme(): Theme {
-  if (typeof window === 'undefined') return 'light';
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
-
 export function applyTheme(theme: Theme) {
   const root = document.documentElement;
   root.classList.toggle('dark', theme === 'dark');
@@ -20,14 +15,21 @@ export function applyTheme(theme: Theme) {
   window.localStorage.setItem(KEY, theme);
 }
 
-/** Inlined in <head> to prevent a flash of the wrong theme before hydration. */
+/**
+ * Inlined in <head> so the correct theme paints on the first frame.
+ *
+ * Light is the brand default and wins unless the visitor has explicitly
+ * chosen dark here before. We deliberately do NOT fall back to the OS
+ * setting: a large share of people run their phone in dark mode, which
+ * would mean most first-time visitors never see the intended brand.
+ */
 export const THEME_INIT_SCRIPT = `
 (function(){
   try {
     var s = localStorage.getItem('${KEY}');
-    var d = s ? s === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
-    if (d) { document.documentElement.classList.add('dark'); }
-    document.documentElement.style.colorScheme = d ? 'dark' : 'light';
+    var dark = s === 'dark';
+    if (dark) document.documentElement.classList.add('dark');
+    document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
   } catch(e){}
 })();
 `;
