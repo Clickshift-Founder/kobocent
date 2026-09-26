@@ -26,6 +26,7 @@ import { Faq } from '@/components/sections/Faq';
 import { DownloadApp } from '@/components/sections/DownloadApp';
 import { FinalCTA } from '@/components/sections/FinalCTA';
 import { Footer } from '@/components/sections/Footer';
+import { ScrollNav } from '@/components/ui/ScrollNav';
 
 export default function Home() {
   useEffect(() => { registerServiceWorker(); }, []);
@@ -63,6 +64,7 @@ export default function Home() {
         <FinalCTA />
       </main>
       <Footer />
+      <ScrollNav />
     </>
   );
 }

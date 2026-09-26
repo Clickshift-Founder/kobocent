@@ -46,9 +46,9 @@ export function Footer() {
               borders, pay bills, withdraw to any bank, trade and earn — in one account.
             </p>
             <p className="mt-3 text-[12.5px] muted max-w-[300px]">
-              Formerly <strong className="font-semibold">ClickBot</strong>. Same team, same wallets,
-              same balances — a product of{' '}
-              <a href="https://clickshift.io" className="text-terracotta hover:underline">ClickShift Inc.</a>
+              Formerly <strong className="font-semibold">ClickBot</strong> — same team, same wallets,
+              same balances. Built by{' '}
+              <a href="https://clickshift.io" className="text-terracotta hover:underline">ClickShift</a>.
             </p>
             <div className="mt-5"><ThemeToggle /></div>
           </div>
@@ -70,7 +70,7 @@ export function Footer() {
         </div>
 
         <div className="mt-12 pt-6 border-t border-cream-border dark:border-night-border flex flex-wrap justify-between gap-3 font-mono text-[11.5px] muted">
-          <span>© {new Date().getFullYear()} ClickShift Inc. · Kobocent (formerly ClickBot)</span>
+          <span>© {new Date().getFullYear()} Kobocent</span>
           <span>kobocent.com · Multichain, powered by stablecoins</span>
         </div>
       </div>

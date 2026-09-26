@@ -27,8 +27,8 @@ const TONE: Record<Line['tone'], string> = {
 };
 
 export function AgentTerminal() {
-  const [shown, setShown] = useState<Line[]>([]);
-  const idx = useRef(0);
+  const [shown, setShown] = useState<Line[]>(LINES.slice(0, 5));
+  const idx = useRef(5);
   const box = useRef<HTMLDivElement>(null);
   const [started, setStarted] = useState(false);
 
@@ -43,11 +43,11 @@ export function AgentTerminal() {
 
   useEffect(() => {
     if (!started) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { setShown(LINES.slice(0, 8)); return; }
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { setShown(LINES.slice(0, 9)); return; }
     const t = setInterval(() => {
       const next = LINES[idx.current % LINES.length];
       idx.current += 1;
-      setShown((s) => [...s.slice(-9), next]);
+      setShown((s) => [...s.slice(-8), next]);
     }, 1600);
     return () => clearInterval(t);
   }, [started]);
@@ -88,8 +88,7 @@ export function AgentTerminal() {
             <span className="h-2.5 w-2.5 rounded-full bg-[#28CA41]" />
             <span className="ml-2 font-mono text-[10.5px] text-cream-warm/35">kobocent · live engine</span>
           </div>
-          <div className="p-5 min-h-[330px] font-mono text-[11.5px] leading-[1.9]">
-            {shown.length === 0 && <span className="text-cream-warm/25">waiting for signal…</span>}
+          <div className="h-[340px] overflow-hidden px-5 py-4 font-mono text-[11.5px] leading-[1.9] flex flex-col justify-end">
             {shown.map((l, i) => (
               <div key={i} className="flex gap-2.5 mb-1 animate-fade-up">
                 <span className={`shrink-0 rounded px-1.5 text-[10px] self-start mt-0.5 ${TONE[l.tone]}`}>
