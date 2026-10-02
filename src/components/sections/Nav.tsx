@@ -43,6 +43,9 @@ export function Nav() {
 
         <div className="flex items-center gap-2.5">
           <ThemeToggle compact />
+          <Link href="/signin" className="hidden sm:inline-flex items-center px-3 min-h-[40px] text-[14px] font-medium muted hover:text-terracotta transition-colors">
+            Sign in
+          </Link>
           <Link href="/signup" className="btn-primary !px-5 !py-2.5 !text-[14px] hidden sm:inline-flex">
             Get started
           </Link>
@@ -69,6 +72,7 @@ export function Nav() {
                 </a>
               </li>
             ))}
+            <li className="p-2 pb-0"><Link href="/signin" className="btn-ghost w-full">Sign in</Link></li>
             <li className="p-2"><Link href="/signup" className="btn-primary w-full">Get started</Link></li>
           </ul>
         </div>

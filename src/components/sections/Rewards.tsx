@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Section, SectionHead, Reveal } from '@/components/ui/Section';
 
-const BOT = process.env.NEXT_PUBLIC_TELEGRAM_BOT || 'clicksolbot';
+const BOT = process.env.NEXT_PUBLIC_TELEGRAM_BOT || 'kobocentbot';
 
 export function Rewards() {
   return (

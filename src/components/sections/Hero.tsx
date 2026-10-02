@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { BalanceCard } from './BalanceCard';
 
-const BOT = process.env.NEXT_PUBLIC_TELEGRAM_BOT || 'clicksolbot';
+const BOT = process.env.NEXT_PUBLIC_TELEGRAM_BOT || 'kobocentbot';
 
 export function Hero() {
   return (

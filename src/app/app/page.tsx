@@ -1,41 +1,200 @@
+'use client';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { LogoLockup } from '@/components/ui/Logo';
-import { BalanceCard } from '@/components/sections/BalanceCard';
+import { useRouter } from 'next/navigation';
+import {
+  kc, KcError, usd, amount, greeting, loadProfile, referralLink, BOT_URL,
+  type Balances, type History, type LocalProfile,
+} from '@/lib/kc';
+import { SectionTitle, Skeleton, Sheet, ActivityRow, EmptyState, CopyButton } from '@/components/app/ui';
+import { IconPlus, IconSend, IconBolt, IconBank, IconLeaf, IconBridge, IconChart, IconReceive, IconEye, IconTelegram, IconGift, IconChevron } from '@/components/app/Icons';
 
-const BOT = process.env.NEXT_PUBLIC_TELEGRAM_BOT || 'clicksolbot';
+type Action = { key: string; label: string; Icon: (p: { size?: number }) => JSX.Element; title: string; body: string };
 
-/**
- * Placeholder shell for the authenticated app.
- * Phase 2 replaces this with the real dashboard behind auth.
- */
-export default function AppPage() {
+// Money actions run in Telegram today and arrive on the web batch by batch (backend ROADMAP
+// Phase 3). We never show a web screen for something the API cannot do yet.
+const ACTIONS: Action[] = [
+  { key: 'fund', label: 'Add money', Icon: IconPlus, title: 'Add money', body: 'Buy USDC with naira by bank transfer — it lands in your wallet in a few minutes. Or receive crypto to your addresses.' },
+  { key: 'send', label: 'Send', Icon: IconSend, title: 'Send money', body: 'Send to any bank account in Nigeria or to any wallet address — gasless.' },
+  { key: 'bills', label: 'Pay bills', Icon: IconBolt, title: 'Pay bills', body: 'Electricity, airtime, data and cable TV with your stablecoins. Type it, send a screenshot of the bill, or use a voice note.' },
+  { key: 'withdraw', label: 'Withdraw', Icon: IconBank, title: 'Withdraw to bank', body: 'Turn USDC or USDT into naira in any Nigerian bank account, usually in minutes.' },
+  { key: 'earn', label: 'Earn', Icon: IconLeaf, title: 'Earn on your stablecoins', body: 'Put idle USDC to work — flexible or locked plans, earnings every hour. Rates can change.' },
+  { key: 'bridge', label: 'Bridge in', Icon: IconBridge, title: 'Bridge in from another chain', body: 'Bring ETH, BNB, MATIC or USDC/USDT from Ethereum, BNB Chain, Polygon, Arbitrum or Robinhood Chain into spendable USDC.' },
+  { key: 'trade', label: 'Trade', Icon: IconChart, title: 'Trade tokens', body: 'Analyse any token with an AI risk score before you buy, then trade in seconds.' },
+];
+
+const HIDE_KEY = 'kc-hide-balance';
+
+export default function HomePage() {
+  const router = useRouter();
+  const [profile, setProfile] = useState<LocalProfile | null>(null);
+  const [bal, setBal] = useState<Balances | null>(null);
+  const [hist, setHist] = useState<History | null>(null);
+  const [error, setError] = useState('');
+  const [needsLink, setNeedsLink] = useState(false);
+  const [sheet, setSheet] = useState<Action | null>(null);
+  const [hidden, setHidden] = useState(false);
+
+  useEffect(() => {
+    setProfile(loadProfile());
+    try { setHidden(window.localStorage.getItem(HIDE_KEY) === '1'); } catch { /* ignore */ }
+  }, []);
+
+  const load = useCallback(async () => {
+    setError('');
+    try {
+      setBal(await kc<Balances>('wallet'));
+    } catch (e) {
+      if (e instanceof KcError && e.status === 404) return router.replace('/app/setup');
+      if (e instanceof KcError && e.status === 409) return setNeedsLink(true);
+      setError(e instanceof Error ? e.message : 'Could not load your wallet');
+    }
+    kc<History>('history?period=month').then(setHist).catch(() => setHist({ period: 'month', startTs: 0, endTs: 0, shiftPoints: 0, items: [] }));
+  }, [router]);
+
+  useEffect(() => { load(); }, [load]);
+
+  function toggleHidden() {
+    const v = !hidden;
+    setHidden(v);
+    try { window.localStorage.setItem(HIDE_KEY, v ? '1' : '0'); } catch { /* ignore */ }
+  }
+
+  const assets = useMemo(() => {
+    if (!bal) return [];
+    const rows: Array<{ key: string; symbol: string; network: string; amount: number; usd: number | null }> = [];
+    rows.push({ key: 'sol', symbol: 'SOL', network: 'Solana', amount: bal.solana.sol.amount, usd: bal.solana.sol.usd });
+    for (const t of bal.solana.tokens) rows.push({ key: t.mint, symbol: t.symbol, network: 'Solana', amount: t.amount, usd: t.usd });
+    for (const s of bal.evm?.stablecoins || []) if (s.amount > 0) rows.push({ key: s.assetKey, symbol: s.symbol, network: s.assetKey.split('_')[1]?.toUpperCase() || 'EVM', amount: s.amount, usd: s.usd });
+    for (const n of bal.evm?.native || []) if (n.amount > 0) rows.push({ key: n.chainKey, symbol: n.symbol, network: n.chainKey, amount: n.amount, usd: n.usd });
+    return rows.filter(r => r.amount > 0).sort((a, b) => (b.usd || 0) - (a.usd || 0));
+  }, [bal]);
+
+  const ref = referralLink(profile?.telegramId);
+  const mask = (s: string) => (hidden ? '••••••' : s);
+
+  if (needsLink) {
+    return (
+      <EmptyState title="Link your Telegram" body="Balances and history live on your Telegram account. Open Settings → Link Telegram to connect it."
+        action={<Link href="/app/settings" className="btn-primary">Open Settings</Link>} />
+    );
+  }
+
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="container-page flex items-center justify-between py-6">
-        <Link href="/" aria-label="Kobocent home"><LogoLockup /></Link>
-        <Link href="/signup" className="btn-primary !px-5 !py-2.5 !text-[14px]">Get started</Link>
-      </header>
+    <div className="space-y-8">
+      <div>
+        <p className="muted text-[14px]">{greeting()}{profile?.firstName ? ',' : ''}</p>
+        <h1 className="h-display text-[28px] sm:text-[32px]">{profile?.firstName || 'Welcome'} 👋</h1>
+      </div>
 
-      <main className="flex-1 container-page grid lg:grid-cols-2 gap-14 items-center py-12">
-        <div className="max-w-lg">
-          <div className="eyebrow mb-3">Web app · in build</div>
-          <h1 className="h-display text-[clamp(30px,4.4vw,46px)] mb-5">
-            The full app is <span className="text-terracotta italic">on its way</span>
-          </h1>
-          <p className="muted text-[15.5px] leading-[1.75] mb-8">
-            Everything you can do on Telegram today is coming to the web — same account, same balance,
-            fully in sync. Until then, Telegram is the fastest way to start, and nothing will be lost
-            when the web app opens.
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <a href={`https://t.me/${BOT}`} target="_blank" rel="noopener noreferrer" className="btn-primary">
-              Continue on Telegram
-            </a>
-            <Link href="/" className="btn-ghost">Back to home</Link>
+      {/* Balance */}
+      <section className="relative overflow-hidden rounded-3xl bg-terracotta text-white p-6 sm:p-8 shadow-card">
+        <svg className="absolute -right-10 -top-10 opacity-15" width="240" height="240" viewBox="0 0 120 120" aria-hidden="true">
+          <circle cx="46" cy="60" r="30" fill="none" stroke="white" strokeWidth="9" /><circle cx="86" cy="60" r="20" fill="white" />
+        </svg>
+        <div className="relative">
+          <div className="flex items-center gap-2 text-white/80 text-[13.5px] font-medium">
+            Total balance
+            <button onClick={toggleHidden} aria-label={hidden ? 'Show balance' : 'Hide balance'} className="grid place-items-center h-8 w-8 -my-1 rounded-lg hover:bg-white/10"><IconEye size={16} /></button>
+          </div>
+          {bal ? (
+            <div className="font-display font-bold text-[40px] sm:text-[48px] leading-tight mt-1">{mask(usd(bal.totals.usd))}</div>
+          ) : error ? (
+            <div className="mt-2 text-[15px]">{error} <button onClick={load} className="underline font-semibold">Retry</button></div>
+          ) : (
+            <div className="h-14 w-48 mt-2 rounded-xl bg-white/20 animate-pulse" />
+          )}
+          <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-[13.5px] text-white/85">
+            <span>Stablecoins {bal ? mask(usd(bal.totals.stablecoinsUsd)) : '—'}</span>
+            {bal?.totals.partial && <span className="text-white/70">Some prices unavailable</span>}
+          </div>
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:max-w-sm">
+            <button onClick={() => setSheet(ACTIONS[0])} className="inline-flex items-center justify-center gap-2 rounded-xl bg-white text-terracotta-dark font-semibold min-h-[48px]"><IconPlus size={18} />Add money</button>
+            <Link href="/app/receive" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/15 hover:bg-white/25 font-semibold min-h-[48px]"><IconReceive size={18} />Receive</Link>
           </div>
         </div>
-        <div className="flex justify-center lg:justify-end"><BalanceCard /></div>
-      </main>
+      </section>
+
+      {/* Actions */}
+      <section>
+        <SectionTitle>Move money</SectionTitle>
+        <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 sm:gap-3">
+          {ACTIONS.slice(1).concat(ACTIONS[0]).map(a => (
+            <button key={a.key} onClick={() => setSheet(a)}
+              className="group flex flex-col items-center gap-2 rounded-2xl p-2.5 min-h-[88px] hover:bg-white dark:hover:bg-night-card transition-colors">
+              <span className="grid place-items-center h-12 w-12 rounded-2xl surface text-terracotta group-hover:border-terracotta transition-colors"><a.Icon size={22} /></span>
+              <span className="text-[12.5px] font-medium text-ink dark:text-cream-warm text-center leading-tight">{a.label}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Assets */}
+      <section>
+        <SectionTitle>Your assets</SectionTitle>
+        {!bal ? (
+          <div className="space-y-2"><Skeleton className="h-16" /><Skeleton className="h-16" /></div>
+        ) : assets.length === 0 ? (
+          <EmptyState title="Your wallet is ready" body="Add money with naira, or receive USDC, USDT or SOL to your addresses — gasless from there."
+            action={<button onClick={() => setSheet(ACTIONS[0])} className="btn-primary">Add money</button>} />
+        ) : (
+          <ul className="surface rounded-2xl divide-y divide-cream-border dark:divide-night-border px-4">
+            {assets.map(a => (
+              <li key={a.key} className="flex items-center gap-3.5 py-3.5">
+                <span className="grid place-items-center h-11 w-11 shrink-0 rounded-full bg-cream-warm dark:bg-night font-mono text-[12px] font-semibold text-terracotta">{a.symbol.slice(0, 4)}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[15px] font-medium text-ink dark:text-cream-warm">{a.symbol}</div>
+                  <div className="text-[13px] muted capitalize">{a.network.toLowerCase()}</div>
+                </div>
+                <div className="text-right">
+                  <div className="font-mono text-[14.5px] text-ink dark:text-cream-warm">{mask(usd(a.usd))}</div>
+                  <div className="font-mono text-[12.5px] muted">{mask(amount(a.amount))}</div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* Recent activity */}
+      <section>
+        <SectionTitle action={<Link href="/app/activity" className="inline-flex items-center gap-1 text-[14px] font-medium text-terracotta">See all<IconChevron size={16} /></Link>}>Recent activity</SectionTitle>
+        {!hist ? (
+          <div className="space-y-2"><Skeleton className="h-14" /><Skeleton className="h-14" /><Skeleton className="h-14" /></div>
+        ) : hist.items.length === 0 ? (
+          <EmptyState title="Nothing here yet" body="Your payments, transfers, trades and earnings will show up here — from Telegram and the app." />
+        ) : (
+          <ul className="surface rounded-2xl divide-y divide-cream-border dark:divide-night-border px-4">
+            {hist.items.slice(0, 5).map((i, n) => <ActivityRow key={`${i.kind}-${i.reference || n}-${i.at}`} item={i} />)}
+          </ul>
+        )}
+      </section>
+
+      {/* Invite */}
+      {ref && (
+        <section className="surface rounded-3xl p-6 flex flex-col sm:flex-row sm:items-center gap-5">
+          <span className="grid place-items-center h-14 w-14 shrink-0 rounded-2xl bg-terracotta-soft text-terracotta"><IconGift size={26} /></span>
+          <div className="flex-1">
+            <div className="font-display text-[19px] font-bold text-ink dark:text-cream-warm">Invite friends, earn 20%</div>
+            <p className="muted text-[14px] leading-relaxed">You earn 20% of the fees your friends pay — on trades, payments, bills, withdrawals and staking. Paid to your wallet.</p>
+          </div>
+          <div className="flex gap-2">
+            <CopyButton value={ref} label="Copy link" />
+            <button
+              onClick={() => { if (navigator.share) navigator.share({ title: 'Kobocent', text: 'Pay bills, send money and grow your stablecoins with Kobocent — Telegram and App.', url: ref }).catch(() => {}); }}
+              className="btn-primary !px-4 !py-0 min-h-[44px] !text-[14px]">Share</button>
+          </div>
+        </section>
+      )}
+
+      <Sheet open={!!sheet} onClose={() => setSheet(null)} title={sheet?.title || ''}>
+        <p className="muted text-[15px] leading-relaxed mb-5">{sheet?.body}</p>
+        <div className="rounded-2xl bg-cream-warm dark:bg-night px-4 py-3 text-[13.5px] muted mb-5">
+          Ready now on Telegram — same account, same balance. Coming to the web app soon.
+        </div>
+        <a href={BOT_URL} target="_blank" rel="noopener noreferrer" className="btn-primary w-full"><IconTelegram />Continue in Telegram</a>
+        <button onClick={() => setSheet(null)} className="btn-ghost w-full mt-3">Not now</button>
+      </Sheet>
     </div>
   );
 }

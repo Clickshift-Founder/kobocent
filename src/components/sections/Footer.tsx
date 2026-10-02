@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { LogoLockup } from '@/components/ui/Logo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
-const BOT = process.env.NEXT_PUBLIC_TELEGRAM_BOT || 'clicksolbot';
+const BOT = process.env.NEXT_PUBLIC_TELEGRAM_BOT || 'kobocentbot';
 
 const COLS = [
   {
