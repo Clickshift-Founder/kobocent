@@ -12,6 +12,7 @@ const ALLOWED: Record<string, Array<'GET' | 'POST'>> = {
   'wallet': ['GET'],
   'wallet/addresses': ['GET'],
   'history': ['GET'],
+  'shift': ['GET'],
   'statement.pdf': ['GET'],
   'wallet/import': ['POST'],
   'wallet/create': ['POST'],

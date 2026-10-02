@@ -7,6 +7,7 @@ import { CopyButton, Sheet } from '@/components/app/ui';
 import { TelegramLogin, type TelegramUser } from '@/components/app/TelegramLogin';
 import { IconShield, IconTelegram, IconLogout, IconChevron, IconEye, IconGift } from '@/components/app/Icons';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { PageHeader } from '@/components/app/PageHeader';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -31,7 +32,7 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <h1 className="h-display text-[28px] sm:text-[32px]">Settings</h1>
+      <PageHeader title="Settings" />
 
       <section className="surface rounded-3xl p-5 flex items-center gap-4">
         <Avatar profile={profile} size={52} />

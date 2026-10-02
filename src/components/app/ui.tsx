@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { IconCopy, IconCheck, IconBank, IconBolt, IconChart, IconLeaf, IconBridge, IconSend } from './Icons';
+import { IconCopy, IconCheck, IconBank, IconBolt, IconChart, IconLeaf, IconBridge, IconSend, IconClose } from './Icons';
 import { naira, usd, amount, timeLabel, type HistoryItem } from '@/lib/kc';
 
 export function SectionTitle({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
@@ -49,7 +49,9 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
       <div className="relative w-full sm:max-w-md surface rounded-t-3xl sm:rounded-3xl p-6 pb-8 shadow-lift animate-fade-up"
            style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}>
         <div className="sm:hidden mx-auto mb-4 h-1.5 w-10 rounded-full bg-cream-border dark:bg-night-border" />
-        <h3 className="font-display text-[21px] font-bold text-ink dark:text-cream-warm mb-2">{title}</h3>
+        {/* Every sheet can be closed from the corner, not only by its buttons (design rule). */}
+        <button onClick={onClose} aria-label="Close" className="absolute top-3 right-3 grid place-items-center h-11 w-11 rounded-xl muted hover:text-terracotta"><IconClose /></button>
+        <h3 className="font-display text-[21px] font-bold text-ink dark:text-cream-warm mb-2 pr-10">{title}</h3>
         {children}
       </div>
     </div>
@@ -71,6 +73,8 @@ function describe(i: HistoryItem): { title: string; sub: string; value: string; 
   switch (i.kind) {
     case 'bank_transfer':
       return { title: i.counterparty ? `To ${i.counterparty}` : 'Bank transfer', sub: i.bank || 'Bank transfer', value: naira(i.amountNgn), Icon: IconBank, negative: true };
+    case 'withdrawal':
+      return { title: i.bank ? `Withdrew to ${i.bank}` : 'Bank withdrawal', sub: i.counterparty || 'To your bank', value: naira(i.amountNgn), Icon: IconBank, negative: true };
     case 'utility':
       return { title: i.service || 'Bill payment', sub: 'Bills & utilities', value: naira(i.amountNgn), Icon: IconBolt, negative: true };
     case 'yield':

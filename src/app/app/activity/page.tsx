@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { kc, dayLabel, type History, type HistoryItem } from '@/lib/kc';
 import { ActivityRow, EmptyState, Skeleton } from '@/components/app/ui';
 import { IconDownload } from '@/components/app/Icons';
+import { PageHeader } from '@/components/app/PageHeader';
 
 const PERIODS = [
   { key: 'week', label: '7 days' },
@@ -13,7 +14,7 @@ const PERIODS = [
 
 const FILTERS: Array<{ key: string; label: string; kinds: HistoryItem['kind'][] | null }> = [
   { key: 'all', label: 'All', kinds: null },
-  { key: 'pay', label: 'Payments', kinds: ['bank_transfer', 'utility'] },
+  { key: 'pay', label: 'Payments', kinds: ['bank_transfer', 'utility', 'withdrawal'] },
   { key: 'move', label: 'Transfers', kinds: ['wallet_transfer', 'bridge'] },
   { key: 'trade', label: 'Trades', kinds: ['trade', 'sniper', 'copy_trade'] },
   { key: 'earn', label: 'Earn', kinds: ['yield'] },
@@ -45,12 +46,11 @@ export default function ActivityPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-end justify-between gap-3">
-        <h1 className="h-display text-[28px] sm:text-[32px]">Activity</h1>
+      <PageHeader title="Activity" action={
         <a href={`/api/kc/statement.pdf?period=${period}`} className="btn-ghost !px-4 !py-0 min-h-[44px] !text-[14px]">
           <IconDownload />Statement
         </a>
-      </div>
+      } />
 
       <div className="flex gap-2 overflow-x-auto -mx-1 px-1 pb-1" role="tablist" aria-label="Period">
         {PERIODS.map(p => (

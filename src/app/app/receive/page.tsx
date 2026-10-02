@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { kc, KcError, BOT_URL } from '@/lib/kc';
 import { CopyButton, Skeleton, EmptyState } from '@/components/app/ui';
 import { IconShield } from '@/components/app/Icons';
+import { PageHeader } from '@/components/app/PageHeader';
 
 interface Addresses { exists: true; solana: string; evm: string | null }
 
@@ -21,10 +22,7 @@ export default function ReceivePage() {
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <div>
-        <h1 className="h-display text-[28px] sm:text-[32px] mb-2">Receive</h1>
-        <p className="muted text-[15px] leading-relaxed">Share an address to get paid in crypto. Always check the network before anyone sends.</p>
-      </div>
+      <PageHeader title="Receive" subtitle="Share an address to get paid in crypto. Always check the network before anyone sends." />
 
       {error ? <EmptyState title="Could not load addresses" body={error} /> : !a ? (
         <div className="space-y-3"><Skeleton className="h-40" /><Skeleton className="h-40" /></div>

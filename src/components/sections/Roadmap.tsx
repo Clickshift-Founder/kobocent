@@ -5,7 +5,7 @@ const ITEMS = [
   { icon: '🌍', title: 'More currency corridors', status: 'Rolling out', body: 'Dollars are live. Pounds, Kenyan Shillings, Yen and Yuan open as each corridor is built and licensed.' },
   { icon: '📱', title: 'Native iOS & Android', status: 'Next', body: 'The web app installs to your home screen today. Full App Store and Play Store releases follow.' },
   { icon: '⭐', title: 'Stellar support', status: 'Exploring', body: 'Adding Stellar would give us one of the cheapest, fastest settlement rails for cross-border payouts. Under active evaluation.' },
-  { icon: '◆', title: '$SHIFT token launch', status: 'Q1 2027 target', body: 'Points accumulated today convert at launch. Early users earn at a 3× multiplier during this window.' },
+  { icon: '◆', title: '$SHIFT token launch', status: 'Q2 2027 target', body: 'Points accumulated today convert at launch. Early users earn at a 3× multiplier during this window.' },
   { icon: '🤝', title: 'Business accounts', status: 'Planned', body: 'Multi-user access, approval flows, and bulk payouts for companies paying suppliers or staff across borders.' },
 ];
 

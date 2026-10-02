@@ -4,12 +4,14 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LogoLockup, LogoMark } from '@/components/ui/Logo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import { IconHome, IconActivity, IconReceive, IconSettings, IconTelegram, IconLogout } from './Icons';
+import { IconHome, IconActivity, IconReceive, IconSettings, IconTelegram, IconLogout, IconTrophy } from './Icons';
+import { initInstallCapture, registerServiceWorker } from '@/lib/pwa';
 import { BOT_URL, loadProfile, clearProfile, type LocalProfile } from '@/lib/kc';
 
 const TABS = [
   { href: '/app', label: 'Home', Icon: IconHome },
   { href: '/app/activity', label: 'Activity', Icon: IconActivity },
+  { href: '/app/rewards', label: 'Rewards', Icon: IconTrophy },
   { href: '/app/receive', label: 'Receive', Icon: IconReceive },
   { href: '/app/settings', label: 'Settings', Icon: IconSettings },
 ];
@@ -37,7 +39,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [profile, setProfile] = useState<LocalProfile | null>(null);
-  useEffect(() => { setProfile(loadProfile()); }, []);
+  useEffect(() => {
+    setProfile(loadProfile());
+    initInstallCapture();      // Home's install card needs the browser's one-time prompt
+    registerServiceWorker();
+  }, []);
 
   const active = (href: string) => (href === '/app' ? pathname === '/app' : pathname.startsWith(href));
 
@@ -97,11 +103,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {/* Mobile bottom tabs — clear of the home indicator */}
         <nav className="lg:hidden fixed inset-x-0 bottom-0 z-40 bg-white/95 dark:bg-night-card/95 backdrop-blur-lg border-t border-cream-border dark:border-night-border"
              style={{ paddingBottom: 'env(safe-area-inset-bottom)' }} aria-label="App">
-          <ul className="grid grid-cols-4">
+          <ul className="grid grid-cols-5">
             {TABS.map(({ href, label, Icon }) => (
               <li key={href}>
                 <Link href={href} aria-current={active(href) ? 'page' : undefined}
-                  className={`flex flex-col items-center justify-center gap-1 h-16 text-[11.5px] font-medium transition-colors
+                  className={`flex flex-col items-center justify-center gap-1 h-16 text-[11px] font-medium transition-colors
                     ${active(href) ? 'text-terracotta' : 'text-warmgray dark:text-warmgray-dark'}`}>
                   <Icon size={22} />{label}
                 </Link>

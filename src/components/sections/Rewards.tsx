@@ -42,7 +42,7 @@ export function Rewards() {
             </h3>
             <p className="text-[14px] leading-[1.75] muted mb-6">
               Every transaction you make accumulates $SHIFT points. The token generation event is
-              targeted for Q1 2027, and early users earn at a 3× multiplier during this window —
+              targeted for Q2 2027, and early users earn at a 3× multiplier during this window —
               simply for using the product you were going to use anyway.
             </p>
             <div className="grid grid-cols-2 gap-3 mb-7">

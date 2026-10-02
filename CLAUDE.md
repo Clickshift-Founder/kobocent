@@ -42,6 +42,18 @@ fees, rates or balances of its own. If logic is needed, it goes into a backend s
 About 90% of users are on phones. Design and test at **390px first**; tap targets ≥ 44px;
 nothing behind hover; respect safe-area insets on fixed elements; test on a real device.
 
+## Navigation (design rule — founder, 2026-10-03)
+
+- **Every screen except Home has a back arrow** at the top-left (`src/components/app/PageHeader.tsx`):
+  44px tap target, goes back in history when the previous page was in the app, otherwise to a
+  sensible parent (`fallback`). Never leave someone on a screen with no obvious way back.
+- Every sheet/dialog has a close (×) in its corner as well as its own buttons, and closes on
+  Esc and on tapping the backdrop (`Sheet` in `src/components/app/ui.tsx`).
+- Multi-step flows (import wallet, recovery phrase) have a visible Back/Cancel at every step.
+- Pages outside the app (sign in) link "Back to site".
+- Bottom tabs on phones (Home, Activity, Rewards, Receive, Settings) are always visible inside
+  the app, so the main sections are one tap away.
+
 ## Language rules (commercially important — from clickbot/CLAUDE.md)
 
 - **Never "non-custodial".** Keys are encrypted with a server-held key and the server signs.
@@ -51,7 +63,7 @@ nothing behind hover; respect safe-area insets on fixed elements; test on a real
 - Never "trading bot". Never "bank-grade security".
 - **Gasless** is the approved claim (founder decision 2026-10-01): Kobocent covers network
   fees (treasury pays gas and token-account rent; every new wallet gets 0.0025 SOL).
-- $SHIFT is a **usage-reward point**, never "a token with real value". TGE Q1 2027 is a target.
+- $SHIFT is a **usage-reward point**, never "a token with real value". TGE Q2 2027 is a target.
 - Rewards: **0.2% cashback** on bank transfers, bills and withdrawals; **20% referral
   commission** on friends' fees (trade sells, payments, bills, withdrawals, staking).
 - **Do not fabricate numbers or testimonials.** If a stat cannot be fetched, show a dash.
@@ -138,7 +150,11 @@ Backend side (clickbot `.env`): `WEB_ORIGIN=https://kobocent.com,https://www.kob
 - **Screens:** `/signin`, `/signup` (`AuthPanel`), `/app` (balance, Move money sheet → Telegram
   for actions not yet on the API, assets, recent activity, invite), `/app/setup` (import first),
   `/app/activity` (periods, filters, statement PDF), `/app/receive`, `/app/settings` (link
-  Telegram, recovery phrase via re-auth, referral link, theme, sign out). Shell:
+  Telegram, recovery phrase via re-auth, referral link, theme, sign out).
+  Added 2026-10-03: `/app/rewards` ($SHIFT points, rank or range, climb plan, how to earn,
+  top 10 — `GET /api/v1/shift`), install card on Home (`InstallCard.tsx`, prompt captured in
+  `lib/pwa.ts`), Swap and Send to wallet in Move money, withdrawals in Activity, back arrows
+  (`PageHeader.tsx`) and sheet close buttons. Shell:
   `src/components/app/AppShell.tsx` (bottom tabs on phones, sidebar on desktop).
 - Client helpers and API types: `src/lib/kc.ts`. Shared UI: `src/components/app/ui.tsx`.
 - Telegram Login only works on the BotFather domain (kobocent.com), not on preview URLs.

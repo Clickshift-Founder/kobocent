@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { kc, KcError } from '@/lib/kc';
 import { IconReceive, IconPlus, IconShield } from '@/components/app/Icons';
+import { PageHeader } from '@/components/app/PageHeader';
 
 /**
  * First-time wallet setup: Import an existing wallet first, Create a new one second.
@@ -51,11 +52,7 @@ export default function SetupPage() {
 
   return (
     <div className="max-w-xl mx-auto">
-      <div className="eyebrow mb-2">Set up your wallet</div>
-      <h1 className="h-display text-[28px] sm:text-[34px] mb-3">One wallet, everywhere</h1>
-      <p className="muted text-[15px] leading-relaxed mb-8">
-        Your wallet works on Telegram and here, with one address for Solana and one for Ethereum, BNB Chain, Polygon and more.
-      </p>
+      <PageHeader fallback="/" title="Set up your wallet" subtitle="One wallet on Telegram and here — one address for Solana and one for Ethereum, BNB Chain, Polygon and more." />
 
       {error && <p role="alert" className="mb-5 rounded-xl bg-terracotta-soft text-terracotta-dark dark:text-terracotta-light px-4 py-3 text-[14px]">{error}</p>}
 

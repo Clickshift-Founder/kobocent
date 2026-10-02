@@ -7,7 +7,8 @@ import {
   type Balances, type History, type LocalProfile,
 } from '@/lib/kc';
 import { SectionTitle, Skeleton, Sheet, ActivityRow, EmptyState, CopyButton } from '@/components/app/ui';
-import { IconPlus, IconSend, IconBolt, IconBank, IconLeaf, IconBridge, IconChart, IconReceive, IconEye, IconTelegram, IconGift, IconChevron } from '@/components/app/Icons';
+import { IconPlus, IconSend, IconBolt, IconBank, IconLeaf, IconBridge, IconChart, IconReceive, IconEye, IconTelegram, IconGift, IconChevron, IconSwap, IconWallet, IconTrophy } from '@/components/app/Icons';
+import { InstallCard } from '@/components/app/InstallCard';
 
 type Action = { key: string; label: string; Icon: (p: { size?: number }) => JSX.Element; title: string; body: string };
 
@@ -15,9 +16,11 @@ type Action = { key: string; label: string; Icon: (p: { size?: number }) => JSX.
 // Phase 3). We never show a web screen for something the API cannot do yet.
 const ACTIONS: Action[] = [
   { key: 'fund', label: 'Add money', Icon: IconPlus, title: 'Add money', body: 'Buy USDC with naira by bank transfer — it lands in your wallet in a few minutes. Or receive crypto to your addresses.' },
-  { key: 'send', label: 'Send', Icon: IconSend, title: 'Send money', body: 'Send to any bank account in Nigeria or to any wallet address — gasless.' },
+  { key: 'send', label: 'Send to bank', Icon: IconSend, title: 'Send to a bank account', body: 'Pay anyone in naira — type "send 5000 to GTBank 0123456789" or send a screenshot of their account details. Gasless, with a receipt and 0.2% cashback.' },
+  { key: 'wallet', label: 'Send to wallet', Icon: IconWallet, title: 'Send to another wallet', body: 'Transfer SOL, USDC, USDT or any token to another wallet — on Solana, Ethereum, BNB Chain, Polygon, Arbitrum or Robinhood Chain. Gasless.' },
   { key: 'bills', label: 'Pay bills', Icon: IconBolt, title: 'Pay bills', body: 'Electricity, airtime, data and cable TV with your stablecoins. Type it, send a screenshot of the bill, or use a voice note.' },
   { key: 'withdraw', label: 'Withdraw', Icon: IconBank, title: 'Withdraw to bank', body: 'Turn USDC or USDT into naira in any Nigerian bank account, usually in minutes.' },
+  { key: 'swap', label: 'Swap', Icon: IconSwap, title: 'Swap', body: 'Convert between SOL, USDC and USDT in seconds at the best route — gasless.' },
   { key: 'earn', label: 'Earn', Icon: IconLeaf, title: 'Earn on your stablecoins', body: 'Put idle USDC to work — flexible or locked plans, earnings every hour. Rates can change.' },
   { key: 'bridge', label: 'Bridge in', Icon: IconBridge, title: 'Bridge in from another chain', body: 'Bring ETH, BNB, MATIC or USDC/USDT from Ethereum, BNB Chain, Polygon, Arbitrum or Robinhood Chain into spendable USDC.' },
   { key: 'trade', label: 'Trade', Icon: IconChart, title: 'Trade tokens', body: 'Analyse any token with an AI risk score before you buy, then trade in seconds.' },
@@ -118,8 +121,8 @@ export default function HomePage() {
       {/* Actions */}
       <section>
         <SectionTitle>Move money</SectionTitle>
-        <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 sm:gap-3">
-          {ACTIONS.slice(1).concat(ACTIONS[0]).map(a => (
+        <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 sm:gap-3">
+          {ACTIONS.slice(1).map(a => (
             <button key={a.key} onClick={() => setSheet(a)}
               className="group flex flex-col items-center gap-2 rounded-2xl p-2.5 min-h-[88px] hover:bg-white dark:hover:bg-night-card transition-colors">
               <span className="grid place-items-center h-12 w-12 rounded-2xl surface text-terracotta group-hover:border-terracotta transition-colors"><a.Icon size={22} /></span>
@@ -128,6 +131,8 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+
+      <InstallCard />
 
       {/* Assets */}
       <section>
@@ -169,6 +174,16 @@ export default function HomePage() {
           </ul>
         )}
       </section>
+
+      {/* Rewards teaser */}
+      <Link href="/app/rewards" className="surface rounded-3xl p-5 flex items-center gap-4 hover:border-terracotta transition-colors">
+        <span className="grid place-items-center h-12 w-12 shrink-0 rounded-2xl bg-terracotta-soft text-terracotta"><IconTrophy /></span>
+        <span className="flex-1">
+          <span className="block font-semibold text-ink dark:text-cream-warm">Your $SHIFT rank</span>
+          <span className="block muted text-[14px]">See where you are on the leaderboard and how to climb.</span>
+        </span>
+        <IconChevron className="muted" />
+      </Link>
 
       {/* Invite */}
       {ref && (

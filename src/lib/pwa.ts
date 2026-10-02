@@ -20,9 +20,47 @@ export function isIOS(): boolean {
 export function registerServiceWorker() {
   if (typeof window === 'undefined') return;
   if (!('serviceWorker' in navigator)) return;
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {
-      /* non-fatal: the site works fine without offline caching */
-    });
+  const register = () => navigator.serviceWorker.register('/sw.js').catch(() => {
+    /* non-fatal: the site works fine without offline caching */
   });
+  // In the app the page is usually loaded already by the time this runs.
+  if (document.readyState === 'complete') register();
+  else window.addEventListener('load', register);
+}
+
+// ── Install prompt, captured once per page load ───────────────────────
+// Chrome/Android fires `beforeinstallprompt` once, often before a component that wants it has
+// mounted (e.g. while the sign-in page was showing). Capture it globally and let components
+// subscribe.
+let deferredPrompt: BeforeInstallPromptEvent | null = null;
+const subscribers = new Set<() => void>();
+type InstallWindow = Window & { __kcInstallCapture?: boolean };
+
+export function initInstallCapture() {
+  if (typeof window === 'undefined') return;
+  const w = window as InstallWindow;
+  if (w.__kcInstallCapture) return;
+  w.__kcInstallCapture = true;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e as BeforeInstallPromptEvent;
+    subscribers.forEach((fn) => fn());
+  });
+  window.addEventListener('appinstalled', () => {
+    deferredPrompt = null;
+    subscribers.forEach((fn) => fn());
+  });
+}
+
+export function getInstallPrompt(): BeforeInstallPromptEvent | null {
+  return deferredPrompt;
+}
+
+export function onInstallChange(fn: () => void): () => void {
+  subscribers.add(fn);
+  return () => { subscribers.delete(fn); };
+}
+
+export function clearInstallPrompt() {
+  deferredPrompt = null;
 }

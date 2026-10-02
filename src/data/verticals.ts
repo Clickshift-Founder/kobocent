@@ -62,7 +62,7 @@ export const VERTICALS: Vertical[] = [
       { title: 'Hourly accrual', body: 'Earnings accrue to your wallet every hour — not monthly, not at the end of a term. Watch it move.' },
       { title: 'Withdraw on your terms', body: 'Flexible staking withdraws anytime. Locked terms return principal plus yield the moment they mature.' },
       { title: 'Live dashboard', body: 'Every position, its rate, days remaining, and daily earnings — all in one view.' },
-      { title: 'Earn $SHIFT alongside', body: 'Staking accumulates $SHIFT points ahead of the Q1 2027 token launch, on top of your yield.' },
+      { title: 'Earn $SHIFT alongside', body: 'Staking accumulates $SHIFT points ahead of the Q2 2027 token launch target, on top of your yield.' },
       { title: 'No minimum drama', body: 'Start with what you have. The rate is the same whether you stake ten dollars or ten thousand.' },
     ],
   },

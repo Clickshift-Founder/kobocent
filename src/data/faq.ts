@@ -51,7 +51,7 @@ export const FAQ: FaqGroup[] = [
       { q: 'Is the yield guaranteed?', a: 'No. Rates are variable and depend on underlying market conditions. We show the current rate clearly and it can change. Treat any yield product, here or elsewhere, as carrying risk rather than as a savings account.' },
       { q: 'What does the trading side actually do?', a: 'It scores a token on six live signals before you buy, routes your trade privately so it cannot be frontrun, and can exit automatically when a position turns using a trailing stop. You can also copy proven wallets and trade perps.' },
       { q: 'Can the analysis guarantee I will not lose money?', a: 'No, and anyone telling you otherwise is selling something. It flags patterns associated with rug pulls and poor liquidity, which removes a category of avoidable mistakes. It cannot predict the market.' },
-      { q: 'What is $SHIFT?', a: 'A usage-reward point accumulated when you transact, ahead of a token generation event targeted for Q1 2027. Early users earn at a 3× multiplier. It is a reward mechanism, not a security, and carries no guarantee of future value.' },
+      { q: 'What is $SHIFT?', a: 'A usage-reward point accumulated when you transact, ahead of a token generation event targeted for Q2 2027. Early users earn at a 3× multiplier. It is a reward mechanism, not a security, and carries no guarantee of future value.' },
     ],
   },
   {

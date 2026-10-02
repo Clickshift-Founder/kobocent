@@ -22,3 +22,7 @@ export const IconGift = ({ size = 22, className }: P) => (<svg {...base(size)} c
 export const IconTelegram = ({ size = 18, className }: P) => (<svg width={size} height={size} viewBox="0 0 24 24" className={className} fill="currentColor"><path d="M21.9 4.3 18.7 19.4c-.2 1-.9 1.3-1.8.8l-4.9-3.6-2.4 2.3c-.3.3-.5.5-1 .5l.3-5 9.1-8.2c.4-.4-.1-.6-.6-.2L6.2 13.1l-4.8-1.5c-1-.3-1-1 .2-1.5l18.9-7.3c.9-.3 1.6.2 1.4 1.5z" /></svg>);
 export const IconEye = ({ size = 18, className }: P) => (<svg {...base(size)} className={className}><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>);
 export const IconLogout = ({ size = 18, className }: P) => (<svg {...base(size)} className={className}><path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 17l-5-5 5-5M5 12h11" /></svg>);
+export const IconTrophy = ({ size = 22, className }: P) => (<svg {...base(size)} className={className}><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3" /></svg>);
+export const IconWallet = ({ size = 22, className }: P) => (<svg {...base(size)} className={className}><path d="M3 7a2 2 0 0 1 2-2h13v4M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2zM16 14h.01" /></svg>);
+export const IconSwap = ({ size = 22, className }: P) => (<svg {...base(size)} className={className}><path d="M7 4 3 8l4 4M3 8h13M17 20l4-4-4-4M21 16H8" /></svg>);
+export const IconClose = ({ size = 18, className }: P) => (<svg {...base(size)} className={className}><path d="M18 6 6 18M6 6l12 12" /></svg>);
