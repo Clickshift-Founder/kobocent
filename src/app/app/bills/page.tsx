@@ -15,13 +15,40 @@ import { newKey, store, read, initials, useCountUp, HoldToConfirm, Outcome } fro
  */
 
 interface Service { id: string; name: string; minNgn: number }
-interface Catalog { airtime: Service[]; electricity: { prepaid: Service[]; postpaid: Service[] } }
+interface Catalog { airtime: Service[]; electricity: { prepaid: Service[]; postpaid: Service[] }; data?: Service[]; cable?: Service[] }
+interface RecentItem { serviceId: string; serviceName: string; customerId: string; customerName: string | null; phone: string | null; lastAt: number | null }
+interface Recents { airtime: RecentItem[]; electricity: RecentItem[]; data: RecentItem[]; cable: RecentItem[] }
+interface Plan { code: string; name: string; amountNgn: number }
 interface Quote { amountNgn: number; amountUsd: number; feeUsd: number; totalUsd: number; rate: number; stable: string; isSplit: boolean; usdcAmount: number; usdtAmount: number; balanceUsd: number; canPay: boolean }
 interface Job {
   id: string; status: 'running' | 'done'; stage: string; category: string; amountNgn: number;
-  result: null | { ok: boolean; code: string | null; reference: string | null; serviceName: string; customerId: string; customerName: string | null; token: string | null; units: string | null; cashback: { amount: number; asset: string } | null; error: string | null };
+  result: null | { ok: boolean; code: string | null; reference: string | null; serviceName: string; planName?: string | null; customerId: string; customerName: string | null; token: string | null; units: string | null; cashback: { amount: number; asset: string } | null; error: string | null };
 }
-type Tab = 'airtime' | 'electricity';
+type Tab = 'airtime' | 'electricity' | 'data' | 'cable';
+const TABS: Array<{ key: Tab; label: string }> = [
+  { key: 'airtime', label: 'Airtime' }, { key: 'data', label: 'Data' },
+  { key: 'electricity', label: 'Electricity' }, { key: 'cable', label: 'Cable TV' },
+];
+const DATA_NETWORK: Record<string, string> = { mtn: 'mtn-data', glo: 'glo-data', airtel: 'airtel-data', etisalat: 'etisalat-data' };
+
+/** One-tap row of numbers paid before (meters, phones, smartcards). */
+function RecentRow({ items, onPick, label }: { items: RecentItem[]; onPick: (r: RecentItem) => void; label: (r: RecentItem) => string }) {
+  if (!items.length) return null;
+  return (
+    <div>
+      <div className="eyebrow mb-2">Recent</div>
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 snap-x">
+        {items.map(r => (
+          <button key={`${r.serviceId}-${r.customerId}`} onClick={() => onPick(r)}
+            className="snap-start shrink-0 text-left rounded-2xl surface px-3.5 py-2.5 min-h-[56px] max-w-[220px] hover:border-terracotta active:scale-[0.98] transition">
+            <div className="text-[13.5px] font-semibold text-ink dark:text-cream-warm truncate">{label(r)}</div>
+            <div className="text-[12px] muted truncate font-mono">{r.customerId}</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const JOB_KEY = 'kc-bills-job';
 const SUPPORT_URL = 'https://t.me/ClickShiftAlerts';
@@ -39,6 +66,7 @@ export default function BillsPage() {
   const [error, setError] = useState('');
   const [needsLink, setNeedsLink] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
+  const [recent, setRecent] = useState<Recents | null>(null);
 
   useEffect(() => {
     const saved = read(JOB_KEY);
@@ -47,6 +75,7 @@ export default function BillsPage() {
       if (e instanceof KcError && e.status === 409) setNeedsLink(true);
       else setError(e instanceof Error ? e.message : 'Could not load bills');
     });
+    kc<Recents>('bills/recent').then(setRecent).catch(() => setRecent(null));
   }, []);
 
   const started = (id: string) => { store(JOB_KEY, id); setJobId(id); };
@@ -66,7 +95,7 @@ export default function BillsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Pay bills" subtitle="Airtime and electricity with your USDC or USDT — gasless, with a receipt and 0.2% cashback." />
+      <PageHeader title="Pay bills" subtitle="Airtime, data, electricity and cable TV with your USDC or USDT — gasless, with a receipt and 0.2% cashback." />
       {jobId ? (
         <Progress jobId={jobId} onFinish={finished} />
       ) : error ? (
@@ -75,18 +104,23 @@ export default function BillsPage() {
         <div className="space-y-3"><Skeleton className="h-12" /><Skeleton className="h-40" /><Skeleton className="h-28" /></div>
       ) : (
         <>
-          <div role="tablist" aria-label="Bill type" className="grid grid-cols-2 gap-1 rounded-2xl bg-cream-warm dark:bg-night p-1">
-            {(['airtime', 'electricity'] as Tab[]).map(t => (
-              <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
-                className={`rounded-xl min-h-[48px] text-[15px] font-semibold capitalize transition-colors ${tab === t ? 'bg-white dark:bg-night-card text-terracotta shadow-soft' : 'muted'}`}>
-                {t}
+          <div role="tablist" aria-label="Bill type" className="grid grid-cols-4 gap-1 rounded-2xl bg-cream-warm dark:bg-night p-1">
+            {TABS.map(t => (
+              <button key={t.key} role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)}
+                className={`rounded-xl min-h-[48px] text-[13.5px] sm:text-[15px] font-semibold transition-colors ${tab === t.key ? 'bg-white dark:bg-night-card text-terracotta shadow-soft' : 'muted'}`}>
+                {t.label}
               </button>
             ))}
           </div>
-          {tab === 'airtime' ? <Airtime services={cat.airtime} onStarted={started} /> : <Electricity cat={cat.electricity} onStarted={started} />}
-          <p className="text-center text-[13px] muted">
-            Data and cable TV are coming next — <a href={BOT_URL} target="_blank" rel="noopener noreferrer" className="text-terracotta font-semibold">ready on Telegram now</a>.
-          </p>
+          {tab === 'airtime' && <Airtime services={cat.airtime} recent={recent?.airtime || []} onStarted={started} />}
+          {tab === 'electricity' && <Electricity cat={cat.electricity} recent={recent?.electricity || []} onStarted={started} />}
+          {tab === 'data' && <Data services={cat.data || []} recent={recent?.data || []} onStarted={started} />}
+          {tab === 'cable' && <Cable services={cat.cable || []} recent={recent?.cable || []} onStarted={started} />}
+          {cat.electricity.postpaid.length === 0 && tab === 'electricity' && (
+            <p className="text-center text-[13px] muted">
+              Postpaid meters: <a href={BOT_URL} target="_blank" rel="noopener noreferrer" className="text-terracotta font-semibold">pay on Telegram</a> for now.
+            </p>
+          )}
         </>
       )}
     </div>
@@ -208,7 +242,7 @@ function usePay(onStarted: (id: string) => void) {
 
 // ───────────────────────────── Airtime ─────────────────────────────
 
-function Airtime({ services, onStarted }: { services: Service[]; onStarted: (id: string) => void }) {
+function Airtime({ services, recent, onStarted }: { services: Service[]; recent: RecentItem[]; onStarted: (id: string) => void }) {
   const [phone, setPhone] = useState('');
   const [network, setNetwork] = useState<string | null>(null);
   const [detected, setDetected] = useState<string | null>(null);
@@ -236,6 +270,8 @@ function Airtime({ services, onStarted }: { services: Service[]; onStarted: (id:
 
   return (
     <div className="space-y-5 animate-fade-up">
+      <RecentRow items={recent} label={r => NETWORK[r.serviceId]?.label || r.serviceName}
+        onPick={r => { setPhone(r.customerId); setNetwork(r.serviceId); }} />
       <section className="surface rounded-3xl p-5">
         <label htmlFor="ph" className="eyebrow">Phone number</label>
         <input id="ph" value={phone} onChange={e => setPhone(e.target.value.replace(/[^\d+ ]/g, '').slice(0, 16))} inputMode="tel" autoComplete="tel" placeholder="0803 123 4567"
@@ -277,7 +313,7 @@ function Airtime({ services, onStarted }: { services: Service[]; onStarted: (id:
 
 // ───────────────────────────── Electricity ─────────────────────────────
 
-function Electricity({ cat, onStarted }: { cat: Catalog['electricity']; onStarted: (id: string) => void }) {
+function Electricity({ cat, recent, onStarted }: { cat: Catalog['electricity']; recent: RecentItem[]; onStarted: (id: string) => void }) {
   const [type, setType] = useState<'prepaid' | 'postpaid'>('prepaid');
   const [service, setService] = useState<Service | null>(null);
   const [q, setQ] = useState('');
@@ -299,12 +335,17 @@ function Electricity({ cat, onStarted }: { cat: Catalog['electricity']; onStarte
   }, [cat, type, q]);
 
   useEffect(() => { setVerified(null); setVErr(''); }, [service, meter]);
+  // A recent meter was tapped: check it straight away (one tap from "Recent" to the amount).
+  const autoCheck = useRef(false);
+  useEffect(() => {
+    if (autoCheck.current && service && meter.length >= 10) { autoCheck.current = false; check(service, meter); }
+  }, [service, meter]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function check() {
-    if (!service) return;
+  async function check(svc: Service | null = service, m: string = meter) {
+    if (!svc) return;
     setChecking(true); setVErr('');
     try {
-      const r = await kc<{ customerName: string; address: string | null }>('bills/verify', { method: 'POST', body: { serviceId: service.id, customerId: meter } });
+      const r = await kc<{ customerName: string; address: string | null }>('bills/verify', { method: 'POST', body: { serviceId: svc.id, customerId: m } });
       setVerified(r);
     } catch (e) {
       setVErr(e instanceof Error ? e.message : 'Could not verify this meter');
@@ -318,6 +359,13 @@ function Electricity({ cat, onStarted }: { cat: Catalog['electricity']; onStarte
 
   return (
     <div className="space-y-5 animate-fade-up">
+      <RecentRow items={recent} label={r => r.customerName || r.serviceName}
+        onPick={r => {
+          const svc = cat.prepaid.find(x => x.id === r.serviceId);
+          if (!svc) return;
+          setType('prepaid'); autoCheck.current = true; setService(svc); setMeter(r.customerId);
+          if (r.phone && r.phone !== r.customerId) setPhone(r.phone);
+        }} />
       <section className="surface rounded-3xl p-5">
         <div className="flex items-center justify-between mb-3">
           <div className="eyebrow">Electricity company</div>
@@ -358,7 +406,7 @@ function Electricity({ cat, onStarted }: { cat: Catalog['electricity']; onStarte
         <div className="mt-2 flex gap-2">
           <input id="mtr" value={meter} onChange={e => setMeter(e.target.value.replace(/\D/g, '').slice(0, 13))} inputMode="numeric" autoComplete="off" placeholder="10–13 digits"
             className="flex-1 min-w-0 rounded-xl border border-cream-border dark:border-night-border bg-cream dark:bg-night px-4 min-h-[56px] font-mono text-[19px] tracking-[0.08em] outline-none focus:border-terracotta" />
-          <button onClick={check} disabled={meter.length < 10 || checking || !!verified} className="btn-secondary !px-4 min-h-[56px] disabled:opacity-40">
+          <button onClick={() => check()} disabled={meter.length < 10 || checking || !!verified} className="btn-secondary !px-4 min-h-[56px] disabled:opacity-40">
             {checking ? <span className="h-5 w-5 rounded-full border-2 border-current border-t-transparent animate-spin" /> : verified ? <IconCheck /> : 'Check'}
           </button>
         </div>
@@ -392,6 +440,213 @@ function Electricity({ cat, onStarted }: { cat: Catalog['electricity']; onStarte
         lines={[['Company', service?.name || ''], ['Meter', meter], ['Name', verified?.customerName || ''], ['Units for', naira(amountNgn)]]}
         holdLabel={`Hold to pay ${naira(amountNgn)}`}
         onConfirm={() => pay({ serviceId: service!.id, amountNgn, customerId: meter, ...(phoneDigits ? { phone: phoneDigits } : {}) })} />
+    </div>
+  );
+}
+
+// ───────────────────────────── Data + Cable: plan pickers ─────────────────────────────
+
+function usePlans(serviceId: string | null) {
+  const [plans, setPlans] = useState<Plan[] | null>(null);
+  const [err, setErr] = useState('');
+  useEffect(() => {
+    setPlans(null); setErr('');
+    if (!serviceId) return;
+    let live = true;
+    kc<{ plans: Plan[] }>(`bills/plans?serviceId=${encodeURIComponent(serviceId)}`)
+      .then(r => { if (live) setPlans(r.plans); })
+      .catch(e => { if (live) { setPlans([]); setErr(e instanceof Error ? e.message : 'Could not load plans'); } });
+    return () => { live = false; };
+  }, [serviceId]);
+  return { plans, err };
+}
+
+function PlanList({ plans, err, value, onPick }: { plans: Plan[] | null; err: string; value: Plan | null; onPick: (p: Plan) => void }) {
+  const [q, setQ] = useState('');
+  const shown = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    return (plans || []).filter(p => !s || p.name.toLowerCase().includes(s));
+  }, [plans, q]);
+  if (!plans) return <div className="space-y-2"><Skeleton className="h-12" /><Skeleton className="h-12" /><Skeleton className="h-12" /></div>;
+  if (err || plans.length === 0) return <p className="muted text-[14px]">{err || 'No plans available right now — try again shortly.'}</p>;
+  return (
+    <>
+      {plans.length > 8 && (
+        <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search plans — e.g. 1GB, weekly, Compact" autoComplete="off"
+          className="w-full mb-2 rounded-xl border border-cream-border dark:border-night-border bg-cream dark:bg-night px-4 min-h-[44px] text-[15px] outline-none focus:border-terracotta" />
+      )}
+      <ul className="max-h-80 overflow-y-auto space-y-2 pr-0.5">
+        {shown.map(p => {
+          const on = value?.code === p.code;
+          return (
+            <li key={p.code}>
+              <button onClick={() => onPick(p)} aria-pressed={on}
+                className={`w-full flex items-center gap-3 rounded-2xl border px-4 py-3 min-h-[56px] text-left transition-colors ${on ? 'border-terracotta bg-terracotta-soft' : 'border-cream-border dark:border-night-border hover:border-terracotta'}`}>
+                <span className="flex-1 text-[14.5px] text-ink dark:text-cream-warm">{p.name}</span>
+                <span className="font-mono text-[14px] font-semibold">{naira(p.amountNgn)}</span>
+                {on && <IconCheck size={16} className="text-terracotta" />}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </>
+  );
+}
+
+function Data({ services, recent, onStarted }: { services: Service[]; recent: RecentItem[]; onStarted: (id: string) => void }) {
+  const [phone, setPhone] = useState('');
+  const [serviceId, setServiceId] = useState<string | null>(null);
+  const [detected, setDetected] = useState<string | null>(null);
+  const [plan, setPlan] = useState<Plan | null>(null);
+  const [review, setReview] = useState(false);
+  const digits = phone.replace(/\D/g, '');
+  const { plans, err: pErr } = usePlans(serviceId);
+  const { quote, err, busy } = useQuote(plan ? serviceId : null, plan?.amountNgn || 0, 0);
+  const { pay, busy: paying, error: payErr } = usePay(onStarted);
+  useEffect(() => { setPlan(null); }, [serviceId]);
+
+  useEffect(() => {
+    setDetected(null);
+    if (digits.length !== 11 && !(digits.startsWith('234') && digits.length === 13)) return;
+    let live = true;
+    kc<{ network: string | null }>('bills/network', { method: 'POST', body: { phone: digits } })
+      .then(r => { if (!live || !r.network) return; const id = DATA_NETWORK[r.network]; setDetected(id); setServiceId(prev => prev || id); })
+      .catch(() => {});
+    return () => { live = false; };
+  }, [digits]);
+
+  const validPhone = /^0[789][01]\d{8}$/.test(digits) || /^234[789][01]\d{8}$/.test(digits);
+  const ready = validPhone && !!plan && !!quote?.canPay && !busy;
+  const netKey = (id: string | null) => Object.keys(DATA_NETWORK).find(k => DATA_NETWORK[k] === id) || '';
+
+  return (
+    <div className="space-y-5 animate-fade-up">
+      <RecentRow items={recent} label={r => NETWORK[netKey(r.serviceId)]?.label ? `${NETWORK[netKey(r.serviceId)].label} data` : r.serviceName}
+        onPick={r => { setPhone(r.customerId); setServiceId(r.serviceId); }} />
+      <section className="surface rounded-3xl p-5">
+        <label htmlFor="dph" className="eyebrow">Phone number</label>
+        <input id="dph" value={phone} onChange={e => setPhone(e.target.value.replace(/[^\d+ ]/g, '').slice(0, 16))} inputMode="tel" autoComplete="tel" placeholder="0803 123 4567"
+          className="mt-2 w-full rounded-xl border border-cream-border dark:border-night-border bg-cream dark:bg-night px-4 min-h-[56px] font-mono text-[20px] tracking-[0.06em] outline-none focus:border-terracotta" />
+        <div className="mt-4 grid grid-cols-4 gap-2">
+          {services.map(s => {
+            const n = NETWORK[netKey(s.id)] || { label: s.name, bg: '#C1502E', fg: '#fff' };
+            const on = serviceId === s.id;
+            return (
+              <button key={s.id} onClick={() => setServiceId(s.id)} aria-pressed={on}
+                className={`relative flex flex-col items-center gap-1.5 rounded-2xl border p-2.5 min-h-[76px] transition-all ${on ? 'border-terracotta bg-terracotta-soft' : 'border-cream-border dark:border-night-border'}`}>
+                <span className="grid place-items-center h-9 w-9 rounded-full text-[11px] font-bold" style={{ background: n.bg, color: n.fg }}>{n.label.slice(0, 3)}</span>
+                <span className="text-[12.5px] font-medium">{n.label}</span>
+                {detected === s.id && <span className="absolute -top-2 rounded-full bg-[#58834C] text-white text-[10px] px-1.5 py-0.5">detected</span>}
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {serviceId && (
+        <section className="surface rounded-3xl p-5 animate-fade-up">
+          <div className="eyebrow mb-3">Choose a plan</div>
+          <PlanList plans={plans} err={pErr} value={plan} onPick={setPlan} />
+        </section>
+      )}
+
+      {plan && <CostCard quote={quote} err={err} busy={busy} amountNgn={plan.amountNgn} />}
+
+      <button disabled={!ready} onClick={() => setReview(true)} className="btn-primary w-full min-h-[56px] text-[16px] disabled:opacity-40 disabled:pointer-events-none">
+        {!validPhone ? 'Enter a phone number' : !serviceId ? 'Choose the network' : !plan ? 'Choose a plan' : `Review ${plan.name}`}
+      </button>
+
+      <ReviewSheet open={review} onClose={() => setReview(false)} title="Review data" quote={quote} busy={paying} error={payErr}
+        lines={[['Network', NETWORK[netKey(serviceId)]?.label || ''], ['Number', digits], ['Plan', plan?.name || ''], ['Price', naira(plan?.amountNgn || 0)]]}
+        holdLabel={`Hold to buy ${plan?.name || 'data'}`}
+        onConfirm={() => pay({ serviceId: serviceId!, variationCode: plan!.code, amountNgn: plan!.amountNgn, customerId: digits })} />
+    </div>
+  );
+}
+
+function Cable({ services, recent, onStarted }: { services: Service[]; recent: RecentItem[]; onStarted: (id: string) => void }) {
+  const [service, setService] = useState<Service | null>(null);
+  const [card, setCard] = useState('');
+  const [verified, setVerified] = useState<{ customerName: string } | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [vErr, setVErr] = useState('');
+  const [plan, setPlan] = useState<Plan | null>(null);
+  const [review, setReview] = useState(false);
+  const { plans, err: pErr } = usePlans(verified ? service?.id || null : null);
+  const { quote, err, busy } = useQuote(plan ? service?.id || null : null, plan?.amountNgn || 0, 0);
+  const { pay, busy: paying, error: payErr } = usePay(onStarted);
+  const autoCheck = useRef(false);
+
+  useEffect(() => { setVerified(null); setVErr(''); setPlan(null); }, [service, card]);
+  useEffect(() => {
+    if (autoCheck.current && service && card.length >= 8) { autoCheck.current = false; check(service, card); }
+  }, [service, card]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function check(svc: Service | null = service, c: string = card) {
+    if (!svc) return;
+    setChecking(true); setVErr('');
+    try {
+      setVerified(await kc<{ customerName: string }>('bills/verify', { method: 'POST', body: { serviceId: svc.id, customerId: c } }));
+    } catch (e) {
+      setVErr(e instanceof Error ? e.message : 'Could not verify this smartcard');
+    } finally {
+      setChecking(false);
+    }
+  }
+  const ready = !!verified && !!plan && !!quote?.canPay && !busy;
+
+  return (
+    <div className="space-y-5 animate-fade-up">
+      <RecentRow items={recent} label={r => r.customerName || r.serviceName}
+        onPick={r => { const svc = services.find(x => x.id === r.serviceId); if (!svc) return; autoCheck.current = true; setService(svc); setCard(r.customerId); }} />
+      <section className="surface rounded-3xl p-5">
+        <div className="eyebrow mb-3">TV provider</div>
+        <div className="grid grid-cols-3 gap-2">
+          {services.map(s => (
+            <button key={s.id} onClick={() => setService(s)} aria-pressed={service?.id === s.id}
+              className={`rounded-2xl border min-h-[56px] font-semibold text-[15px] transition-colors ${service?.id === s.id ? 'border-terracotta bg-terracotta-soft text-terracotta' : 'border-cream-border dark:border-night-border'}`}>
+              {s.name}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className={`surface rounded-3xl p-5 transition-opacity ${service ? '' : 'opacity-50 pointer-events-none'}`}>
+        <label htmlFor="iuc" className="eyebrow">Smartcard / IUC number</label>
+        <div className="mt-2 flex gap-2">
+          <input id="iuc" value={card} onChange={e => setCard(e.target.value.replace(/\D/g, '').slice(0, 12))} inputMode="numeric" autoComplete="off" placeholder="8–12 digits"
+            className="flex-1 min-w-0 rounded-xl border border-cream-border dark:border-night-border bg-cream dark:bg-night px-4 min-h-[56px] font-mono text-[19px] tracking-[0.08em] outline-none focus:border-terracotta" />
+          <button onClick={() => check()} disabled={card.length < 8 || checking || !!verified} className="btn-secondary !px-4 min-h-[56px] disabled:opacity-40">
+            {checking ? <span className="h-5 w-5 rounded-full border-2 border-current border-t-transparent animate-spin" /> : verified ? <IconCheck /> : 'Check'}
+          </button>
+        </div>
+        {verified && (
+          <div className="mt-3 flex items-center gap-3 rounded-2xl bg-[#58834C]/10 px-4 py-3 animate-fade-up">
+            <span className="grid place-items-center h-8 w-8 shrink-0 rounded-full bg-[#58834C] text-white"><IconCheck size={16} /></span>
+            <div className="font-semibold text-ink dark:text-cream-warm">{verified.customerName}</div>
+          </div>
+        )}
+        {vErr && <div className="mt-2 text-[14px] text-[#B84A40]">{vErr}</div>}
+      </section>
+
+      {verified && (
+        <section className="surface rounded-3xl p-5 animate-fade-up">
+          <div className="eyebrow mb-3">Choose a package</div>
+          <PlanList plans={plans} err={pErr} value={plan} onPick={setPlan} />
+        </section>
+      )}
+
+      {plan && <CostCard quote={quote} err={err} busy={busy} amountNgn={plan.amountNgn} />}
+
+      <button disabled={!ready} onClick={() => setReview(true)} className="btn-primary w-full min-h-[56px] text-[16px] disabled:opacity-40 disabled:pointer-events-none">
+        {!service ? 'Choose your TV provider' : !verified ? 'Check your smartcard' : !plan ? 'Choose a package' : `Review ${plan.name}`}
+      </button>
+
+      <ReviewSheet open={review} onClose={() => setReview(false)} title="Review subscription" quote={quote} busy={paying} error={payErr}
+        lines={[['Provider', service?.name || ''], ['Smartcard', card], ['Name', verified?.customerName || ''], ['Package', plan?.name || ''], ['Price', naira(plan?.amountNgn || 0)]]}
+        holdLabel={`Hold to pay ${naira(plan?.amountNgn || 0)}`}
+        onConfirm={() => pay({ serviceId: service!.id, variationCode: plan!.code, amountNgn: plan!.amountNgn, customerId: card })} />
     </div>
   );
 }
@@ -431,8 +686,13 @@ function Progress({ jobId, onFinish }: { jobId: string; onFinish: () => void }) 
       return (
         <section className="flex flex-col gap-4">
           <Outcome tone="success"
-            title={isElec ? `${naira(job.amountNgn)} electricity paid` : `${naira(job.amountNgn)} airtime sent`}
-            body={isElec ? `${r.serviceName} · meter ${r.customerId}${r.customerName ? ` · ${r.customerName}` : ''}` : `To ${r.customerId}. It usually lands in seconds.`}
+            title={isElec ? `${naira(job.amountNgn)} electricity paid`
+              : job.category === 'data' ? `${r.planName || 'Data'} sent`
+              : job.category === 'cable' ? `${r.planName || 'Subscription'} paid`
+              : `${naira(job.amountNgn)} airtime sent`}
+            body={isElec ? `${r.serviceName} · meter ${r.customerId}${r.customerName ? ` · ${r.customerName}` : ''}`
+              : job.category === 'cable' ? `${r.serviceName} · smartcard ${r.customerId}${r.customerName ? ` · ${r.customerName}` : ''}. It usually activates within minutes.`
+              : `To ${r.customerId}. It usually lands in seconds.`}
             reference={r.reference}
             actions={<>
               <Link href="/app" onClick={onFinish} className="btn-primary w-full">Done</Link>
