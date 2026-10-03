@@ -12,7 +12,30 @@ export const API_BASE = (
 ).replace(/\/+$/, '');
 
 export const SESSION_COOKIE = 'kc_session';
-const SESSION_MAX_AGE_S = 12 * 60 * 60; // matches the backend JWT lifetime (12h)
+const SESSION_MAX_AGE_S = 7 * 24 * 60 * 60; // matches the backend JWT lifetime (7 days)
+const REFRESH_AFTER_S   = 24 * 60 * 60;     // renew a token once it is a day old
+
+/** True when the backend's 401 means the session itself is gone (not some other 401). */
+export function isSessionError(status: number, data: unknown): boolean {
+  if (status !== 401) return false;
+  const msg = data && typeof data === 'object' && 'error' in data ? String((data as { error: unknown }).error) : '';
+  return /session expired|sign in required|account not found/i.test(msg);
+}
+
+/**
+ * Sliding session: when the token is over a day old, swap it for a fresh 7-day one so active
+ * users stay signed in. Best effort — a failure here never breaks the request.
+ */
+export async function maybeRefreshSession(token: string) {
+  try {
+    const payload = JSON.parse(Buffer.from(token.split('.')[1] || '', 'base64url').toString('utf8')) as { iat?: number };
+    if (!payload.iat || Date.now() / 1000 - payload.iat < REFRESH_AFTER_S) return;
+    const res = await backend('/auth/refresh', { method: 'POST', token, body: {} });
+    if (!res.ok) return;
+    const data = (await res.json().catch(() => ({}))) as { token?: string };
+    if (data.token) setSessionToken(data.token);
+  } catch { /* keep the current token */ }
+}
 
 export function getSessionToken(): string | null {
   return cookies().get(SESSION_COOKIE)?.value || null;

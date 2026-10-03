@@ -45,8 +45,15 @@ nothing behind hover; respect safe-area insets on fixed elements; test on a real
 ## Navigation (design rule — founder, 2026-10-03)
 
 - **Every screen except Home has a back arrow** at the top-left (`src/components/app/PageHeader.tsx`):
-  44px tap target, goes back in history when the previous page was in the app, otherwise to a
-  sensible parent (`fallback`). Never leave someone on a screen with no obvious way back.
+  44px tap target, always goes to **Home** (or a screen's set parent) — never browser history, which
+  can lead out of the app. Never leave someone on a screen with no obvious way back.
+- **Signed-in users never see the landing page**: opening kobocent.com (or the installed app) goes
+  straight to Home (`src/middleware.ts`). **Only signing out** leads to the landing page.
+- Sessions last 7 days and renew while in use (`maybeRefreshSession` in `src/lib/server/backend.ts`);
+  the cookie is cleared only when the backend says the session is gone. A PIN / biometric lock on
+  open is a later option.
+- Money screens refresh themselves (`src/lib/useLiveRefresh.ts`): on returning to the tab/app and
+  every 30–60 s while visible — no sign-out needed to see a new payment.
 - Every sheet/dialog has a close (×) in its corner as well as its own buttons, and closes on
   Esc and on tapping the backdrop (`Sheet` in `src/components/app/ui.tsx`).
 - Multi-step flows (import wallet, recovery phrase) have a visible Back/Cancel at every step.

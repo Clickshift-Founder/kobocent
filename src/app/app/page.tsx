@@ -9,6 +9,7 @@ import {
 import { SectionTitle, Skeleton, Sheet, ActivityRow, EmptyState, CopyButton } from '@/components/app/ui';
 import { IconPlus, IconSend, IconBolt, IconBank, IconLeaf, IconBridge, IconChart, IconReceive, IconEye, IconTelegram, IconGift, IconChevron, IconSwap, IconWallet, IconTrophy } from '@/components/app/Icons';
 import { InstallCard } from '@/components/app/InstallCard';
+import { useLiveRefresh } from '@/lib/useLiveRefresh';
 
 type Action = { key: string; label: string; Icon: (p: { size?: number }) => JSX.Element; title: string; body: string };
 
@@ -37,25 +38,34 @@ export default function HomePage() {
   const [needsLink, setNeedsLink] = useState(false);
   const [sheet, setSheet] = useState<Action | null>(null);
   const [hidden, setHidden] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     setProfile(loadProfile());
     try { setHidden(window.localStorage.getItem(HIDE_KEY) === '1'); } catch { /* ignore */ }
   }, []);
 
-  const load = useCallback(async () => {
-    setError('');
+  // silent = background refresh: keep what is on screen if it fails.
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setError('');
+    setRefreshing(true);
     try {
       setBal(await kc<Balances>('wallet'));
     } catch (e) {
+      setRefreshing(false);
       if (e instanceof KcError && e.status === 404) return router.replace('/app/setup');
       if (e instanceof KcError && e.status === 409) return setNeedsLink(true);
-      setError(e instanceof Error ? e.message : 'Could not load your wallet');
+      if (!silent) setError(e instanceof Error ? e.message : 'Could not load your wallet');
+      return;
     }
-    kc<History>('history?period=month').then(setHist).catch(() => setHist({ period: 'month', startTs: 0, endTs: 0, shiftPoints: 0, items: [] }));
+    await kc<History>('history?period=month').then(setHist)
+      .catch(() => { if (!silent) setHist({ period: 'month', startTs: 0, endTs: 0, shiftPoints: 0, items: [] }); });
+    setRefreshing(false);
   }, [router]);
 
   useEffect(() => { load(); }, [load]);
+  // A payment made in Telegram shows up here without signing out and in again.
+  useLiveRefresh(() => load(true));
 
   function toggleHidden() {
     const v = !hidden;
@@ -99,11 +109,14 @@ export default function HomePage() {
           <div className="flex items-center gap-2 text-white/80 text-[13.5px] font-medium">
             Total balance
             <button onClick={toggleHidden} aria-label={hidden ? 'Show balance' : 'Hide balance'} className="grid place-items-center h-8 w-8 -my-1 rounded-lg hover:bg-white/10"><IconEye size={16} /></button>
+            <button onClick={() => load()} aria-label="Refresh" title="Refresh" className="ml-auto grid place-items-center h-9 w-9 -my-1 rounded-lg hover:bg-white/10">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={refreshing ? 'animate-spin' : ''}><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5" /></svg>
+            </button>
           </div>
           {bal ? (
             <div className="font-display font-bold text-[40px] sm:text-[48px] leading-tight mt-1">{mask(usd(bal.totals.usd))}</div>
           ) : error ? (
-            <div className="mt-2 text-[15px]">{error} <button onClick={load} className="underline font-semibold">Retry</button></div>
+            <div className="mt-2 text-[15px]">{error} <button onClick={() => load()} className="underline font-semibold">Retry</button></div>
           ) : (
             <div className="h-14 w-48 mt-2 rounded-xl bg-white/20 animate-pulse" />
           )}

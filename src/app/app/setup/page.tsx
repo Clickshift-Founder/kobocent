@@ -52,7 +52,7 @@ export default function SetupPage() {
 
   return (
     <div className="max-w-xl mx-auto">
-      <PageHeader fallback="/" title="Set up your wallet" subtitle="One wallet on Telegram and here — one address for Solana and one for Ethereum, BNB Chain, Polygon and more." />
+      <PageHeader fallback="/app/settings" title="Set up your wallet" subtitle="One wallet on Telegram and here — one address for Solana and one for Ethereum, BNB Chain, Polygon and more." />
 
       {error && <p role="alert" className="mb-5 rounded-xl bg-terracotta-soft text-terracotta-dark dark:text-terracotta-light px-4 py-3 text-[14px]">{error}</p>}
 

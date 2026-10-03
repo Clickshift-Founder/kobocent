@@ -1,17 +1,25 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { kc, loadProfile, referralLink, BOT_URL, amount, usd } from '@/lib/kc';
+import { useCallback, useEffect, useState } from 'react';
+import { kc, loadProfile, referralLink, BOT_URL, amount, usd, dayLabel } from '@/lib/kc';
 import { PageHeader } from '@/components/app/PageHeader';
 import { Skeleton, EmptyState, CopyButton } from '@/components/app/ui';
-import { IconTrophy, IconBolt, IconBank, IconChart, IconGift, IconTelegram } from '@/components/app/Icons';
+import { IconTrophy, IconBolt, IconBank, IconChart, IconGift, IconTelegram, IconLeaf } from '@/components/app/Icons';
+import { useLiveRefresh } from '@/lib/useLiveRefresh';
 
-interface Climb { payments5Usd: number; withdrawals20Usd: number; trades0_1Sol: number }
+interface Climb { bills15Usd: number; withdrawals30Usd: number; trades0_1Sol: number; stakes50Usd: number }
+interface Earned {
+  cashback: { paidUsd: number; pendingUsd: number; count: number };
+  referral: { paidUsd: number; pendingUsd: number; count: number; paidSol: number; paidSolUsd: number | null; friends: number };
+  totalPaidUsd: number;
+  recent: Array<{ kind: 'cashback' | 'referral'; asset: string; amount: number; usd: number | null; at: number | null; signature: string | null }>;
+}
 interface Standing {
   tgeTarget: string;
   participants: number;
   updatesEveryHours: number;
   leaderboard: Array<{ rank: number; name: string; points: number; tier: string; isMe: boolean }>;
-  earn: { multiplier: number; perPayment5Usd: number; perWithdrawal20Usd: number; perTrade0_1Sol: number; perActiveTradingDay: number; perReferral: number };
+  earned: Earned | null;
+  earn: { multiplier: number; perBill15Usd: number; perWithdrawal30Usd: number; perTrade0_1Sol: number; perThreeTrades0_1Sol: number; perStake50Usd: number; perReferral: number };
   me: null | {
     points: number;
     rank: number;
@@ -19,7 +27,7 @@ interface Standing {
     topPercent: number | null;
     tier: string;
     earlyAdopter: boolean;
-    breakdown: { tradingVolumeSol: number; referrals: number; payments: number; paymentsUsd: number };
+    breakdown: { tradingVolumeSol: number; referrals: number; payments: number; paymentsUsd: number; stakes: number; stakedUsd: number };
     nextRank: { pointsGap: number; toClimb: Climb | null } | null;
     nextTier: { tier: string; rankNeeded: number; pointsGap: number; toClimb: Climb | null } | null;
   };
@@ -31,15 +39,12 @@ const TIER: Record<string, { icon: string; label: string }> = {
 };
 const MEDAL = ['🥇', '🥈', '🥉'];
 const n = (x: number) => x.toLocaleString('en-US');
+const plural = (k: number, one: string, many = `${one}s`) => `${n(k)} ${k === 1 ? one : many}`;
+const money = (x: number) => (x > 0 && x < 0.01 ? `$${x.toFixed(4)}` : usd(x));
 
 function climbText(c: Climb | null): string {
   if (!c) return '';
-  const parts = [
-    `${n(c.payments5Usd)} bill payment${c.payments5Usd === 1 ? '' : 's'} of $5`,
-    `${n(c.withdrawals20Usd)} withdrawal${c.withdrawals20Usd === 1 ? '' : 's'} of $20`,
-    `${n(c.trades0_1Sol)} trade${c.trades0_1Sol === 1 ? '' : 's'} of 0.1 SOL`,
-  ];
-  return `about ${parts[0]}, or ${parts[1]}, or ${parts[2]}`;
+  return `about ${plural(c.bills15Usd, 'bill payment')} of $15, or ${plural(c.withdrawals30Usd, 'withdrawal')} of $30, or ${plural(c.trades0_1Sol, 'trade')} of 0.1 SOL, or ${plural(c.stakes50Usd, 'stake')} of $50`;
 }
 
 export default function RewardsPage() {
@@ -47,24 +52,63 @@ export default function RewardsPage() {
   const [error, setError] = useState('');
   const [ref, setRef] = useState<string | null>(null);
 
-  useEffect(() => {
-    setRef(referralLink(loadProfile()?.telegramId));
-    kc<Standing>('shift').then(setData).catch(e => setError(e instanceof Error ? e.message : 'Could not load rewards'));
+  const load = useCallback((silent = false) => {
+    kc<Standing>('shift').then(setData).catch(e => { if (!silent) setError(e instanceof Error ? e.message : 'Could not load rewards'); });
   }, []);
+  useEffect(() => { setRef(referralLink(loadProfile()?.telegramId)); load(); }, [load]);
+  useLiveRefresh(() => load(true), 60_000);
 
   const me = data?.me;
+  const earned = data?.earned;
   const tier = TIER[me?.tier || 'bronze'] || TIER.bronze;
   const tierProgress = me?.nextTier ? Math.max(4, Math.min(96, Math.round((me.points / (me.points + me.nextTier.pointsGap)) * 100))) : 100;
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Rewards" subtitle="Every payment, withdrawal and trade earns $SHIFT points." />
+      <PageHeader title="Rewards" subtitle="Everything Kobocent gives back — cashback, referral commission and $SHIFT points." />
 
       {error ? <EmptyState title="Could not load rewards" body={error} /> : !data ? (
-        <div className="space-y-3"><Skeleton className="h-44" /><Skeleton className="h-28" /><Skeleton className="h-64" /></div>
+        <div className="space-y-3"><Skeleton className="h-40" /><Skeleton className="h-44" /><Skeleton className="h-28" /><Skeleton className="h-64" /></div>
       ) : (
         <>
-          {/* Standing */}
+          {/* What you've earned */}
+          {earned && (
+            <section className="space-y-3">
+              <div className="rounded-3xl bg-terracotta text-white p-6 shadow-card">
+                <div className="text-white/80 text-[13.5px] font-medium">Paid to your wallet so far</div>
+                <div className="font-display font-bold text-[40px] leading-tight mt-1">{money(earned.totalPaidUsd)}</div>
+                <div className="text-white/85 text-[13.5px] mt-1">Cashback + referral commission{earned.referral.paidSol > 0 ? ` (incl. ${amount(earned.referral.paidSol, 5)} SOL)` : ''}</div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="surface rounded-2xl p-4">
+                  <div className="flex items-center gap-2 text-terracotta"><IconGift size={18} /><span className="text-[13px] font-semibold uppercase tracking-wide">Cashback</span></div>
+                  <div className="font-mono text-[20px] font-semibold text-ink dark:text-cream-warm mt-2">{money(earned.cashback.paidUsd)}</div>
+                  <div className="text-[12.5px] muted">0.2% back on payments{earned.cashback.pendingUsd > 0 ? ` · ${money(earned.cashback.pendingUsd)} on its way` : ''}</div>
+                </div>
+                <div className="surface rounded-2xl p-4">
+                  <div className="flex items-center gap-2 text-terracotta"><IconTrophy size={18} /><span className="text-[13px] font-semibold uppercase tracking-wide">Referrals</span></div>
+                  <div className="font-mono text-[20px] font-semibold text-ink dark:text-cream-warm mt-2">{money(earned.referral.paidUsd + (earned.referral.paidSolUsd || 0))}</div>
+                  <div className="text-[12.5px] muted">20% of {plural(earned.referral.friends, 'friend')}&apos; fees{earned.referral.pendingUsd > 0 ? ` · ${money(earned.referral.pendingUsd)} on its way` : ''}</div>
+                </div>
+              </div>
+              {earned.recent.length > 0 && (
+                <ul className="surface rounded-2xl divide-y divide-cream-border dark:divide-night-border px-4">
+                  {earned.recent.map((r, i) => (
+                    <li key={`${r.signature || i}-${r.at}`} className="flex items-center gap-3 py-3">
+                      <span className="grid place-items-center h-10 w-10 rounded-xl bg-cream-warm dark:bg-night text-terracotta">{r.kind === 'cashback' ? <IconGift size={18} /> : <IconTrophy size={18} />}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[14.5px] font-medium text-ink dark:text-cream-warm">{r.kind === 'cashback' ? 'Cashback' : 'Referral commission'}</div>
+                        <div className="text-[12.5px] muted">{dayLabel(r.at)}{r.signature ? ' · ' : ''}{r.signature && <a href={`https://solscan.io/tx/${r.signature}`} target="_blank" rel="noopener noreferrer" className="underline">view</a>}</div>
+                      </div>
+                      <div className="font-mono text-[14px] text-[#58834C]">+{amount(r.amount, r.asset === 'SOL' ? 5 : 4)} {r.asset}</div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
+
+          {/* $SHIFT standing */}
           <section className="relative overflow-hidden rounded-3xl bg-ink dark:bg-night-card text-cream p-6 sm:p-8 shadow-card">
             <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-terracotta/30 blur-2xl" aria-hidden="true" />
             <div className="relative">
@@ -80,7 +124,7 @@ export default function RewardsPage() {
                   {me.earlyAdopter && <span className="rounded-full bg-terracotta px-3 py-1.5 font-semibold">3× early adopter</span>}
                 </div>
               ) : (
-                <p className="mt-2 text-cream/80 text-[14.5px]">No points yet this quarter — your first payment or trade puts you on the board.</p>
+                <p className="mt-2 text-cream/80 text-[14.5px]">No points yet this quarter — your first payment, stake or trade puts you on the board.</p>
               )}
             </div>
           </section>
@@ -109,14 +153,15 @@ export default function RewardsPage() {
             </section>
           )}
 
-          {/* How you earn */}
+          {/* How you earn points */}
           <section>
-            <div className="eyebrow mb-2">How you earn {data.earn.multiplier > 1 ? `(${data.earn.multiplier}× included)` : ''}</div>
-            <ul className="grid grid-cols-2 gap-3">
+            <div className="eyebrow mb-2">How you earn points {data.earn.multiplier > 1 ? `(${data.earn.multiplier}× included)` : ''}</div>
+            <ul className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {[
-                { Icon: IconBolt, t: 'Pay a $5 bill', v: data.earn.perPayment5Usd },
-                { Icon: IconBank, t: 'Withdraw $20', v: data.earn.perWithdrawal20Usd },
-                { Icon: IconChart, t: 'Trade 0.1 SOL', v: data.earn.perTrade0_1Sol },
+                { Icon: IconBolt, t: 'Pay a $15 bill', v: data.earn.perBill15Usd },
+                { Icon: IconBank, t: 'Withdraw $30', v: data.earn.perWithdrawal30Usd },
+                { Icon: IconChart, t: '3 trades of 0.1 SOL', v: data.earn.perThreeTrades0_1Sol },
+                { Icon: IconLeaf, t: 'Stake $50', v: data.earn.perStake50Usd },
                 { Icon: IconGift, t: 'Invite a friend', v: data.earn.perReferral },
               ].map(e => (
                 <li key={e.t} className="surface rounded-2xl p-4">
@@ -127,8 +172,8 @@ export default function RewardsPage() {
               ))}
             </ul>
             {me && (
-              <p className="muted text-[13px] mt-3">
-                This quarter: {n(me.breakdown.payments)} payment{me.breakdown.payments === 1 ? '' : 's'} ({usd(me.breakdown.paymentsUsd)}) · {amount(me.breakdown.tradingVolumeSol, 3)} SOL traded · {n(me.breakdown.referrals)} referral{me.breakdown.referrals === 1 ? '' : 's'}
+              <p className="muted text-[13px] mt-3 leading-relaxed">
+                This quarter: {plural(me.breakdown.payments, 'payment')} ({usd(me.breakdown.paymentsUsd)}) · {plural(me.breakdown.stakes, 'stake')} ({usd(me.breakdown.stakedUsd)}) · {amount(me.breakdown.tradingVolumeSol, 3)} SOL traded · {plural(me.breakdown.referrals, 'referral')}
               </p>
             )}
           </section>

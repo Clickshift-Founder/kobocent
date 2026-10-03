@@ -3,18 +3,16 @@ import { useRouter } from 'next/navigation';
 
 /**
  * Every screen except Home gets a back arrow (design rule — CLAUDE.md "Navigation").
- * Goes back in history when there is somewhere to go back to inside the app, otherwise to
- * `fallback` (people often land on a screen straight from a link or the installed app).
+ * It goes to `fallback` — Home unless a screen sets another parent. Only signing out leads to
+ * the landing page.
  */
 export function PageHeader({ title, subtitle, fallback = '/app', action }: {
   title: string; subtitle?: string; fallback?: string; action?: React.ReactNode;
 }) {
   const router = useRouter();
-  function back() {
-    const sameSite = typeof document !== 'undefined' && document.referrer.startsWith(window.location.origin);
-    if (sameSite && window.history.length > 1) router.back();
-    else router.push(fallback);
-  }
+  // Always to a known place in the app (Home by default) — browser history can point outside
+  // the app (the landing page, Telegram), which felt like being thrown out.
+  function back() { router.push(fallback); }
   return (
     <div className="flex items-start gap-3 mb-6">
       <button onClick={back} aria-label="Go back" title="Back"

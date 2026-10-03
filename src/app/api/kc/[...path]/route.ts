@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { backend, getSessionToken, setSessionToken, clearSessionToken } from '@/lib/server/backend';
+import { backend, getSessionToken, setSessionToken, clearSessionToken, isSessionError, maybeRefreshSession } from '@/lib/server/backend';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,7 +44,7 @@ async function handle(req: NextRequest, path: string[], method: 'GET' | 'POST') 
     return NextResponse.json({ error: 'Kobocent is unreachable right now — please try again in a moment' }, { status: 503 });
   }
 
-  if (res.status === 401 && !key.startsWith('wallet/recovery-phrase') && key !== 'auth/reauth') clearSessionToken();
+  if (res.ok) await maybeRefreshSession(token);
 
   if (key === 'statement.pdf' && res.ok) {
     const buf = await res.arrayBuffer();
@@ -59,6 +59,9 @@ async function handle(req: NextRequest, path: string[], method: 'GET' | 'POST') 
   }
 
   const data = await res.json().catch(() => ({}));
+  // Clear the cookie only when the backend says the session itself is gone — never for a
+  // 401 from the recovery-phrase re-auth gate or anything else.
+  if (isSessionError(res.status, data) && !key.startsWith('wallet/recovery-phrase') && key !== 'auth/reauth') clearSessionToken();
   // Linking may move the session to another account — keep the new token server-side only.
   if (data && typeof data === 'object' && 'token' in data && typeof data.token === 'string') {
     if (key === 'auth/link') setSessionToken(data.token);

@@ -83,7 +83,8 @@ export async function kc<T>(path: string, init: { method?: 'GET' | 'POST'; body?
     cache: 'no-store',
   });
   const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  if (res.status === 401 && !path.startsWith('wallet/recovery-phrase') && path !== 'auth/reauth') {
+  const sessionGone = res.status === 401 && /session expired|sign in required|account not found/i.test(String(data.error || ''));
+  if (sessionGone && !path.startsWith('wallet/recovery-phrase') && path !== 'auth/reauth') {
     if (typeof window !== 'undefined') window.location.href = `/signin?next=${encodeURIComponent(window.location.pathname)}`;
   }
   if (!res.ok) throw new KcError(res.status, String(data.error || 'Something went wrong — please try again'), data);

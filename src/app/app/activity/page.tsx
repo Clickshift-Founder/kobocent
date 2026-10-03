@@ -4,6 +4,7 @@ import { kc, dayLabel, type History, type HistoryItem } from '@/lib/kc';
 import { ActivityRow, EmptyState, Skeleton } from '@/components/app/ui';
 import { IconDownload } from '@/components/app/Icons';
 import { PageHeader } from '@/components/app/PageHeader';
+import { useLiveRefresh } from '@/lib/useLiveRefresh';
 
 const PERIODS = [
   { key: 'week', label: '7 days' },
@@ -31,6 +32,8 @@ export default function ActivityPage() {
     setError('');
     kc<History>(`history?period=${period}`).then(setData).catch(e => setError(e instanceof Error ? e.message : 'Could not load activity'));
   }, [period]);
+  // Background refresh — new payments appear without reloading; failures keep what is shown.
+  useLiveRefresh(() => { kc<History>(`history?period=${period}`).then(setData).catch(() => {}); });
 
   const groups = useMemo(() => {
     const kinds = FILTERS.find(f => f.key === filter)?.kinds;

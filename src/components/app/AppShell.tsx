@@ -32,7 +32,7 @@ export function Avatar({ profile, size = 36 }: { profile: LocalProfile | null; s
 export async function signOut(router: ReturnType<typeof useRouter>) {
   await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
   clearProfile();
-  router.replace('/signin');
+  router.replace('/'); // signing out is the only way back to the landing page
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {

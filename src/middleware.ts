@@ -14,7 +14,8 @@ export function middleware(req: NextRequest) {
     url.search = `?next=${encodeURIComponent(pathname)}`;
     return NextResponse.redirect(url);
   }
-  if ((pathname === '/signin' || pathname === '/signup') && signedIn) {
+  // Signed in: the site opens on Home, not the landing page; sign-in pages skip to Home too.
+  if ((pathname === '/' || pathname === '/signin' || pathname === '/signup') && signedIn) {
     const url = req.nextUrl.clone();
     url.pathname = '/app';
     url.search = '';
@@ -23,4 +24,4 @@ export function middleware(req: NextRequest) {
   return NextResponse.next();
 }
 
-export const config = { matcher: ['/app/:path*', '/signin', '/signup'] };
+export const config = { matcher: ['/', '/app/:path*', '/signin', '/signup'] };
