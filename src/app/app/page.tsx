@@ -17,7 +17,7 @@ type Action = { key: string; label: string; Icon: (p: { size?: number }) => JSX.
 // Money actions run in Telegram today and arrive on the web batch by batch (backend ROADMAP
 // Phase 3). We never show a web screen for something the API cannot do yet.
 const ACTIONS: Action[] = [
-  { key: 'fund', label: 'Add money', Icon: IconPlus, title: 'Add money', body: 'Buy USDC with naira by bank transfer — it lands in your wallet in a few minutes. Or receive crypto to your addresses.' },
+  { key: 'fund', label: 'Add money', Icon: IconPlus, title: 'Add money', body: 'Buy USDC with naira by bank transfer — it lands in your wallet in a few minutes. Or receive crypto to your addresses.', href: '/app/add-money' },
   { key: 'send', label: 'Send to bank', Icon: IconSend, title: 'Send to a bank account', body: 'Pay anyone in naira — type "send 5000 to GTBank 0123456789" or send a screenshot of their account details. Gasless, with a receipt and 0.2% cashback.' },
   { key: 'wallet', label: 'Send to wallet', Icon: IconWallet, title: 'Send to another wallet', body: 'Transfer SOL, USDC, USDT or any token to another wallet — on Solana, Ethereum, BNB Chain, Polygon, Arbitrum or Robinhood Chain. Gasless.' },
   { key: 'bills', label: 'Pay bills', Icon: IconBolt, title: 'Pay bills', body: 'Electricity, airtime, data and cable TV with your stablecoins. Type it, send a screenshot of the bill, or use a voice note.', href: '/app/bills' },
@@ -126,7 +126,7 @@ export default function HomePage() {
             {bal?.totals.partial && <span className="text-white/70">Some prices unavailable</span>}
           </div>
           <div className="mt-6 grid grid-cols-2 gap-3 sm:max-w-sm">
-            <button onClick={() => setSheet(ACTIONS[0])} className="inline-flex items-center justify-center gap-2 rounded-xl bg-white text-terracotta-dark font-semibold min-h-[48px]"><IconPlus size={18} />Add money</button>
+            <Link href="/app/add-money" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white text-terracotta-dark font-semibold min-h-[48px]"><IconPlus size={18} />Add money</Link>
             <Link href="/app/receive" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/15 hover:bg-white/25 font-semibold min-h-[48px]"><IconReceive size={18} />Receive</Link>
           </div>
         </div>
@@ -155,7 +155,7 @@ export default function HomePage() {
           <div className="space-y-2"><Skeleton className="h-16" /><Skeleton className="h-16" /></div>
         ) : assets.length === 0 ? (
           <EmptyState title="Your wallet is ready" body="Add money with naira, or receive USDC, USDT or SOL to your addresses — gasless from there."
-            action={<button onClick={() => setSheet(ACTIONS[0])} className="btn-primary">Add money</button>} />
+            action={<Link href="/app/add-money" className="btn-primary">Add money</Link>} />
         ) : (
           <ul className="surface rounded-2xl divide-y divide-cream-border dark:divide-night-border px-4">
             {assets.map(a => (
