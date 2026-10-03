@@ -161,7 +161,15 @@ Backend side (clickbot `.env`): `WEB_ORIGIN=https://kobocent.com,https://www.kob
   Added 2026-10-03: `/app/rewards` ($SHIFT points, rank or range, climb plan, how to earn,
   top 10 — `GET /api/v1/shift`), install card on Home (`InstallCard.tsx`, prompt captured in
   `lib/pwa.ts`), Swap and Send to wallet in Move money, withdrawals in Activity, back arrows
-  (`PageHeader.tsx`) and sheet close buttons. Shell:
+  (`PageHeader.tsx`) and sheet close buttons.
+  **First money screen, 2026-10-03: `/app/withdraw`** (`/api/v1/withdraw*` — the same backend
+  service as the Telegram withdrawal). Bank: searchable list → 10 digits → name verified by the
+  bank → saved only after a Telegram re-auth. Amount: live naira quote, chips + Max, fee tiers.
+  Review sheet with **hold-to-confirm**. The withdrawal runs as a server job polled by the screen
+  (job id kept in sessionStorage so a refresh resumes); every attempt sends an idempotency key, so
+  a retry never pays twice. Outcomes follow the backend codes — `OUTCOME_UNKNOWN` never says
+  "failed" or "try again". Home's Withdraw tile opens it (`href` on the action). This is the
+  pattern for the next money screens (bills next). Shell:
   `src/components/app/AppShell.tsx` (bottom tabs on phones, sidebar on desktop).
 - Client helpers and API types: `src/lib/kc.ts`. Shared UI: `src/components/app/ui.tsx`.
 - Telegram Login only works on the BotFather domain (kobocent.com), not on preview URLs.
