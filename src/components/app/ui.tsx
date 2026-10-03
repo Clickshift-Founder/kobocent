@@ -97,7 +97,7 @@ function describe(i: HistoryItem): { title: string; sub: string; value: string; 
  * record), previews it, and offers Share (phones: straight to WhatsApp etc.) and Download.
  * Withdrawals only for now; the receipt exists once the bank has confirmed the payout.
  */
-export function ReceiptButton({ reference, className = 'btn-ghost w-full' }: { reference: string; className?: string }) {
+export function ReceiptButton({ reference, kind = 'withdrawal', className = 'btn-ghost w-full' }: { reference: string; kind?: 'withdrawal' | 'utility'; className?: string }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [img, setImg] = useState<{ url: string; file: File } | null>(null);
@@ -106,7 +106,7 @@ export function ReceiptButton({ reference, className = 'btn-ghost w-full' }: { r
   async function open() {
     setBusy(true); setMsg('');
     try {
-      const res = await fetch(`/api/kc/receipts/withdrawal/${encodeURIComponent(reference)}`, { cache: 'no-store' });
+      const res = await fetch(`/api/kc/receipts/${kind}/${encodeURIComponent(reference)}`, { cache: 'no-store' });
       if (!res.ok) {
         const d = (await res.json().catch(() => ({}))) as { error?: string };
         setMsg(d.error || 'Receipt not available yet');
@@ -134,7 +134,7 @@ export function ReceiptButton({ reference, className = 'btn-ghost w-full' }: { r
         {img && (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={img.url} alt="Withdrawal receipt" className="w-full max-h-[60vh] object-contain rounded-2xl border border-cream-border dark:border-night-border bg-white" />
+            <img src={img.url} alt="Kobocent receipt" className="w-full max-h-[60vh] object-contain rounded-2xl border border-cream-border dark:border-night-border bg-white" />
             <div className="mt-4 grid grid-cols-2 gap-3">
               {canShare && (
                 <button onClick={() => navigator.share({ files: [img.file], title: 'Kobocent receipt' }).catch(() => {})} className="btn-primary">Share</button>
@@ -154,7 +154,7 @@ export function ActivityRow({ item }: { item: HistoryItem }) {
   const pending = item.status && /pend|process|unconfirmed/i.test(item.status);
   const [open, setOpen] = useState(false);
   // Withdrawals open a detail sheet with the receipt (proof of payment).
-  const tappable = item.kind === 'withdrawal' && !!item.reference;
+  const tappable = (item.kind === 'withdrawal' || item.kind === 'utility') && !!item.reference;
   const row = (
     <>
       <span className="grid place-items-center h-11 w-11 shrink-0 rounded-2xl bg-cream-warm dark:bg-night text-terracotta">
@@ -189,8 +189,8 @@ export function ActivityRow({ item }: { item: HistoryItem }) {
         </dl>
         <div className="mt-5">
           {done
-            ? <ReceiptButton reference={item.reference!} className="btn-primary w-full" />
-            : <p className="text-center muted text-[14px]">The receipt is ready once the bank confirms this payout.</p>}
+            ? <ReceiptButton reference={item.reference!} kind={item.kind === 'utility' ? 'utility' : 'withdrawal'} className="btn-primary w-full" />
+            : <p className="text-center muted text-[14px]">The receipt is ready once this payment is completed.</p>}
         </div>
       </Sheet>
     </li>

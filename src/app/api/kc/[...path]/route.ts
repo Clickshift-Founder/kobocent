@@ -25,11 +25,17 @@ const ALLOWED: Record<string, Array<'GET' | 'POST'>> = {
   'withdraw/resolve': ['POST'],
   'withdraw/bank': ['POST'],
   'withdraw/quote': ['POST'],
+  'bills': ['GET'],
+  'bills/network': ['POST'],
+  'bills/verify': ['POST'],
+  'bills/quote': ['POST'],
+  'bills/pay': ['POST'],
 };
 // Routes with an id in the path.
 const ALLOWED_PATTERNS: Array<{ re: RegExp; methods: Array<'GET' | 'POST'> }> = [
   { re: /^withdraw\/jobs\/[0-9a-f-]{36}$/, methods: ['GET'] },
-  { re: /^receipts\/withdrawal\/[A-Za-z0-9_-]{4,100}$/, methods: ['GET'] },
+  { re: /^receipts\/(withdrawal|utility)\/[A-Za-z0-9_-]{4,100}$/, methods: ['GET'] },
+  { re: /^bills\/jobs\/[0-9a-f-]{36}$/, methods: ['GET'] },
 ];
 function allowed(key: string, method: 'GET' | 'POST') {
   return !!ALLOWED[key]?.includes(method) || ALLOWED_PATTERNS.some(p => p.re.test(key) && p.methods.includes(method));
