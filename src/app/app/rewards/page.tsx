@@ -49,6 +49,74 @@ function climbText(c: Climb | null): string {
   return `about ${plural(c.bills15Usd, 'bill payment')} of $15, or ${plural(c.withdrawals30Usd, 'withdrawal')} of $30, or ${plural(c.trades0_1Sol, 'trade')} of 0.1 SOL, or ${plural(c.stakes50Usd, 'stake')} of $50`;
 }
 
+type Period = 'week' | 'month' | 'quarter' | 'all';
+const PERIODS: Array<{ key: Period; label: string; note: string }> = [
+  { key: 'week', label: 'This week', note: 'Points earned since Monday · updates every 10 minutes' },
+  { key: 'month', label: 'This month', note: 'Points earned this month · updates every 10 minutes' },
+  { key: 'quarter', label: 'Quarter', note: 'Official $SHIFT standings · updates every 6 hours' },
+  { key: 'all', label: 'All time', note: 'Every point ever earned · updates every 10 minutes' },
+];
+interface BoardRow { rank: number; name: string; points: number; isMe: boolean; tier?: string }
+interface BoardMe { rank: number; points: number; rankRange: { from: number; to: number | null } | null }
+
+function Leaderboard({ quarter, quarterMe }: { quarter: BoardRow[]; quarterMe: BoardMe | null }) {
+  const [period, setPeriod] = useState<Period>('quarter');
+  const [boards, setBoards] = useState<Partial<Record<Period, { rows: BoardRow[]; me: BoardMe | null } | 'error'>>>({});
+
+  useEffect(() => {
+    if (period === 'quarter' || boards[period]) return;
+    kc<{ board: { rows: BoardRow[]; me: BoardMe | null } | null }>(`shift?period=${period}`)
+      .then(r => setBoards(b => ({ ...b, [period]: r.board ? { rows: r.board.rows, me: r.board.me } : 'error' })))
+      .catch(() => setBoards(b => ({ ...b, [period]: 'error' })));
+  }, [period, boards]);
+
+  const current = period === 'quarter' ? { rows: quarter, me: quarterMe } : boards[period];
+  const note = PERIODS.find(p => p.key === period)?.note;
+
+  return (
+    <section>
+      <div className="eyebrow mb-2">Leaderboard</div>
+      <div role="tablist" aria-label="Leaderboard period" className="grid grid-cols-4 gap-1 rounded-2xl bg-cream-warm dark:bg-night p-1 mb-3">
+        {PERIODS.map(p => (
+          <button key={p.key} role="tab" aria-selected={period === p.key} onClick={() => setPeriod(p.key)}
+            className={`rounded-xl min-h-[44px] text-[13px] font-semibold transition-colors ${period === p.key ? 'bg-white dark:bg-night-card text-terracotta shadow-soft' : 'muted'}`}>
+            {p.label}
+          </button>
+        ))}
+      </div>
+      {!current ? (
+        <div className="space-y-2"><Skeleton className="h-12" /><Skeleton className="h-12" /><Skeleton className="h-12" /></div>
+      ) : current === 'error' ? (
+        <EmptyState title="Couldn’t load this board" body="Try another tab, or come back in a minute." />
+      ) : current.rows.length === 0 ? (
+        <EmptyState title="The board is empty" body="Be the first — make a payment, a stake or a trade." />
+      ) : (
+        <ol className="surface rounded-2xl divide-y divide-cream-border dark:divide-night-border px-4 animate-fade-up">
+          {current.rows.map(r => (
+            <li key={r.rank} className={`flex items-center gap-3 py-3 ${r.isMe ? 'text-terracotta' : ''}`}>
+              <span className="w-8 text-center font-mono text-[14px] muted">{MEDAL[r.rank - 1] || `#${r.rank}`}</span>
+              <span className={`flex-1 truncate text-[15px] ${r.isMe ? 'font-semibold' : 'text-ink dark:text-cream-warm'}`}>{r.isMe ? 'You' : r.name}</span>
+              {r.tier && <span className="text-[13px] muted">{TIER[r.tier]?.icon}</span>}
+              <span className="font-mono text-[14px] w-20 text-right">{n(r.points)}</span>
+            </li>
+          ))}
+          {current.me && !current.rows.some(r => r.isMe) && (
+            <li className="flex items-center gap-3 py-3 text-terracotta">
+              <span className="w-8 text-center font-mono text-[13px]">{current.me.rankRange ? '…' : `#${current.me.rank}`}</span>
+              <span className="flex-1 font-semibold text-[15px]">You {current.me.rankRange ? `· #${n(current.me.rankRange.from)}–${current.me.rankRange.to ? n(current.me.rankRange.to) : '…'}` : ''}</span>
+              <span className="font-mono text-[14px] w-20 text-right">{n(current.me.points)}</span>
+            </li>
+          )}
+        </ol>
+      )}
+      {current && current !== 'error' && !current.me && period !== 'quarter' && (
+        <p className="mt-2 text-[13px] muted text-center">You haven’t earned points in this window yet.</p>
+      )}
+      <p className="mt-2 text-[12px] muted text-center">{note}</p>
+    </section>
+  );
+}
+
 export default function RewardsPage() {
   const [data, setData] = useState<Standing | null>(null);
   const [error, setError] = useState('');
@@ -213,31 +281,9 @@ export default function RewardsPage() {
             )}
           </section>
 
-          {/* Leaderboard */}
-          <section>
-            <div className="eyebrow mb-2">Leaderboard · this quarter</div>
-            {data.leaderboard.length === 0 ? (
-              <EmptyState title="The board is empty" body="Be the first — make a payment or a trade." />
-            ) : (
-              <ol className="surface rounded-2xl divide-y divide-cream-border dark:divide-night-border px-4">
-                {data.leaderboard.map(r => (
-                  <li key={r.rank} className={`flex items-center gap-3 py-3 ${r.isMe ? 'text-terracotta' : ''}`}>
-                    <span className="w-8 text-center font-mono text-[14px] muted">{MEDAL[r.rank - 1] || `#${r.rank}`}</span>
-                    <span className={`flex-1 truncate text-[15px] ${r.isMe ? 'font-semibold' : 'text-ink dark:text-cream-warm'}`}>{r.isMe ? 'You' : r.name}</span>
-                    <span className="text-[13px] muted">{TIER[r.tier]?.icon}</span>
-                    <span className="font-mono text-[14px] w-20 text-right">{n(r.points)}</span>
-                  </li>
-                ))}
-                {me && !data.leaderboard.some(r => r.isMe) && (
-                  <li className="flex items-center gap-3 py-3 text-terracotta">
-                    <span className="w-8 text-center font-mono text-[13px]">{me.rankRange ? '…' : `#${me.rank}`}</span>
-                    <span className="flex-1 font-semibold text-[15px]">You {me.rankRange ? `· #${n(me.rankRange.from)}–${me.rankRange.to ? n(me.rankRange.to) : '…'}` : ''}</span>
-                    <span className="font-mono text-[14px] w-20 text-right">{n(me.points)}</span>
-                  </li>
-                )}
-              </ol>
-            )}
-          </section>
+          {/* Leaderboard — this week / month / quarter (official) / all time */}
+          <Leaderboard quarter={data.leaderboard} quarterMe={me ? { rank: me.rank, points: me.points, rankRange: me.rankRange } : null} />
+
 
           <section className="flex flex-col sm:flex-row gap-3">
             <a href={BOT_URL} target="_blank" rel="noopener noreferrer" className="btn-primary flex-1"><IconTelegram />Earn now on Telegram</a>
