@@ -19,6 +19,8 @@ interface Standing {
   updatesEveryHours: number;
   leaderboard: Array<{ rank: number; name: string; points: number; tier: string; isMe: boolean }>;
   earned: Earned | null;
+  // Points per friend unlock when that friend makes a first trade.
+  referrals?: { invited: number; traded: number; waiting: number; pointsEach: number; pointsUnlocked: number; pointsToUnlock: number; commissionPct: number } | null;
   earn: { multiplier: number; perBill15Usd: number; perWithdrawal30Usd: number; perTrade0_1Sol: number; perThreeTrades0_1Sol: number; perStake50Usd: number; perReferral: number };
   me: null | {
     points: number;
@@ -108,6 +110,39 @@ export default function RewardsPage() {
             </section>
           )}
 
+          {/* Referrals: points unlock when each friend trades */}
+          {data.referrals && (
+            <section className="surface rounded-3xl p-5 sm:p-6">
+              <div className="flex items-center gap-2 text-terracotta"><IconGift size={18} /><span className="text-[13px] font-semibold uppercase tracking-wide">Your referrals</span></div>
+              {data.referrals.invited === 0 ? (
+                <p className="mt-2 text-[14.5px] muted leading-relaxed">
+                  Every friend you invite is worth <strong className="text-ink dark:text-cream-warm">{n(data.referrals.pointsEach)} $SHIFT points</strong> once
+                  they make their first trade — plus {data.referrals.commissionPct}% of the fees they pay, forever.
+                </p>
+              ) : (
+                <>
+                  <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                    <div className="rounded-2xl bg-cream-warm dark:bg-night py-3"><div className="font-display font-bold text-[24px] text-ink dark:text-cream-warm">{n(data.referrals.invited)}</div><div className="text-[12px] muted">invited</div></div>
+                    <div className="rounded-2xl bg-cream-warm dark:bg-night py-3"><div className="font-display font-bold text-[24px] text-[#58834C]">{n(data.referrals.traded)}</div><div className="text-[12px] muted">traded</div></div>
+                    <div className="rounded-2xl bg-cream-warm dark:bg-night py-3"><div className="font-display font-bold text-[24px] text-terracotta">{n(data.referrals.waiting)}</div><div className="text-[12px] muted">waiting</div></div>
+                  </div>
+                  {data.referrals.waiting > 0 ? (
+                    <p className="mt-3 text-[14.5px] leading-relaxed">
+                      🔒 <strong className="text-terracotta">{n(data.referrals.pointsToUnlock)} points</strong> to unlock —{' '}
+                      {n(data.referrals.waiting)} × {n(data.referrals.pointsEach)}, plus {data.referrals.commissionPct}% of their fees, as soon as each makes a first trade.
+                      <span className="muted"> Nudge them!</span>
+                    </p>
+                  ) : (
+                    <p className="mt-3 text-[14.5px] muted">All your friends have traded — {n(data.referrals.pointsUnlocked)} points unlocked. Invite more to keep earning.</p>
+                  )}
+                  {data.referrals.traded > 0 && data.referrals.waiting > 0 && (
+                    <p className="mt-1 text-[13px] muted">✅ {n(data.referrals.pointsUnlocked)} points already unlocked.</p>
+                  )}
+                </>
+              )}
+            </section>
+          )}
+
           {/* $SHIFT standing */}
           <section className="relative overflow-hidden rounded-3xl bg-ink dark:bg-night-card text-cream p-6 sm:p-8 shadow-card">
             <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-terracotta/30 blur-2xl" aria-hidden="true" />
@@ -162,7 +197,7 @@ export default function RewardsPage() {
                 { Icon: IconBank, t: 'Withdraw $30', v: data.earn.perWithdrawal30Usd },
                 { Icon: IconChart, t: '3 trades of 0.1 SOL', v: data.earn.perThreeTrades0_1Sol },
                 { Icon: IconLeaf, t: 'Stake $50', v: data.earn.perStake50Usd },
-                { Icon: IconGift, t: 'Invite a friend', v: data.earn.perReferral },
+                { Icon: IconGift, t: 'Friend makes a first trade', v: data.earn.perReferral },
               ].map(e => (
                 <li key={e.t} className="surface rounded-2xl p-4">
                   <e.Icon size={20} className="text-terracotta" />
