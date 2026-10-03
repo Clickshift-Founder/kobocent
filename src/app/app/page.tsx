@@ -11,7 +11,8 @@ import { IconPlus, IconSend, IconBolt, IconBank, IconLeaf, IconBridge, IconChart
 import { InstallCard } from '@/components/app/InstallCard';
 import { useLiveRefresh } from '@/lib/useLiveRefresh';
 
-type Action = { key: string; label: string; Icon: (p: { size?: number }) => JSX.Element; title: string; body: string };
+// `href`: the action works on the web — open its screen instead of the Telegram sheet.
+type Action = { key: string; label: string; Icon: (p: { size?: number }) => JSX.Element; title: string; body: string; href?: string };
 
 // Money actions run in Telegram today and arrive on the web batch by batch (backend ROADMAP
 // Phase 3). We never show a web screen for something the API cannot do yet.
@@ -20,7 +21,7 @@ const ACTIONS: Action[] = [
   { key: 'send', label: 'Send to bank', Icon: IconSend, title: 'Send to a bank account', body: 'Pay anyone in naira — type "send 5000 to GTBank 0123456789" or send a screenshot of their account details. Gasless, with a receipt and 0.2% cashback.' },
   { key: 'wallet', label: 'Send to wallet', Icon: IconWallet, title: 'Send to another wallet', body: 'Transfer SOL, USDC, USDT or any token to another wallet — on Solana, Ethereum, BNB Chain, Polygon, Arbitrum or Robinhood Chain. Gasless.' },
   { key: 'bills', label: 'Pay bills', Icon: IconBolt, title: 'Pay bills', body: 'Electricity, airtime, data and cable TV with your stablecoins. Type it, send a screenshot of the bill, or use a voice note.' },
-  { key: 'withdraw', label: 'Withdraw', Icon: IconBank, title: 'Withdraw to bank', body: 'Turn USDC or USDT into naira in any Nigerian bank account, usually in minutes.' },
+  { key: 'withdraw', label: 'Withdraw', Icon: IconBank, title: 'Withdraw to bank', body: 'Turn USDC or USDT into naira in any Nigerian bank account, usually in minutes.', href: '/app/withdraw' },
   { key: 'swap', label: 'Swap', Icon: IconSwap, title: 'Swap', body: 'Convert between SOL, USDC and USDT in seconds at the best route — gasless.' },
   { key: 'earn', label: 'Earn', Icon: IconLeaf, title: 'Earn on your stablecoins', body: 'Put idle USDC to work — flexible or locked plans, earnings every hour. Rates can change.' },
   { key: 'bridge', label: 'Bridge in', Icon: IconBridge, title: 'Bridge in from another chain', body: 'Bring ETH, BNB, MATIC or USDC/USDT from Ethereum, BNB Chain, Polygon, Arbitrum or Robinhood Chain into spendable USDC.' },
@@ -136,7 +137,7 @@ export default function HomePage() {
         <SectionTitle>Move money</SectionTitle>
         <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 sm:gap-3">
           {ACTIONS.slice(1).map(a => (
-            <button key={a.key} onClick={() => setSheet(a)}
+            <button key={a.key} onClick={() => (a.href ? router.push(a.href) : setSheet(a))}
               className="group flex flex-col items-center gap-2 rounded-2xl p-2.5 min-h-[88px] hover:bg-white dark:hover:bg-night-card transition-colors">
               <span className="grid place-items-center h-12 w-12 rounded-2xl surface text-terracotta group-hover:border-terracotta transition-colors"><a.Icon size={22} /></span>
               <span className="text-[12.5px] font-medium text-ink dark:text-cream-warm text-center leading-tight">{a.label}</span>

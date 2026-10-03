@@ -20,11 +20,23 @@ const ALLOWED: Record<string, Array<'GET' | 'POST'>> = {
   'auth/link': ['POST'],
   'auth/reauth': ['POST'],
   'wallet/recovery-phrase': ['GET'],
+  'withdraw': ['GET', 'POST'],
+  'withdraw/banks': ['GET'],
+  'withdraw/resolve': ['POST'],
+  'withdraw/bank': ['POST'],
+  'withdraw/quote': ['POST'],
 };
+// Routes with an id in the path.
+const ALLOWED_PATTERNS: Array<{ re: RegExp; methods: Array<'GET' | 'POST'> }> = [
+  { re: /^withdraw\/jobs\/[0-9a-f-]{36}$/, methods: ['GET'] },
+];
+function allowed(key: string, method: 'GET' | 'POST') {
+  return !!ALLOWED[key]?.includes(method) || ALLOWED_PATTERNS.some(p => p.re.test(key) && p.methods.includes(method));
+}
 
 async function handle(req: NextRequest, path: string[], method: 'GET' | 'POST') {
   const key = path.join('/');
-  if (!ALLOWED[key]?.includes(method)) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (!allowed(key, method)) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const token = getSessionToken();
   if (!token) return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
