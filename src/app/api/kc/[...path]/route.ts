@@ -29,6 +29,7 @@ const ALLOWED: Record<string, Array<'GET' | 'POST'>> = {
 // Routes with an id in the path.
 const ALLOWED_PATTERNS: Array<{ re: RegExp; methods: Array<'GET' | 'POST'> }> = [
   { re: /^withdraw\/jobs\/[0-9a-f-]{36}$/, methods: ['GET'] },
+  { re: /^receipts\/withdrawal\/[A-Za-z0-9_-]{4,100}$/, methods: ['GET'] },
 ];
 function allowed(key: string, method: 'GET' | 'POST') {
   return !!ALLOWED[key]?.includes(method) || ALLOWED_PATTERNS.some(p => p.re.test(key) && p.methods.includes(method));
@@ -58,12 +59,14 @@ async function handle(req: NextRequest, path: string[], method: 'GET' | 'POST') 
 
   if (res.ok) await maybeRefreshSession(token);
 
-  if (key === 'statement.pdf' && res.ok) {
+  // Files (statement PDF, receipt PNG) pass straight through.
+  const isFile = key === 'statement.pdf' || key.startsWith('receipts/');
+  if (isFile && res.ok) {
     const buf = await res.arrayBuffer();
     return new NextResponse(buf, {
       status: 200,
       headers: {
-        'Content-Type': 'application/pdf',
+        'Content-Type': res.headers.get('content-type') || (key === 'statement.pdf' ? 'application/pdf' : 'image/png'),
         'Content-Disposition': res.headers.get('content-disposition') || 'attachment; filename="Kobocent-Statement.pdf"',
         'Cache-Control': 'no-store',
       },

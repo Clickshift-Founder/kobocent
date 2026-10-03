@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { kc, KcError, usd, naira, BOT_URL } from '@/lib/kc';
 import { PageHeader } from '@/components/app/PageHeader';
-import { Sheet, Skeleton, CopyButton } from '@/components/app/ui';
+import { Sheet, Skeleton, CopyButton, ReceiptButton } from '@/components/app/ui';
 import { TelegramLogin, type TelegramUser } from '@/components/app/TelegramLogin';
 import { IconBank, IconCheck, IconShield, IconChevron, IconPlus } from '@/components/app/Icons';
 import { useLiveRefresh } from '@/lib/useLiveRefresh';
@@ -517,7 +517,11 @@ function Progress({ jobId, bankName, onFinish }: { jobId: string; bankName: stri
       return (
         <Outcome tone="success" title={`${naira(r.payoutNgn)} is on its way`} body={`We’ve sent it to ${bankName}. It usually arrives within minutes — your receipt and cashback land in Telegram.`}
           reference={r.reference} signature={r.signature}
-          actions={<><Link href="/app" onClick={() => onFinish(false)} className="btn-primary w-full">Done</Link><Link href="/app/activity" onClick={() => onFinish(false)} className="btn-ghost w-full">View activity</Link></>} />
+          actions={<>
+            <Link href="/app" onClick={() => onFinish(false)} className="btn-primary w-full">Done</Link>
+            {r.reference && <div><ReceiptButton reference={r.reference} /></div>}
+            <Link href="/app/activity" onClick={() => onFinish(false)} className="block text-center text-[14px] font-semibold text-terracotta min-h-[44px] leading-[44px]">View activity</Link>
+          </>} />
       );
     }
     if (r.code === 'OUTCOME_UNKNOWN') {
