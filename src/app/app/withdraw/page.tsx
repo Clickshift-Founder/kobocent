@@ -240,10 +240,17 @@ function BankSetup({ current, onSaved, onCancel }: { current: Bank | null; onSav
       {onCancel && <button onClick={onCancel} className="btn-ghost w-full">Keep my current bank</button>}
 
       <Sheet open={confirmOpen} onClose={() => setConfirmOpen(false)} title="Confirm it’s you">
-        <div className="flex items-start gap-3 mb-5">
+        <div className="flex items-start gap-3 mb-5 rounded-2xl bg-terracotta-soft p-4">
           <IconShield size={22} className="text-terracotta shrink-0 mt-0.5" />
-          <p className="muted text-[15px] leading-relaxed">Before we save where your money goes, confirm with Telegram. We’ll also message you there about the change.</p>
+          <div className="text-[14.5px] leading-relaxed">
+            <div className="font-semibold text-ink dark:text-cream-warm">This step is for your security</div>
+            <p className="muted mt-1">
+              It confirms that you — the owner of this Kobocent account — are the one authorising where your money is paid.
+              Even if someone got into your web session, they couldn’t change it without your Telegram.
+            </p>
+          </div>
         </div>
+        <p className="muted text-[13.5px] mb-4">Tap the button below to confirm. We’ll also message you on Telegram about this change.</p>
         <div className="rounded-2xl bg-cream-warm dark:bg-night p-4 mb-5 text-[14.5px]">
           <div className="font-semibold text-ink dark:text-cream-warm">{name}</div>
           <div className="muted">{bank?.name} · {acct}</div>
