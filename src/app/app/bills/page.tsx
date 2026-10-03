@@ -267,6 +267,8 @@ function Airtime({ services, recent, onStarted }: { services: Service[]; recent:
 
   const validPhone = /^0[789][01]\d{8}$/.test(digits) || /^234[789][01]\d{8}$/.test(digits);
   const ready = validPhone && !!service && !!quote?.canPay && !busy;
+  // Chosen network ≠ the number's network: warn (numbers can be ported, so we don't block).
+  const mismatch = !!detected && !!network && detected !== network;
 
   return (
     <div className="space-y-5 animate-fade-up">
@@ -290,6 +292,15 @@ function Airtime({ services, recent, onStarted }: { services: Service[]; recent:
             );
           })}
         </div>
+        {mismatch && (
+          <div role="alert" className="mt-3 rounded-2xl bg-[#B68B2A]/12 border border-[#B68B2A]/40 px-4 py-3 text-[14px] animate-fade-up">
+            <div className="font-semibold text-ink dark:text-cream-warm">This looks like {NETWORK[detected!]?.label} number</div>
+            <p className="muted mt-0.5">{NETWORK[network!]?.label} airtime won’t reach it unless the line was ported to {NETWORK[network!]?.label}.</p>
+            <button onClick={() => setNetwork(detected)} className="mt-2 inline-flex items-center min-h-[40px] rounded-xl bg-ink dark:bg-cream-warm text-cream dark:text-ink px-4 font-semibold text-[14px]">
+              Switch to {NETWORK[detected!]?.label}
+            </button>
+          </div>
+        )}
       </section>
 
       <section className="surface rounded-3xl p-5">
@@ -304,7 +315,7 @@ function Airtime({ services, recent, onStarted }: { services: Service[]; recent:
       </button>
 
       <ReviewSheet open={review} onClose={() => setReview(false)} title="Review airtime" quote={quote} busy={paying} error={payErr}
-        lines={[['Network', NETWORK[network || '']?.label || service?.name || ''], ['Number', digits], ['Airtime', naira(amountNgn)]]}
+        lines={[['Network', `${NETWORK[network || '']?.label || service?.name || ''}${mismatch ? ` (number looks ${NETWORK[detected!]?.label})` : ''}`], ['Number', digits], ['Airtime', naira(amountNgn)]]}
         holdLabel={`Hold to buy ${naira(amountNgn)} airtime`}
         onConfirm={() => pay({ serviceId: service!.id, amountNgn, customerId: digits })} />
     </div>
@@ -463,18 +474,42 @@ function usePlans(serviceId: string | null) {
 
 function PlanList({ plans, err, value, onPick }: { plans: Plan[] | null; err: string; value: Plan | null; onPick: (p: Plan) => void }) {
   const [q, setQ] = useState('');
+  const [span, setSpan] = useState<'all' | 'day' | 'week' | 'month'>('all');
+  // Plans have fixed prices, so the box takes a budget ("500" → plans up to ₦500) or words ("1GB").
+  const spanOf = (name: string): 'day' | 'week' | 'month' | null =>
+    /\b(1|one)\s*day|daily|24\s*h|\b[123]\s*days?\b/i.test(name) ? 'day'
+      : /week|7\s*days?|14\s*days?/i.test(name) ? 'week'
+      : /month|30\s*days?|31\s*days?/i.test(name) ? 'month' : null;
+  const spans = useMemo(() => new Set((plans || []).map(p => spanOf(p.name)).filter(Boolean)), [plans]);
   const shown = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    return (plans || []).filter(p => !s || p.name.toLowerCase().includes(s));
-  }, [plans, q]);
+    const s = q.trim().toLowerCase().replace(/[₦,\s]/g, '');
+    const budget = /^\d+$/.test(s) ? Number(s) : null;
+    return (plans || []).filter(p =>
+      (span === 'all' || spanOf(p.name) === span) &&
+      (!s || (budget !== null ? p.amountNgn <= budget : p.name.toLowerCase().replace(/\s/g, '').includes(s))));
+  }, [plans, q, span]);
   if (!plans) return <div className="space-y-2"><Skeleton className="h-12" /><Skeleton className="h-12" /><Skeleton className="h-12" /></div>;
   if (err || plans.length === 0) return <p className="muted text-[14px]">{err || 'No plans available right now — try again shortly.'}</p>;
   return (
     <>
-      {plans.length > 8 && (
-        <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search plans — e.g. 1GB, weekly, Compact" autoComplete="off"
-          className="w-full mb-2 rounded-xl border border-cream-border dark:border-night-border bg-cream dark:bg-night px-4 min-h-[44px] text-[15px] outline-none focus:border-terracotta" />
+      <div className="flex items-baseline gap-1 rounded-xl border border-cream-border dark:border-night-border bg-cream dark:bg-night px-3 mb-2 focus-within:border-terracotta">
+        <span className="text-warmgray text-[15px]">₦</span>
+        <input value={q} onChange={e => setQ(e.target.value)} autoComplete="off" aria-label="Budget or search"
+          placeholder="Your budget (e.g. 500) or search (1GB)"
+          className="flex-1 bg-transparent outline-none min-h-[48px] text-[16px]" />
+        {q && <button onClick={() => setQ('')} className="text-[13px] font-semibold text-terracotta min-h-[44px] px-1">Clear</button>}
+      </div>
+      {spans.size > 1 && (
+        <div className="flex gap-2 mb-3 overflow-x-auto">
+          {(['all', 'day', 'week', 'month'] as const).filter(k => k === 'all' || spans.has(k)).map(k => (
+            <button key={k} onClick={() => setSpan(k)}
+              className={`shrink-0 rounded-full px-4 min-h-[38px] text-[13.5px] font-semibold border transition-colors ${span === k ? 'bg-terracotta text-white border-terracotta' : 'border-cream-border dark:border-night-border'}`}>
+              {k === 'all' ? 'All' : k === 'day' ? 'Daily' : k === 'week' ? 'Weekly' : 'Monthly'}
+            </button>
+          ))}
+        </div>
       )}
+      {shown.length === 0 && <p className="muted text-[14px] py-3 text-center">No plan matches — try a higher budget or clear the filter.</p>}
       <ul className="max-h-80 overflow-y-auto space-y-2 pr-0.5">
         {shown.map(p => {
           const on = value?.code === p.code;

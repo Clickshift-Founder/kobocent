@@ -30,6 +30,12 @@ const ALLOWED: Record<string, Array<'GET' | 'POST'>> = {
   'bills/verify': ['POST'],
   'bills/quote': ['POST'],
   'bills/pay': ['POST'],
+  'bills/plans': ['GET'],   // data plans / cable packages (was missing → "Not found")
+  'bills/recent': ['GET'],  // remembered meters, phones, smartcards (was missing → no Recent row)
+  'onramp': ['GET'],
+  'onramp/quote': ['POST'],
+  'onramp/account': ['POST'],
+  'onramp/kyc': ['POST'],
 };
 // Routes with an id in the path.
 const ALLOWED_PATTERNS: Array<{ re: RegExp; methods: Array<'GET' | 'POST'> }> = [
