@@ -17,7 +17,7 @@ const files = [];
 const proxy = fs.readFileSync(path.join(__dirname, '..', 'src/app/api/kc/[...path]/route.ts'), 'utf8');
 const allowed = new Set([...proxy.matchAll(/^\s*'([a-z0-9/._-]+)':\s*\[/gm)].map(m => m[1]));
 // Routes with an id are allowed by pattern in the proxy (ALLOWED_PATTERNS).
-const byPattern = /^(withdraw\/jobs|bills\/jobs|receipts)(\/|$)/;
+const byPattern = /^(withdraw\/jobs|bills\/jobs|send\/jobs|swap\/jobs|receipts)(\/|$)/;
 
 const used = new Set();
 for (const f of files) {
