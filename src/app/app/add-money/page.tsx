@@ -200,26 +200,36 @@ function Funded({ ov, reload }: { ov: Overview; reload: (silent?: boolean) => Pr
     return () => { live = false; clearTimeout(t); };
   }, [value, ov.minNgn]);
 
-  // "I've sent it": poll for a new deposit (anything newer than what was on screen).
+  // The screen watches for deposits on its own — no button needed (founder, 2026-10-04): every
+  // 10 s while visible, every 5 s after "I've sent the money". Anything newer than what was on
+  // screen when it opened (or that changed status) is announced.
+  const keyOf = (d?: Deposit) => (d ? `${d.reference}:${d.status}` : null);
+  const [watchSince, setWatchSince] = useState<number | null>(null);
+  const [slow, setSlow] = useState(false);
+  useEffect(() => { if (baseline.current === null) baseline.current = keyOf(ov.deposits[0]) || ''; }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!watching) return;
-    const id = window.setInterval(() => reload(true), 8000);
+    const id = window.setInterval(() => { if (document.visibilityState === 'visible') reload(true); }, watching ? 5000 : 10000);
     return () => window.clearInterval(id);
   }, [watching, reload]);
   useEffect(() => {
-    if (!watching) return;
     const top = ov.deposits[0];
-    const key = top ? `${top.reference}:${top.status}` : null;
-    if (key && key !== baseline.current) {
+    const key = keyOf(top);
+    if (top && key && baseline.current !== null && key !== baseline.current) {
       setArrived(top);
-      if (top.status === 'completed') setWatching(false);
+      if (top.status === 'credited') { setWatching(false); baseline.current = key; }
     }
-  }, [ov.deposits, watching]);
+  }, [ov.deposits]);
+  // After 12 minutes of waiting, stop the spinner and say so honestly (polling continues).
+  useEffect(() => {
+    if (!watching || !watchSince) return;
+    const t = window.setTimeout(() => setSlow(true), 12 * 60_000);
+    return () => window.clearTimeout(t);
+  }, [watching, watchSince]);
 
   function startWatching() {
-    const top = ov.deposits[0];
-    baseline.current = top ? `${top.reference}:${top.status}` : null;
     setArrived(null);
+    setSlow(false);
+    setWatchSince(Date.now());
     setWatching(true);
   }
 
@@ -250,13 +260,13 @@ function Funded({ ov, reload }: { ov: Overview; reload: (silent?: boolean) => Pr
 
       {/* Watching / arrived */}
       {arrived ? (
-        <section className={`rounded-3xl p-5 animate-fade-up ${arrived.status === 'completed' ? 'bg-[#58834C]/12 border border-[#58834C]/40' : 'surface'}`} aria-live="polite">
-          {arrived.status === 'completed' ? (
+        <section className={`rounded-3xl p-5 animate-fade-up ${arrived.status === 'credited' ? 'bg-[#58834C]/12 border border-[#58834C]/40' : 'surface'}`} aria-live="polite">
+          {arrived.status === 'credited' ? (
             <div className="flex items-center gap-4">
               <span className="grid place-items-center h-12 w-12 shrink-0 rounded-full bg-[#58834C] text-white"><IconCheck size={24} /></span>
               <div>
                 <div className="font-display text-[20px] font-bold text-ink dark:text-cream-warm">{naira(arrived.amountNgn)} received</div>
-                <p className="muted text-[14px]">USDC is in your wallet. You’ll also get the details on Telegram.</p>
+                <p className="muted text-[14px]">{arrived.usdc ? `${amount(arrived.usdc, 2)} USDC is in your wallet.` : 'USDC is in your wallet.'} You’ll also get the details on Telegram.</p>
               </div>
             </div>
           ) : (
@@ -265,17 +275,17 @@ function Funded({ ov, reload }: { ov: Overview; reload: (silent?: boolean) => Pr
               <div><div className="font-semibold text-ink dark:text-cream-warm">{naira(arrived.amountNgn)} arrived — sending your USDC…</div><p className="muted text-[13.5px]">Usually under a minute from here.</p></div>
             </div>
           )}
-          {arrived.status === 'completed' && <Link href="/app" className="btn-primary w-full mt-4">See my balance</Link>}
+          {arrived.status === 'credited' && <Link href="/app" className="btn-primary w-full mt-4">See my balance</Link>}
         </section>
       ) : watching ? (
         <section className="surface rounded-3xl p-5 flex items-center gap-4 animate-fade-up" aria-live="polite">
           <span className="relative grid place-items-center h-12 w-12 shrink-0">
-            <span className="absolute inset-0 rounded-full bg-terracotta/20 animate-ping" />
+            {!slow && <span className="absolute inset-0 rounded-full bg-terracotta/20 animate-ping" />}
             <span className="relative grid place-items-center h-10 w-10 rounded-full bg-terracotta text-white"><IconBank size={20} /></span>
           </span>
           <div className="flex-1">
-            <div className="font-semibold text-ink dark:text-cream-warm">Waiting for your transfer…</div>
-            <p className="muted text-[13.5px]">Bank transfers usually land in 1–5 minutes. You can leave — we’ll tell you on Telegram.</p>
+            <div className="font-semibold text-ink dark:text-cream-warm">{slow ? 'Still waiting for your transfer' : 'Waiting for your transfer…'}</div>
+            <p className="muted text-[13.5px]">{slow ? 'Some banks take up to 30 minutes. We keep checking, and Telegram tells you the moment it lands.' : 'Bank transfers usually land in 1–5 minutes. You can leave — we’ll tell you on Telegram.'}</p>
           </div>
           <button onClick={() => setWatching(false)} className="text-[13px] font-semibold muted min-h-[44px] px-1">Stop</button>
         </section>
@@ -321,8 +331,8 @@ function Funded({ ov, reload }: { ov: Overview; reload: (silent?: boolean) => Pr
         ) : (
           <ul className="surface rounded-2xl divide-y divide-cream-border dark:divide-night-border px-4">
             {ov.deposits.map((d, i) => {
-              const done = d.status === 'completed';
-              const failed = d.status && /fail|reject/i.test(d.status);
+              const done = d.status === 'credited';
+              const failed = d.status === 'failed';
               return (
                 <li key={`${d.reference || i}-${d.at}`} className="flex items-center gap-3 py-3.5">
                   <span className="grid place-items-center h-10 w-10 rounded-xl bg-cream-warm dark:bg-night text-terracotta"><IconBank size={18} /></span>
@@ -331,7 +341,7 @@ function Funded({ ov, reload }: { ov: Overview; reload: (silent?: boolean) => Pr
                     <div className="text-[12.5px] muted">{dayLabel(d.at)}{d.usdc ? ` · ${amount(d.usdc, 2)} USDC` : ''}</div>
                   </div>
                   <span className={`text-[12px] font-semibold rounded-full px-2.5 py-1 ${done ? 'bg-[#58834C]/12 text-[#58834C]' : failed ? 'bg-[#B84A40]/12 text-[#B84A40]' : 'bg-[#B68B2A]/12 text-[#B68B2A]'}`}>
-                    {done ? 'Credited' : failed ? 'Needs attention' : 'Processing'}
+                    {done ? 'Credited' : failed ? 'Needs attention' : d.status === 'crediting' ? 'Sending USDC' : 'Waiting'}
                   </span>
                 </li>
               );

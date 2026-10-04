@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { IconCopy, IconCheck, IconBank, IconBolt, IconChart, IconLeaf, IconBridge, IconSend, IconClose } from './Icons';
+import { IconCopy, IconCheck, IconBank, IconBolt, IconChart, IconLeaf, IconBridge, IconSend, IconClose, IconPlus } from './Icons';
 import { naira, usd, amount, timeLabel, type HistoryItem } from '@/lib/kc';
 
 export function SectionTitle({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
@@ -73,6 +73,8 @@ function describe(i: HistoryItem): { title: string; sub: string; value: string; 
   switch (i.kind) {
     case 'bank_transfer':
       return { title: i.counterparty ? `To ${i.counterparty}` : 'Bank transfer', sub: i.bank || 'Bank transfer', value: naira(i.amountNgn), Icon: IconBank, negative: true };
+    case 'deposit':
+      return { title: 'Added money', sub: i.amountUsd ? `Bank transfer → ${amount(i.amountUsd, 2)} USDC` : 'Bank transfer → USDC', value: `+${naira(i.amountNgn)}`, Icon: IconPlus, negative: false };
     case 'withdrawal':
       return { title: i.bank ? `Withdrew to ${i.bank}` : 'Bank withdrawal', sub: i.counterparty || 'To your bank', value: naira(i.amountNgn), Icon: IconBank, negative: true };
     case 'utility':
