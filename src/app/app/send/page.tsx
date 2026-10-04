@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { kc, KcError, usd, naira } from '@/lib/kc';
 import { PageHeader } from '@/components/app/PageHeader';
-import { Sheet, Skeleton } from '@/components/app/ui';
+import { Sheet, Skeleton, ReceiptButton } from '@/components/app/ui';
 import { IconCheck, IconChevron, IconPlus, IconSend } from '@/components/app/Icons';
 import { newKey, store, read, initials, useCountUp, HoldToConfirm, Outcome } from '@/components/app/money';
 
@@ -271,7 +271,7 @@ function Progress({ jobId, onFinish }: { jobId: string; onFinish: () => void }) 
   if (lost) return <Outcome tone="info" title="We lost track of this screen" body="The payment itself is unaffected — check Activity for its status." actions={<><Link href="/app/activity" onClick={onFinish} className="btn-primary w-full">Open Activity</Link><button onClick={onFinish} className="btn-ghost w-full">Close</button></>} />;
   const r = job?.result;
   if (job?.status === 'done' && r) {
-    if (r.ok) return <Outcome tone="success" title={`${naira(r.amountNgn)} is on its way`} body={`To ${r.recipientName || 'your recipient'}${r.recipientBank ? ` at ${r.recipientBank}` : ''}. Usually arrives within minutes — your receipt and cashback land in Telegram when the bank confirms.`} reference={r.reference} actions={<><Link href="/app" onClick={onFinish} className="btn-primary w-full">Done</Link><button onClick={onFinish} className="block w-full text-center text-[14px] font-semibold text-terracotta min-h-[44px]">Send another</button></>} />;
+    if (r.ok) return <Outcome tone="success" title={`${naira(r.amountNgn)} is on its way`} body={`To ${r.recipientName || 'your recipient'}${r.recipientBank ? ` at ${r.recipientBank}` : ''}. Usually arrives within minutes. Get the receipt below to share as proof — it’s ready the moment the bank confirms.`} reference={r.reference} actions={<>{r.reference && <ReceiptButton reference={r.reference} kind="bill" wait className="btn-primary w-full" />}<Link href="/app" onClick={onFinish} className="btn-ghost w-full">Done</Link><button onClick={onFinish} className="block w-full text-center text-[14px] font-semibold text-terracotta min-h-[44px]">Send another</button></>} />;
     if (r.code === 'OUTCOME_UNKNOWN') return <Outcome tone="warn" title="Being confirmed" body="Please don’t send again. We’re confirming the payment and will complete it or refund you — you’ll hear from us on Telegram." reference={r.reference} actions={<button onClick={onFinish} className="btn-primary w-full">Got it</button>} />;
     const nothingMoved = ['INSUFFICIENT', 'BAD_ACCOUNT', 'IN_PROGRESS', 'BELOW_MIN', 'ABOVE_LIMIT'].includes(r.code || '');
     return <Outcome tone="error" title={nothingMoved ? 'Nothing was sent' : 'The payment didn’t go through'} body={`${r.error ? `${r.error}. ` : ''}${nothingMoved ? 'No money left your wallet.' : 'If any money left your wallet, our team has already been alerted and will refund it.'}`} reference={r.reference} actions={<><button onClick={onFinish} className="btn-primary w-full">Try again</button>{!nothingMoved && <a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer" className="btn-ghost w-full">Message support</a>}</>} />;

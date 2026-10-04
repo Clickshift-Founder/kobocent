@@ -46,7 +46,7 @@ const ALLOWED: Record<string, Array<'GET' | 'POST'>> = {
 // Routes with an id in the path.
 const ALLOWED_PATTERNS: Array<{ re: RegExp; methods: Array<'GET' | 'POST'> }> = [
   { re: /^withdraw\/jobs\/[0-9a-f-]{36}$/, methods: ['GET'] },
-  { re: /^receipts\/(withdrawal|utility)\/[A-Za-z0-9_-]{4,100}$/, methods: ['GET'] },
+  { re: /^receipts\/(withdrawal|utility|bill)\/[A-Za-z0-9_-]{4,100}$/, methods: ['GET'] },
   { re: /^bills\/jobs\/[0-9a-f-]{36}$/, methods: ['GET'] },
   { re: /^(send|swap)\/jobs\/[0-9a-f-]{36}$/, methods: ['GET'] },
 ];

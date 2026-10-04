@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { IconCopy, IconCheck, IconBank, IconBolt, IconChart, IconLeaf, IconBridge, IconSend, IconClose, IconPlus } from './Icons';
 import { naira, usd, amount, timeLabel, type HistoryItem } from '@/lib/kc';
 
@@ -97,23 +97,34 @@ function describe(i: HistoryItem): { title: string; sub: string; value: string; 
 /**
  * "Get receipt": fetches the same receipt image Telegram sends (the backend redraws it from the
  * record), previews it, and offers Share (phones: straight to WhatsApp etc.) and Download.
- * Withdrawals only for now; the receipt exists once the bank has confirmed the payout.
+ * Withdrawals, bills/utilities and bank transfers. A receipt exists once the payment is completed;
+ * with `wait`, a not-ready receipt is retried every 5 s (up to ~2 min) and opens by itself.
  */
-export function ReceiptButton({ reference, kind = 'withdrawal', className = 'btn-ghost w-full' }: { reference: string; kind?: 'withdrawal' | 'utility'; className?: string }) {
+export function ReceiptButton({ reference, kind = 'withdrawal', className = 'btn-ghost w-full', wait = false }: { reference: string; kind?: 'withdrawal' | 'utility' | 'bill'; className?: string; wait?: boolean }) {
   const [busy, setBusy] = useState(false);
+  const [waiting, setWaiting] = useState(false);
   const [msg, setMsg] = useState('');
   const [img, setImg] = useState<{ url: string; file: File } | null>(null);
+  const alive = useRef(true);
+  useEffect(() => () => { alive.current = false; }, []);
   useEffect(() => () => { if (img) URL.revokeObjectURL(img.url); }, [img]);
 
-  async function open() {
+  async function open(attempt = 0): Promise<void> {
     setBusy(true); setMsg('');
     try {
       const res = await fetch(`/api/kc/receipts/${kind}/${encodeURIComponent(reference)}`, { cache: 'no-store' });
       if (!res.ok) {
         const d = (await res.json().catch(() => ({}))) as { error?: string };
+        if (wait && res.status === 409 && attempt < 24 && alive.current) {
+          setWaiting(true);
+          await new Promise(r => setTimeout(r, 5000));
+          return open(attempt + 1);
+        }
+        setWaiting(false);
         setMsg(d.error || 'Receipt not available yet');
         return;
       }
+      setWaiting(false);
       const blob = await res.blob();
       const file = new File([blob], `Kobocent-Receipt-${reference.slice(-12)}.png`, { type: 'image/png' });
       setImg({ url: URL.createObjectURL(blob), file });
@@ -127,10 +138,11 @@ export function ReceiptButton({ reference, kind = 'withdrawal', className = 'btn
 
   return (
     <>
-      <button onClick={open} disabled={busy} className={className}>
+      <button onClick={() => open()} disabled={busy} className={className}>
         {busy && <span className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" />}
-        {busy ? 'Getting receipt…' : 'Get receipt'}
+        {waiting ? 'Waiting for the bank to confirm…' : busy ? 'Getting receipt…' : 'Get receipt'}
       </button>
+      {waiting && <p className="mt-2 text-center text-[12.5px] muted">Your receipt opens here as soon as it’s ready — usually under a minute.</p>}
       {msg && <p className="mt-2 text-center text-[13.5px] muted">{msg}</p>}
       <Sheet open={!!img} onClose={() => setImg(null)} title="Receipt">
         {img && (
@@ -156,7 +168,7 @@ export function ActivityRow({ item }: { item: HistoryItem }) {
   const pending = item.status && /pend|process|unconfirmed/i.test(item.status);
   const [open, setOpen] = useState(false);
   // Withdrawals open a detail sheet with the receipt (proof of payment).
-  const tappable = (item.kind === 'withdrawal' || item.kind === 'utility') && !!item.reference;
+  const tappable = (item.kind === 'withdrawal' || item.kind === 'utility' || item.kind === 'bank_transfer') && !!item.reference;
   const row = (
     <>
       <span className="grid place-items-center h-11 w-11 shrink-0 rounded-2xl bg-cream-warm dark:bg-night text-terracotta">
@@ -187,11 +199,13 @@ export function ActivityRow({ item }: { item: HistoryItem }) {
         <dl className="mt-3 rounded-2xl bg-cream-warm dark:bg-night p-4 grid grid-cols-[auto,1fr] gap-x-4 gap-y-2 text-[14px]">
           {item.counterparty && (<><dt className="muted">To</dt><dd className="text-right font-medium">{item.counterparty}</dd></>)}
           {item.amountUsd ? (<><dt className="muted">Withdrew</dt><dd className="text-right font-mono">{usd(item.amountUsd)}</dd></>) : null}
+          {item.kind === 'bank_transfer' && item.bank ? (<><dt className="muted">Bank</dt><dd className="text-right">{item.bank}</dd></>) : null}
+          {item.amountStable ? (<><dt className="muted">Paid</dt><dd className="text-right font-mono">{usd(item.amountStable)} {item.asset || ''}</dd></>) : null}
           <dt className="muted">Reference</dt><dd className="text-right font-mono text-[12.5px] break-all">{item.reference}</dd>
         </dl>
         <div className="mt-5">
           {done
-            ? <ReceiptButton reference={item.reference!} kind={item.kind === 'utility' ? 'utility' : 'withdrawal'} className="btn-primary w-full" />
+            ? <ReceiptButton reference={item.reference!} kind={item.kind === 'utility' ? 'utility' : item.kind === 'bank_transfer' ? 'bill' : 'withdrawal'} className="btn-primary w-full" />
             : <p className="text-center muted text-[14px]">The receipt is ready once this payment is completed.</p>}
         </div>
       </Sheet>

@@ -54,6 +54,12 @@ export function HoldToConfirm({ label, onConfirm, busy }: { label: string; onCon
       if (k >= 1) {
         done.current = true;
         if (navigator.vibrate) navigator.vibrate(30);
+        // Ghost-tap guard (2026-10-04): confirming closes the sheet while the finger is still down;
+        // lifting it then "clicks" whatever is underneath — the bottom tab bar (Swap ended up on
+        // Receive). Swallow that one click.
+        const swallow = (ev: Event) => { ev.preventDefault(); ev.stopPropagation(); };
+        window.addEventListener('click', swallow, { capture: true, once: true });
+        window.setTimeout(() => window.removeEventListener('click', swallow, { capture: true }), 1500);
         onConfirm();
         return;
       }

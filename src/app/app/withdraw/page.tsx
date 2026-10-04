@@ -451,7 +451,7 @@ function Progress({ jobId, bankName, onFinish }: { jobId: string; bankName: stri
           reference={r.reference} signature={r.signature}
           actions={<>
             <Link href="/app" onClick={() => onFinish(false)} className="btn-primary w-full">Done</Link>
-            {r.reference && <div><ReceiptButton reference={r.reference} /></div>}
+            {r.reference && <div><ReceiptButton reference={r.reference} wait /></div>}
             <Link href="/app/activity" onClick={() => onFinish(false)} className="block text-center text-[14px] font-semibold text-terracotta min-h-[44px] leading-[44px]">View activity</Link>
           </>} />
       );
