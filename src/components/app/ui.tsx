@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { IconCopy, IconCheck, IconBank, IconBolt, IconChart, IconLeaf, IconBridge, IconSend, IconClose, IconPlus } from './Icons';
+import { IconCopy, IconCheck, IconBank, IconBolt, IconChart, IconLeaf, IconBridge, IconSend, IconClose, IconPlus, IconGift } from './Icons';
 import { naira, usd, amount, timeLabel, type HistoryItem } from '@/lib/kc';
 
 export function SectionTitle({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
@@ -106,6 +106,8 @@ function describe(i: HistoryItem): { title: string; sub: string; value: string; 
         : { title: `Bridged in${i.chainName || i.chain ? ` from ${i.chainName || i.chain}` : ''}`, sub: i.asset ? `${i.asset} → USDC` : 'Bridge', value: i.receive != null ? `≈ ${amount(i.receive)} USDC` : usd(i.amountUsd), Icon: IconBridge, negative: false };
     case 'wallet_transfer':
       return { title: `Sent ${i.asset || ''}`.trim(), sub: i.chainName || i.chain ? `On ${i.chainName || i.chain}` : 'Wallet transfer', value: i.amount != null ? `${amount(i.amount)} ${i.asset || ''}`.trim() : usd(i.amountUsd), Icon: IconSend, negative: true };
+    case 'pal_tip':
+      return { title: 'Tipped Kobo Pal', sub: i.earned != null ? `+${usd(i.earned)} Pal VIP credit` : 'Pal VIP', value: `${amount(i.amount, 2)} ${i.asset || 'USDC'}`, Icon: IconGift, negative: true };
     case 'sniper':
       return { title: `Snipe ${i.asset || 'token'}`, sub: 'Sniper', value: i.amountSol ? `${amount(i.amountSol)} SOL` : '—', Icon: IconChart, negative: true };
     case 'copy_trade':
@@ -191,7 +193,7 @@ export function ActivityRow({ item }: { item: HistoryItem }) {
   // Withdrawals open a detail sheet with the receipt (proof of payment).
   const tappable = (item.kind === 'withdrawal' || item.kind === 'utility' || item.kind === 'bank_transfer') && !!item.reference;
   // Transfers and bridges open a detail sheet with the explorer link — proof they sent it (2026-10-05).
-  const onchain = (item.kind === 'wallet_transfer' || item.kind === 'bridge') && !!(item.txHash || item.reference);
+  const onchain = (item.kind === 'wallet_transfer' || item.kind === 'bridge' || item.kind === 'pal_tip') && !!(item.txHash || item.reference);
   const row = (
     <>
       <span className="grid place-items-center h-11 w-11 shrink-0 rounded-2xl bg-cream-warm dark:bg-night text-terracotta">

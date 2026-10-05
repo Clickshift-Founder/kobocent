@@ -38,7 +38,7 @@ export interface Balances {
 }
 
 export interface HistoryItem {
-  kind: 'trade' | 'bank_transfer' | 'utility' | 'deposit' | 'withdrawal' | 'yield' | 'sniper' | 'copy_trade' | 'bridge' | 'wallet_transfer';
+  kind: 'trade' | 'bank_transfer' | 'utility' | 'deposit' | 'withdrawal' | 'yield' | 'sniper' | 'copy_trade' | 'bridge' | 'wallet_transfer' | 'pal_tip';
   at: number | null;
   status?: string | null;
   side?: string | null;
