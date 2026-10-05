@@ -7,7 +7,7 @@ import { setPinHandler, type PinCode } from '@/lib/pin';
 import { Sheet } from './ui';
 import { PinPad } from './PinPad';
 import { GoogleButton, googleEnabled } from './GoogleButton';
-import { IconShield, IconTelegram } from './Icons';
+import { IconCheck, IconShield, IconTelegram } from './Icons';
 
 /**
  * App PIN + account-safety prompts (sign-in v2, founder 2026-10-05).
@@ -41,7 +41,7 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
   const [ask, setAsk] = useState<null | { mode: 'verify' | 'setup'; reason: 'payment' | 'first' | 'reset' }>(null);
   const [nudge, setNudge] = useState<null | 'telegram' | 'google'>(null);
   const resolver = useRef<((t: string | null) => void) | null>(null);
-  const lastToken = useRef<{ token: string; at: number } | null>(null);
+  const savedToken = useRef<string | null>(null);   // PIN just created during a payment
 
   const load = useCallback(async () => {
     try { setSec(await kc<Security>('security')); } catch (e) { if (e instanceof KcError && e.status === 404) setSec(null); }
@@ -80,23 +80,28 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
   const unlock = (token: string) => {
     set(sessionStorage, UNLOCKED, '1');
     set(localStorage, LAST_ACTIVE, String(Date.now()));
-    lastToken.current = { token, at: Date.now() };
+    void token;   // unlocking never authorises a payment — each payment asks for the PIN (2026-10-05)
     setLocked(false);
   };
 
   // ── PIN before payments (called by kc() on 423) ──
   useEffect(() => {
     setPinHandler((code: PinCode) => new Promise<string | null>((resolve) => {
-      // Just unlocked or just confirmed? Reuse the token for 90 s instead of asking again.
-      if (code === 'PIN_REQUIRED' && lastToken.current && Date.now() - lastToken.current.at < 90_000) return resolve(lastToken.current.token);
+      // Every payment asks (founder, 2026-10-05) — no reuse of an earlier token.
       resolver.current = resolve;
       setAsk({ mode: code === 'PIN_SETUP' ? 'setup' : 'verify', reason: 'payment' });
     }));
     return () => setPinHandler(null);
   }, []);
   const finishAsk = (token: string | null) => {
-    if (token) lastToken.current = { token, at: Date.now() };
-    resolver.current?.(token); resolver.current = null; setAsk(null);
+    resolver.current?.(token); resolver.current = null; savedToken.current = null; setAsk(null);
+  };
+  // PIN saved: record it at once (closing the sheet must not re-open "Create your PIN" before the reload lands).
+  const onPinSaved = (token: string) => {
+    setSec(s => (s ? { ...s, hasPin: true } : s));
+    set(sessionStorage, UNLOCKED, '1'); set(localStorage, LAST_ACTIVE, String(Date.now())); setLocked(false);
+    savedToken.current = token;
+    window.dispatchEvent(new Event('kc-security-changed'));
   };
 
   // ── First time: create a PIN; then (once per session) the account-safety nudge ──
@@ -113,10 +118,10 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     <>
       {children}
       {locked && lockOn && <LockScreen canReset={!!sec?.canResetPin} onUnlock={unlock} onForgot={() => setAsk({ mode: 'setup', reason: 'reset' })} onSignOut={() => signOut(router)} />}
-      <Sheet open={!!ask} onClose={() => { if (ask?.reason === 'first') set(sessionStorage, 'kc-pin-later', '1'); if (ask?.reason === 'payment') finishAsk(null); else setAsk(null); }}
+      <Sheet open={!!ask} onClose={() => { if (ask?.reason === 'first' && !savedToken.current) set(sessionStorage, 'kc-pin-later', '1'); if (ask?.reason === 'payment') finishAsk(savedToken.current); else { savedToken.current = null; setAsk(null); } }}
         title={ask?.mode === 'setup' ? (ask.reason === 'reset' ? 'Set a new PIN' : 'Create your app PIN') : 'Enter your PIN'}>
         {ask?.mode === 'setup'
-          ? <CreatePin reason={ask.reason} onDone={(token) => { set(sessionStorage, UNLOCKED, '1'); set(localStorage, LAST_ACTIVE, String(Date.now())); setLocked(false); window.dispatchEvent(new Event('kc-security-changed')); if (ask.reason === 'payment') finishAsk(token); else { lastToken.current = { token, at: Date.now() }; setAsk(null); } }}
+          ? <CreatePin reason={ask.reason} onSaved={onPinSaved} onDone={() => { if (ask.reason === 'payment') finishAsk(savedToken.current); else { savedToken.current = null; setAsk(null); } }}
               onLater={ask.reason === 'first' ? () => { set(sessionStorage, 'kc-pin-later', '1'); setAsk(null); } : undefined} />
           : <VerifyPin onDone={finishAsk} />}
       </Sheet>
@@ -184,8 +189,11 @@ function VerifyPin({ onDone }: { onDone: (token: string | null) => void }) {
   return (<><p className="muted text-[14px] text-center">Confirm it’s you before this payment.</p><PinPad onComplete={verify} busy={busy} error={err} resetKey={reset} /></>);
 }
 
-function CreatePin({ reason, onDone, onLater }: { reason: 'payment' | 'first' | 'reset'; onDone: (token: string) => void; onLater?: () => void }) {
+function CreatePin({ reason, onSaved, onDone, onLater }: { reason: 'payment' | 'first' | 'reset'; onSaved: (token: string) => void; onDone: () => void; onLater?: () => void }) {
   const [first, setFirst] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  // During a payment, carry on by itself after a moment; otherwise wait for "Done".
+  useEffect(() => { if (saved && reason === 'payment') { const t = setTimeout(onDone, 1200); return () => clearTimeout(t); } }, [saved, reason, onDone]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [reset, setReset] = useState(0);
@@ -194,10 +202,20 @@ function CreatePin({ reason, onDone, onLater }: { reason: 'payment' | 'first' | 
     if (!first) { setFirst(pin); setReset(x => x + 1); return; }
     if (pin !== first) { setErr('Those didn’t match — start again'); setFirst(null); setReset(x => x + 1); return; }
     setBusy(true);
-    try { const r = await kc<{ pinToken: string }>('security/pin', { method: 'POST', body: { pin } }); onDone(r.pinToken); }
+    try { const r = await kc<{ pinToken: string }>('security/pin', { method: 'POST', body: { pin } }); onSaved(r.pinToken); setSaved(true); }
     catch (e) { setErr(e instanceof Error ? e.message : 'Could not save your PIN'); setFirst(null); setReset(x => x + 1); }
     finally { setBusy(false); }
   }
+  if (saved) return (
+    <div className="flex flex-col items-center text-center py-4" role="status">
+      <div className="grid place-items-center h-16 w-16 rounded-full bg-[#58834C]/15 text-[#58834C]">
+        <IconCheck size={30} />
+      </div>
+      <h3 className="font-display text-[20px] font-bold mt-3 text-ink dark:text-cream-warm">{reason === 'reset' ? 'New PIN set' : 'PIN created'}</h3>
+      <p className="muted text-[14px] mt-1 max-w-xs">{reason === 'payment' ? 'Continuing with your payment…' : 'We’ll ask for it when the app opens and before every payment. You can change this in Settings.'}</p>
+      {reason !== 'payment' && <button onClick={onDone} className="btn-primary w-full mt-5">Done</button>}
+    </div>
+  );
   return (
     <>
       <p className="muted text-[14px] text-center">
