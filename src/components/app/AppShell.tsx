@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LogoLockup, LogoMark } from '@/components/ui/Logo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import { IconHome, IconActivity, IconReceive, IconSettings, IconTelegram, IconLogout, IconTrophy } from './Icons';
+import { IconHome, IconActivity, IconCard, IconSettings, IconTelegram, IconLogout, IconTrophy } from './Icons';
 import { initInstallCapture, registerServiceWorker } from '@/lib/pwa';
 import { BOT_URL, loadProfile, clearProfile, type LocalProfile } from '@/lib/kc';
 
@@ -12,7 +12,7 @@ const TABS = [
   { href: '/app', label: 'Home', Icon: IconHome },
   { href: '/app/activity', label: 'Activity', Icon: IconActivity },
   { href: '/app/rewards', label: 'Rewards', Icon: IconTrophy },
-  { href: '/app/receive', label: 'Receive', Icon: IconReceive },
+  { href: '/app/card', label: 'Card', Icon: IconCard },
   { href: '/app/settings', label: 'Settings', Icon: IconSettings },
 ];
 

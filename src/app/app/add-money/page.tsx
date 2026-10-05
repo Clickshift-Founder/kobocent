@@ -7,6 +7,7 @@ import { Sheet, Skeleton, CopyButton } from '@/components/app/ui';
 import { TelegramLogin, type TelegramUser } from '@/components/app/TelegramLogin';
 import { IconShield, IconCheck, IconBank, IconChevron } from '@/components/app/Icons';
 import { useCountUp } from '@/components/app/money';
+import { ReceiveCrypto } from '@/components/app/ReceiveCrypto';
 
 /**
  * Add money — naira → USDC through the user's own permanent account number (Flutterwave).
@@ -33,14 +34,44 @@ export default function AddMoneyPage() {
       else if (!silent) setError(e instanceof Error ? e.message : 'Could not load Add money');
     }
   }, []);
+  // Two ways money comes in (2026-10-05): naira by bank transfer, or crypto to your addresses.
+  // ?tab=crypto opens the second (old /app/receive links land there).
+  const [tab, setTab] = useState<'bank' | 'crypto'>('bank');
+  useEffect(() => {
+    try { if (new URLSearchParams(window.location.search).get('tab') === 'crypto') setTab('crypto'); } catch { /* ignore */ }
+  }, []);
+  const pick = (t: 'bank' | 'crypto') => {
+    setTab(t);
+    try { window.history.replaceState(null, '', t === 'crypto' ? '/app/add-money?tab=crypto' : '/app/add-money'); } catch { /* ignore */ }
+  };
   useEffect(() => { load(); }, [load]);
+
+  const tabs = (
+    <div role="tablist" aria-label="How to add money" className="grid grid-cols-2 gap-1 rounded-2xl bg-cream-warm dark:bg-night p-1">
+      {([['bank', 'Bank transfer (₦)'], ['crypto', 'Crypto']] as const).map(([k, label]) => (
+        <button key={k} role="tab" aria-selected={tab === k} onClick={() => pick(k)}
+          className={`min-h-[44px] rounded-xl text-[14.5px] font-semibold transition ${tab === k ? 'bg-white dark:bg-night-card text-terracotta shadow-sm' : 'muted'}`}>{label}</button>
+      ))}
+    </div>
+  );
+
+  if (tab === 'crypto') {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Add money" subtitle="Receive USDC, USDT, SOL or ETH from any wallet or exchange." />
+        {tabs}
+        <ReceiveCrypto />
+      </div>
+    );
+  }
 
   if (needsLink) {
     return (
       <div className="space-y-6">
         <PageHeader title="Add money" />
+        {tabs}
         <div className="surface rounded-3xl p-6 text-center">
-          <p className="muted text-[15px] leading-relaxed mb-4">Link your Telegram account to add money from the web app.</p>
+          <p className="muted text-[15px] leading-relaxed mb-4">Link your Telegram account to add money by bank transfer from the web app.</p>
           <Link href="/app/settings" className="btn-primary">Open Settings</Link>
         </div>
       </div>
@@ -50,6 +81,7 @@ export default function AddMoneyPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Add money" subtitle="Send naira from any Nigerian bank app — it arrives in your wallet as USDC." />
+      {tabs}
       {error ? (
         <div className="surface rounded-2xl p-5 text-[15px]">{error} <button onClick={() => { setError(''); load(); }} className="underline font-semibold text-terracotta">Retry</button></div>
       ) : !ov ? (

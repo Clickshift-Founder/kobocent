@@ -7,7 +7,7 @@ import {
   type Balances, type History, type LocalProfile,
 } from '@/lib/kc';
 import { SectionTitle, Skeleton, Sheet, ActivityRow, EmptyState, CopyButton } from '@/components/app/ui';
-import { IconPlus, IconSend, IconBolt, IconBank, IconLeaf, IconBridge, IconChart, IconReceive, IconEye, IconTelegram, IconGift, IconChevron, IconSwap, IconWallet, IconTrophy } from '@/components/app/Icons';
+import { IconPlus, IconSend, IconBolt, IconBank, IconLeaf, IconBridge, IconChart, IconCard, IconEye, IconTelegram, IconGift, IconChevron, IconSwap, IconWallet, IconTrophy } from '@/components/app/Icons';
 import { InstallCard } from '@/components/app/InstallCard';
 import { useLiveRefresh } from '@/lib/useLiveRefresh';
 
@@ -127,7 +127,7 @@ export default function HomePage() {
           </div>
           <div className="mt-6 grid grid-cols-2 gap-3 sm:max-w-sm">
             <Link href="/app/add-money" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white text-terracotta-dark font-semibold min-h-[48px]"><IconPlus size={18} />Add money</Link>
-            <Link href="/app/receive" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/15 hover:bg-white/25 font-semibold min-h-[48px]"><IconReceive size={18} />Receive</Link>
+            <Link href="/app/card" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/15 hover:bg-white/25 font-semibold min-h-[48px]"><IconCard size={18} />Card</Link>
           </div>
         </div>
       </section>
