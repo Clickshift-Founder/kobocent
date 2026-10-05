@@ -63,13 +63,22 @@ const ALLOWED: Record<string, Array<'GET' | 'POST'>> = {
   'bridge/out/quote': ['POST'],
   'bridge/out/execute': ['POST'],
   'bridge/orders': ['GET'],
+  // Kobo Pal + live human support (2026-10-05)
+  'pal': ['GET'],
+  'pal/chat': ['POST'],
+  'pal/tip': ['POST'],
+  'support/open': ['POST'],
+  'support/case': ['GET'],
+  'support/message': ['POST'],
+  'support/close': ['POST'],
+  'support/rate': ['POST'],
 };
 // Routes with an id in the path.
 const ALLOWED_PATTERNS: Array<{ re: RegExp; methods: Array<'GET' | 'POST'> }> = [
   { re: /^withdraw\/jobs\/[0-9a-f-]{36}$/, methods: ['GET'] },
   { re: /^receipts\/(withdrawal|utility|bill)\/[A-Za-z0-9_-]{4,100}$/, methods: ['GET'] },
   { re: /^bills\/jobs\/[0-9a-f-]{36}$/, methods: ['GET'] },
-  { re: /^(send|swap|earn|transfer|bridge)\/jobs\/[0-9a-f-]{36}$/, methods: ['GET'] },
+  { re: /^(send|swap|earn|transfer|bridge|pal)\/jobs\/[0-9a-f-]{36}$/, methods: ['GET'] },
   { re: /^bridge\/orders\/0x[0-9a-fA-F]{64}$/, methods: ['GET'] },
 ];
 function allowed(key: string, method: 'GET' | 'POST') {

@@ -5,7 +5,7 @@
 // Tour steps point at elements carrying data-tour="…"; a missing target shows the step centred.
 // Wording rules (CLAUDE.md): never "non-custodial", never "bank-grade"; $SHIFT is a usage-reward point.
 
-export const TOUR_VERSION = 1;
+export const TOUR_VERSION = 2;   // 2: Kobo Pal + live support (2026-10-05)
 export const tourKey = () => `tour@${TOUR_VERSION}`;
 
 export interface TourStep { target?: string; title: string; body: string; bullets?: string[] }
@@ -91,6 +91,16 @@ export const TOUR: TourStep[] = [
       '0.2% cashback on bank transfers, bills and withdrawals.',
       '$SHIFT points for using the app — climb the weekly, monthly and all-time leaderboards. ($SHIFT is a usage-reward point.)',
       'Invite friends and earn 20% of the fees they pay.',
+    ],
+  },
+  {
+    target: 'pal',
+    title: 'Kobo Pal — ask anything',
+    body: 'Tap Pal at the top of any screen. Ask how to do something, check on a payment, or get advice on your money — answers come with buttons that take you straight there.',
+    bullets: [
+      'Free answers every day.',
+      'Tip Pal to unlock Pal VIP: money check-ups, Earn plans, spending insights and market deep-dives from a far more capable AI.',
+      'Need a person? Tap “Talk to a person” — someone from the Kobocent team joins the chat by name.',
     ],
   },
   {

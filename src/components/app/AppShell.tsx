@@ -8,6 +8,7 @@ import { IconHome, IconActivity, IconCard, IconSettings, IconTelegram, IconLogou
 import { initInstallCapture, registerServiceWorker } from '@/lib/pwa';
 import { SecurityProvider } from './SecurityProvider';
 import { GuideProvider } from './GuideProvider';
+import { PalButton } from './Pal';
 import { Suspense } from 'react';
 import { BOT_URL, loadProfile, clearProfile, type LocalProfile } from '@/lib/kc';
 
@@ -64,6 +65,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           ))}
         </nav>
+        <PalButton label="Ask Kobo Pal" className="mb-1" />
         <a href={BOT_URL} target="_blank" rel="noopener noreferrer"
            className="flex items-center gap-3 rounded-xl px-3 py-3 text-[14px] muted hover:text-terracotta">
           <IconTelegram />Open in Telegram
@@ -92,7 +94,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <LogoMark size={28} className="text-terracotta" />
               <span className="font-display font-bold text-[19px] text-ink dark:text-cream-warm">Kobocent</span>
             </Link>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <PalButton />
               <ThemeToggle compact />
               <Link href="/app/settings" aria-label="Settings"><Avatar profile={profile} size={34} /></Link>
             </div>
