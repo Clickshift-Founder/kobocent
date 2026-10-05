@@ -57,9 +57,14 @@ export function HoldToConfirm({ label, onConfirm, busy }: { label: string; onCon
         // Ghost-tap guard (2026-10-04): confirming closes the sheet while the finger is still down;
         // lifting it then "clicks" whatever is underneath — the bottom tab bar (Swap ended up on
         // Receive). Swallow that one click.
+        // 2026-10-05: no fixed window — a thumb held past it still clicked the tab bar (landed on
+        // Rewards). Swallow clicks until 600 ms after the finger actually lifts (10 s backstop).
         const swallow = (ev: Event) => { ev.preventDefault(); ev.stopPropagation(); };
-        window.addEventListener('click', swallow, { capture: true, once: true });
-        window.setTimeout(() => window.removeEventListener('click', swallow, { capture: true }), 1500);
+        const release = () => window.setTimeout(() => window.removeEventListener('click', swallow, { capture: true }), 600);
+        window.addEventListener('click', swallow, { capture: true });
+        window.addEventListener('pointerup', release, { capture: true, once: true });
+        window.addEventListener('keyup', release, { capture: true, once: true });
+        window.setTimeout(() => window.removeEventListener('click', swallow, { capture: true }), 10_000);
         onConfirm();
         return;
       }
