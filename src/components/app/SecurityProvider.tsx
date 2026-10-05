@@ -51,7 +51,10 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     load();
     const onChange = () => load();
     window.addEventListener('kc-security-changed', onChange);
-    return () => window.removeEventListener('kc-security-changed', onChange);
+    // Settings → "Create PIN" (someone who tapped "Later" or closed the first prompt).
+    const onCreate = () => { try { sessionStorage.removeItem('kc-pin-later'); } catch { /* ignore */ } setAsk({ mode: 'setup', reason: 'first' }); };
+    window.addEventListener('kc-pin-create', onCreate);
+    return () => { window.removeEventListener('kc-security-changed', onChange); window.removeEventListener('kc-pin-create', onCreate); };
   }, [load]);
 
   // ── Lock screen: on app open, then after the idle timeout ──

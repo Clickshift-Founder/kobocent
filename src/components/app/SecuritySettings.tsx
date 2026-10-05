@@ -51,6 +51,7 @@ export function SecuritySettings({ account, onAccount }: { account: Account | nu
               <div className="text-[13.5px] muted">{!sec ? 'Loading…' : !sec.hasPin ? 'Not set — payments will ask you to create one.' : sec.enabled ? 'On' : 'Off'}</div>
             </div>
             {sec?.hasPin && <button onClick={() => setChangePin(true)} className="text-[14px] font-semibold text-terracotta min-h-[44px] px-2">Change</button>}
+            {sec && !sec.hasPin && <button onClick={() => window.dispatchEvent(new Event('kc-pin-create'))} className="btn-primary min-h-[44px] px-4 text-[14px]">Create PIN</button>}
           </div>
           {sec?.hasPin && (
             <>
