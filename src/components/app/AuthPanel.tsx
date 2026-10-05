@@ -10,7 +10,7 @@ import { saveProfile, BOT_URL, type Account } from '@/lib/kc';
 
 /**
  * Sign in / create account. One tap with Telegram: existing users land on their own wallet
- * and history (same account as the bot); new users get an account and pick Import or Create.
+ * and history (same account as the bot); new users get an account and Kobocent creates their wallets (import removed 2026-10-05).
  * Phone and Google sign-in come later; until then people without Telegram can leave a number.
  */
 export function AuthPanel({ mode }: { mode: 'signin' | 'signup' }) {
