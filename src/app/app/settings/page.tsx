@@ -8,6 +8,8 @@ import { TelegramLogin, type TelegramUser } from '@/components/app/TelegramLogin
 import { IconShield, IconTelegram, IconLogout, IconChevron, IconEye, IconGift } from '@/components/app/Icons';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { PageHeader } from '@/components/app/PageHeader';
+import { SecuritySettings } from '@/components/app/SecuritySettings';
+import { GoogleButton, googleEnabled } from '@/components/app/GoogleButton';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -38,7 +40,7 @@ export default function SettingsPage() {
         <Avatar profile={profile} size={52} />
         <div className="min-w-0 flex-1">
           <div className="font-semibold text-[17px] text-ink dark:text-cream-warm truncate">{profile?.firstName || 'Your account'}</div>
-          <div className="muted text-[14px] truncate">{profile?.username ? `@${profile.username}` : 'Signed in with Telegram'}</div>
+          <div className="muted text-[14px] truncate">{profile?.username ? `@${profile.username}` : account?.email || (account?.telegramLinked ? 'Signed in with Telegram' : 'Signed in with Google')}</div>
         </div>
         {account?.telegramLinked && <span className="rounded-full bg-[#58834C]/10 text-[#58834C] px-3 py-1 text-[12.5px] font-semibold">Telegram linked</span>}
       </section>
@@ -62,13 +64,15 @@ export default function SettingsPage() {
         </div>
       </section>
 
+      <SecuritySettings account={account} onAccount={setAccount} />
+
       {/* Telegram */}
-      <section>
+      <section id="telegram" className="scroll-mt-20">
         <div className="eyebrow mb-2">Telegram</div>
         <div className="surface rounded-3xl p-5 space-y-4">
           {account && !account.telegramLinked ? (
             <>
-              <p className="text-[14.5px] text-ink dark:text-cream-warm">Link Telegram to use the same wallet in @{BOT} and earn $SHIFT points and referral commission.</p>
+              <p className="text-[14.5px] text-ink dark:text-cream-warm">Connect Telegram so you never lose access to your wallet — and earn referral bonuses and $SHIFT points, with @{BOT} on the go.</p>
               {linkCode ? (
                 <div className="rounded-2xl bg-cream dark:bg-night p-4 text-center">
                   <div className="font-mono text-[28px] tracking-[0.2em] font-semibold text-ink dark:text-cream-warm">{linkCode.code}</div>
@@ -127,10 +131,12 @@ function RecoveryPhraseSheet({ open, onClose }: { open: boolean; onClose: () => 
     onClose();
   }
 
-  async function onAuth(user: TelegramUser) {
+  // Telegram or Google confirmation (sign-in v2) → 5-minute re-auth token → the phrase, once.
+  const onAuth = (user: TelegramUser) => reveal(user);
+  async function reveal(body: unknown) {
     setBusy(true); setError('');
     try {
-      const { reauthToken } = await kc<{ reauthToken: string }>('auth/reauth', { method: 'POST', body: user });
+      const { reauthToken } = await kc<{ reauthToken: string }>('auth/reauth', { method: 'POST', body });
       const r = await kc<{ phrase: string }>('wallet/recovery-phrase', { headers: { 'X-Reauth-Token': reauthToken } });
       setPhrase(r.phrase.split(/\s+/));
       setStep('show');
@@ -155,8 +161,11 @@ function RecoveryPhraseSheet({ open, onClose }: { open: boolean; onClose: () => 
       )}
       {step === 'confirm' && (
         <div className="space-y-4">
-          <p className="text-[14px] muted">Confirm it is you with Telegram. We will also send you a Telegram alert when the phrase is shown.</p>
-          <div className={busy ? 'opacity-50 pointer-events-none' : ''}><TelegramLogin onAuth={onAuth} /></div>
+          <p className="text-[14px] muted">Confirm it is you with Telegram or Google. If Telegram is connected, we also send you an alert when the phrase is shown.</p>
+          <div className={busy ? 'opacity-50 pointer-events-none' : ''}>
+            <TelegramLogin onAuth={onAuth} />
+            {googleEnabled() && <div className="mt-3"><GoogleButton onCredential={(credential) => reveal({ credential })} /></div>}
+          </div>
           {error && <p role="alert" className="text-[13.5px] text-[#B84A40]">{error}</p>}
         </div>
       )}

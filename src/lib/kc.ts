@@ -14,6 +14,9 @@ export interface Account {
   hasWallet?: boolean;
   walletAddress: string | null;
   createdAt: number | null;
+  googleLinked?: boolean;
+  email?: string | null;
+  displayName?: string | null;
 }
 
 export interface Balances {
@@ -84,6 +87,7 @@ export class KcError extends Error {
 }
 
 export async function kc<T>(path: string, init: { method?: 'GET' | 'POST'; body?: unknown; headers?: Record<string, string> } = {}): Promise<T> {
+  const { requestPinToken } = await import('./pin');
   const res = await fetch(`/api/kc/${path.replace(/^\//, '')}`, {
     method: init.method || 'GET',
     headers: { ...(init.body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...(init.headers || {}) },
@@ -94,6 +98,12 @@ export async function kc<T>(path: string, init: { method?: 'GET' | 'POST'; body?
   const sessionGone = res.status === 401 && /session expired|sign in required|account not found/i.test(String(data.error || ''));
   if (sessionGone && !path.startsWith('wallet/recovery-phrase') && path !== 'auth/reauth') {
     if (typeof window !== 'undefined') window.location.href = `/signin?next=${encodeURIComponent(window.location.pathname)}`;
+  }
+  // App PIN (sign-in v2): a payment that needs the PIN gets 423; ask the PIN pad, retry once with the token.
+  if (res.status === 423 && (data.code === 'PIN_REQUIRED' || data.code === 'PIN_SETUP') && !(init.headers || {})['X-Kc-Pin']) {
+    const token = await requestPinToken(data.code as 'PIN_REQUIRED' | 'PIN_SETUP');
+    if (token) return kc<T>(path, { ...init, headers: { ...(init.headers || {}), 'X-Kc-Pin': token } });
+    throw new KcError(423, 'Enter your PIN to continue', data);
   }
   if (!res.ok) throw new KcError(res.status, String(data.error || 'Something went wrong — please try again'), data);
   return data as T;
