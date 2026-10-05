@@ -188,6 +188,7 @@ function SwapProgress({ jobId, onFinish }: { jobId: string; onFinish: () => void
   const r = job?.result;
   if (job?.status === 'done' && r) {
     if (r.ok) return <Outcome tone="success" title="Swap complete" body={`${fmt(job.meta.amount, META[job.meta.from].dp)} ${job.meta.from} → ${job.meta.to}. Your new balance shows on Home.`} signature={r.signature} actions={<><Link href="/app" onClick={onFinish} className="btn-primary w-full">Done</Link><button onClick={onFinish} className="block w-full text-center text-[14px] font-semibold text-terracotta min-h-[44px]">Swap again</button></>} />;
+    if (r.code === 'OUTCOME_UNKNOWN') return <Outcome tone="warn" title="Sent — confirming" body="Your swap was sent but the network hasn’t confirmed it to us yet. Check your balance in a minute before trying again — it has very likely gone through." signature={r.signature} actions={<><Link href="/app" onClick={onFinish} className="btn-primary w-full">Check balance</Link><button onClick={onFinish} className="btn-ghost w-full">Close</button></>} />;
     return <Outcome tone="error" title="The swap didn’t go through" body={`${r.error || 'Something went wrong'}. Check your balance before trying again.`} actions={<><button onClick={onFinish} className="btn-primary w-full">Try again</button><Link href="/app" onClick={onFinish} className="btn-ghost w-full">Check balance</Link></>} />;
   }
   return (
