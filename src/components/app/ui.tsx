@@ -101,9 +101,11 @@ function describe(i: HistoryItem): { title: string; sub: string; value: string; 
     case 'yield':
       return { title: `Earn · ${i.plan || 'staking'}`, sub: i.earned ? `Earned ${amount(i.earned)} ${i.asset || ''}` : 'Staking', value: `${amount(i.amount)} ${i.asset || ''}`, Icon: IconLeaf, negative: false };
     case 'bridge':
-      return { title: `Bridged in${i.fromChain ? ` from ${i.fromChain}` : ''}`, sub: i.asset || 'Bridge', value: usd(i.amountUsd), Icon: IconBridge, negative: false };
+      return i.direction === 'out'
+        ? { title: `Bridged out to ${i.chainName || i.chain || 'another chain'}`, sub: `USDC → ${i.asset || ''}`.trim(), value: i.amount != null ? `${amount(i.amount)} USDC` : usd(i.amountUsd), Icon: IconBridge, negative: true }
+        : { title: `Bridged in${i.chainName || i.chain ? ` from ${i.chainName || i.chain}` : ''}`, sub: i.asset ? `${i.asset} → USDC` : 'Bridge', value: i.receive != null ? `≈ ${amount(i.receive)} USDC` : usd(i.amountUsd), Icon: IconBridge, negative: false };
     case 'wallet_transfer':
-      return { title: `Sent ${i.asset || ''}`.trim(), sub: i.chain ? `On ${i.chain}` : 'Wallet transfer', value: usd(i.amountUsd), Icon: IconSend, negative: true };
+      return { title: `Sent ${i.asset || ''}`.trim(), sub: i.chainName || i.chain ? `On ${i.chainName || i.chain}` : 'Wallet transfer', value: i.amount != null ? `${amount(i.amount)} ${i.asset || ''}`.trim() : usd(i.amountUsd), Icon: IconSend, negative: true };
     case 'sniper':
       return { title: `Snipe ${i.asset || 'token'}`, sub: 'Sniper', value: i.amountSol ? `${amount(i.amountSol)} SOL` : '—', Icon: IconChart, negative: true };
     case 'copy_trade':
@@ -188,6 +190,8 @@ export function ActivityRow({ item }: { item: HistoryItem }) {
   const [open, setOpen] = useState(false);
   // Withdrawals open a detail sheet with the receipt (proof of payment).
   const tappable = (item.kind === 'withdrawal' || item.kind === 'utility' || item.kind === 'bank_transfer') && !!item.reference;
+  // Transfers and bridges open a detail sheet with the explorer link — proof they sent it (2026-10-05).
+  const onchain = (item.kind === 'wallet_transfer' || item.kind === 'bridge') && !!(item.txHash || item.reference);
   const row = (
     <>
       <span className="grid place-items-center h-11 w-11 shrink-0 rounded-2xl bg-cream-warm dark:bg-night text-terracotta">
@@ -205,6 +209,7 @@ export function ActivityRow({ item }: { item: HistoryItem }) {
       </div>
     </>
   );
+  if (onchain) return <OnchainRow item={item} title={d.title} value={d.value} row={row} />;
   if (!tappable) return <li className="flex items-center gap-3.5 py-3.5">{row}</li>;
   const done = !item.status || /complet|success/i.test(item.status);
   return (
@@ -226,6 +231,44 @@ export function ActivityRow({ item }: { item: HistoryItem }) {
           {done
             ? <ReceiptButton reference={item.reference!} kind={item.kind === 'utility' ? 'utility' : item.kind === 'bank_transfer' ? 'bill' : 'withdrawal'} className="btn-primary w-full" />
             : <p className="text-center muted text-[14px]">The receipt is ready once this payment is completed.</p>}
+        </div>
+      </Sheet>
+    </li>
+  );
+}
+
+/** Detail sheet for a wallet transfer or a bridge: amounts, where it went, and the explorer link to share. */
+function OnchainRow({ item, title, value, row }: { item: HistoryItem; title: string; value: string; row: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const hash = item.txHash || (item.kind === 'wallet_transfer' ? item.reference : null);
+  const statusLabel = !item.status ? null : /fulfil|sent|complet|success/i.test(item.status) ? (item.kind === 'bridge' ? 'Arrived' : 'Sent')
+    : /confirm|submit|pend|stuck/i.test(item.status) ? 'In progress' : /cancel/i.test(item.status) ? 'Refunded' : /fail|abandon/i.test(item.status) ? 'Needs attention' : item.status;
+  async function share() {
+    const url = item.explorerUrl || item.trackUrl;
+    if (!url) return;
+    try { if (navigator.share) await navigator.share({ title: 'Kobocent transfer', text: title, url }); else await navigator.clipboard.writeText(url); } catch { /* cancelled */ }
+  }
+  return (
+    <li>
+      <button onClick={() => setOpen(true)} className="w-full flex items-center gap-3.5 py-3.5 min-h-[64px] active:opacity-70">{row}</button>
+      <Sheet open={open} onClose={() => setOpen(false)} title={title}>
+        <div className="text-center py-2">
+          <div className="font-display font-bold text-[30px] text-ink dark:text-cream-warm">{value}</div>
+          <div className="muted text-[14px]">{item.at ? timeLabel(item.at) : ''}{statusLabel ? ` · ${statusLabel}` : ''}</div>
+        </div>
+        <dl className="mt-3 rounded-2xl bg-cream-warm dark:bg-night p-4 grid grid-cols-[auto,1fr] gap-x-4 gap-y-2 text-[14px]">
+          {item.chainName || item.chain ? (<><dt className="muted">Network</dt><dd className="text-right">{item.chainName || item.chain}</dd></>) : null}
+          {item.receive != null ? (<><dt className="muted">{item.kind === 'bridge' && item.direction !== 'out' ? 'You receive' : 'Received'}</dt><dd className="text-right font-mono">{amount(item.receive)} {item.kind === 'bridge' ? (item.direction === 'out' ? item.asset : 'USDC') : item.asset}</dd></>) : null}
+          {item.fee != null ? (<><dt className="muted">Fee</dt><dd className="text-right font-mono">{amount(item.fee)} {item.asset || ''}</dd></>) : null}
+          {item.counterparty ? (<><dt className="muted">To</dt><dd className="text-right font-mono text-[12.5px] break-all">{item.counterparty}</dd></>) : null}
+          {hash ? (<><dt className="muted">Transaction</dt><dd className="text-right font-mono text-[12.5px] break-all">{hash}</dd></>) : null}
+          {item.kind === 'bridge' && item.reference ? (<><dt className="muted">Order</dt><dd className="text-right font-mono text-[12.5px] break-all">{item.reference}</dd></>) : null}
+        </dl>
+        <div className="mt-5 grid gap-2">
+          {item.explorerUrl && <a href={item.explorerUrl} target="_blank" rel="noopener noreferrer" className="btn-primary w-full">View on explorer</a>}
+          {item.trackUrl && <a href={item.trackUrl} target="_blank" rel="noopener noreferrer" className={item.explorerUrl ? 'btn-ghost w-full' : 'btn-primary w-full'}>Track on deBridge</a>}
+          {(item.explorerUrl || item.trackUrl) && <button onClick={share} className="block w-full text-center text-[14px] font-semibold text-terracotta min-h-[44px]">Share proof</button>}
+          {hash && <div className="flex justify-center"><CopyButton value={hash} label="Copy transaction ID" /></div>}
         </div>
       </Sheet>
     </li>

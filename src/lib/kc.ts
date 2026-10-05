@@ -49,6 +49,14 @@ export interface HistoryItem {
   feeUsd?: number | null;
   pnlUsd?: number | null;
   counterparty?: string | null;
+  // Transfers and bridges (2026-10-05): proof of sending.
+  direction?: 'in' | 'out' | null;
+  chainName?: string | null;
+  receive?: number | null;
+  fee?: number | null;
+  txHash?: string | null;
+  explorerUrl?: string | null;
+  trackUrl?: string | null;
   bank?: string | null;
   service?: string | null;
   plan?: string | null;
