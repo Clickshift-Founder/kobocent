@@ -52,6 +52,8 @@ const ALLOWED: Record<string, Array<'GET' | 'POST'>> = {
   'bridge': ['GET'],
   'bridge/quote': ['POST'],
   'bridge/execute': ['POST'],
+  'bridge/out/quote': ['POST'],
+  'bridge/out/execute': ['POST'],
   'bridge/orders': ['GET'],
 };
 // Routes with an id in the path.

@@ -3,41 +3,57 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { kc, KcError, amount as fmt } from '@/lib/kc';
 import { PageHeader } from '@/components/app/PageHeader';
-import { Sheet, Skeleton, CopyButton } from '@/components/app/ui';
-import { IconBridge, IconChevron, IconCheck } from '@/components/app/Icons';
+import { Sheet, Skeleton } from '@/components/app/ui';
+import { IconBridge, IconChevron, IconCheck, IconBank, IconLeaf, IconSend, IconSwap } from '@/components/app/Icons';
 import { newKey, store, read, HoldToConfirm, Outcome } from '@/components/app/money';
 
 /**
- * Bridge — move money between chains (deBridge). Two directions, one layout:
+ * Bridge — move money between chains (deBridge). One layout, two directions:
  *   Bring in  — ETH/BNB/MATIC or USDC/USDT on Ethereum, BNB Chain, Polygon, Arbitrum, Robinhood Chain
- *               → USDC on Solana, spendable in Kobocent. Live (backend /api/v1/bridge, same engine as Telegram).
- *   Send out  — USDC → another chain. Same screen reversed; not executable yet.
- * Live quote, hold to bridge, then a tracker that follows the deBridge order until the USDC lands
- * (order progress is durable on the server — it survives refreshes and restarts).
+ *               → USDC on Solana, spendable in Kobocent.
+ *   Send out  — your USDC → USDC/USDT or the network coin on those chains, to your own 0x wallet or another.
+ * Every fee is paid in stablecoin (founder, 2026-10-05): if the user lacks the network coin, Kobocent
+ * covers the network costs and takes the USDC equivalent — never an "add gas" step.
+ * Backend /api/v1/bridge (src/services/bridge.js — same code as Telegram). Order progress is durable.
  */
 
-interface Asset { id: string; symbol: string; native: boolean; decimals: number; balance: number | null }
-interface Chain { key: string; label: string; native: string; minRecommendedUsd: number; assets: Asset[] }
-interface Order { direction: 'in' | 'out'; assetKey: string; chainKey: string; symbol: string | null; amountIn: number; estOut: number | null; orderId: string; srcTx: string | null; status: string; dlnStatus: string | null; createdAt: number; completedAt: number | null }
-interface Options { in: { chains: Chain[]; evmAddress: string | null }; out: { available: boolean }; recent: Order[] }
-interface Quote { assetKey: string; chainKey: string; chainLabel: string; symbol: string; native: string; amountIn: number; usdIn: number | null; receive: number; grossUsdc: number; kobocentFee: number; fixFee: number; gasEstimate: number; etaSeconds: number | null; minRecommendedUsd: number; smallWarning: boolean }
-interface QErr { code?: string; error?: string; gasNeeded?: number; native?: string; address?: string }
-interface Result { ok: boolean; code?: string; error?: string; txHash?: string | null; orderId?: string | null; amountSent?: number; reduced?: boolean; receive?: number; symbol?: string; chainLabel?: string; explorerUrl?: string | null; trackUrl?: string | null; q?: Quote }
-interface Job { id: string; status: 'running' | 'done'; stage: string; meta: { assetKey: string; amount: number }; result: Result | null }
+type Dir = 'in' | 'out';
+interface Asset { id: string; symbol: string; native: boolean; decimals?: number; balance?: number | null }
+interface Chain { key: string; label: string; native: string; minRecommendedUsd?: number; assets: Asset[] }
+interface Order { direction: Dir; assetKey: string; chainKey: string; symbol: string | null; amountIn: number; estOut: number | null; orderId: string; srcTx: string | null; status: string; dlnStatus: string | null; createdAt: number; completedAt: number | null }
+interface Options {
+  in: { chains: Chain[]; evmAddress: string | null };
+  out: { available: boolean; usdc: number | null; sol: number | null; evmAddress: string | null; minUsd: number; recommendedUsd: number; chains: Chain[] };
+  recent: Order[];
+}
+interface InQuote { direction: 'in'; assetKey: string; chainLabel: string; symbol: string; native: string; amountIn: number; usdIn: number | null; receive: number; kobocentFee: number; fixFee: number; gasEstimate: number; gasFront: { amount: number; usd: number } | null; etaSeconds: number | null; minRecommendedUsd: number; smallWarning: boolean }
+interface OutQuote { direction: 'out'; assetKey: string; chainLabel: string; symbol: string; amountIn: number; receive: number; kobocentFee: number; solCost: number; solCostUsd: number | null; coveredFromUsdc: number; totalUsdc: number; etaSeconds: number | null; recipient: string; ownRecipient: boolean; minRecommendedUsd: number; smallWarning: boolean }
+type Quote = InQuote | OutQuote;
+interface QErr { code?: string; error?: string }
+interface Result { ok: boolean; code?: string; error?: string; txHash?: string | null; orderId?: string | null; q?: Quote }
+interface Job { id: string; status: 'running' | 'done'; stage: string; meta: { assetKey: string; amount: number; direction?: Dir }; result: Result | null }
 
 const JOB_KEY = 'kc-bridge-job';
 const ORDER_KEY = 'kc-bridge-order';
 const CHAIN_COLOR: Record<string, string> = { ETH: '#627EEA', BNB: '#F0B90B', POLYGON: '#8247E5', ARBITRUM: '#28A0F0', ROBINHOOD: '#58834C', SOLANA: '#20211F' };
-const dpOf = (a: { native: boolean; symbol: string }) => (a.native ? 6 : 2);
+const CHAIN_LABEL: Record<string, string> = { ETH: 'Ethereum', BNB: 'BNB Chain', POLYGON: 'Polygon', ARBITRUM: 'Arbitrum', ROBINHOOD: 'Robinhood Chain' };
+const dpOf = (a: { native: boolean }) => (a.native ? 6 : 2);
 const eta = (s: number | null) => (!s ? 'a few minutes' : s < 90 ? 'about a minute' : `about ${Math.round(s / 60)} minutes`);
+const cleanAmt = (v: string, dp: number) => { let s = v.replace(/[^\d.]/g, ''); const [i, ...r] = s.split('.'); s = r.length ? `${i}.${r.join('').slice(0, dp)}` : i; return s.slice(0, 14); };
 
 export default function BridgePage() {
   const [opts, setOpts] = useState<Options | null>(null);
   const [error, setError] = useState('');
   const [needsLink, setNeedsLink] = useState(false);
-  const [dir, setDir] = useState<'in' | 'out'>('in');
-  const [chainKey, setChainKey] = useState('ARBITRUM');
-  const [assetId, setAssetId] = useState('usdc_arb');
+  const [dir, setDir] = useState<Dir>('in');
+  // in
+  const [inChain, setInChain] = useState('ARBITRUM');
+  const [inAsset, setInAsset] = useState('usdc_arb');
+  // out
+  const [outAsset, setOutAsset] = useState('usdc_arb');
+  const [toOther, setToOther] = useState(false);
+  const [recipient, setRecipient] = useState('');
+  // shared
   const [amt, setAmt] = useState('');
   const [useMax, setUseMax] = useState(false);
   const [quote, setQuote] = useState<Quote | null>(null);
@@ -53,71 +69,91 @@ export default function BridgePage() {
 
   const load = useCallback(() => kc<Options>('bridge').then(o => {
     setOpts(o);
-    // Start on the first chain/asset the user actually holds.
     const held = o.in.chains.flatMap(c => c.assets.filter(a => (a.balance || 0) > 0).map(a => ({ c: c.key, a: a.id })));
-    if (held.length) { setChainKey(held[0].c); setAssetId(held[0].a); }
+    if (held.length) { setInChain(held[0].c); setInAsset(held[0].a); }
   }).catch(e => {
     if (e instanceof KcError && e.status === 409) setNeedsLink(true); else setError(e instanceof Error ? e.message : 'Could not load Bridge');
   }), []);
   useEffect(() => { setJobId(read(JOB_KEY)); setOrderId(read(ORDER_KEY)); load(); }, [load]);
 
-  const chain = opts?.in.chains.find(c => c.key === chainKey) || null;
-  const asset = chain?.assets.find(a => a.id === assetId) || chain?.assets[0] || null;
+  const inC = opts?.in.chains.find(c => c.key === inChain) || null;
+  const inA = inC?.assets.find(a => a.id === inAsset) || inC?.assets[0] || null;
+  const outC = opts?.out.chains.find(c => c.assets.some(a => a.id === outAsset)) || null;
+  const outA = outC?.assets.find(a => a.id === outAsset) || null;
   const value = Number(amt) || 0;
+  const recipientOk = !toOther || /^0x[a-fA-F0-9]{40}$/.test(recipient.trim());
+
+  function switchDir(d: Dir) { setDir(d); setAmt(''); setUseMax(false); setQuote(null); setQErr(null); }
 
   useEffect(() => {
     setQErr(null);
-    if (dir !== 'in' || !asset || (!value && !useMax)) { setQuote(null); return; }
+    const assetId = dir === 'in' ? inA?.id : outA?.id;
+    if (!assetId || (!value && !useMax) || !recipientOk) { setQuote(null); return; }
     let live = true; setBusy(true);
+    const path = dir === 'in' ? 'bridge/quote' : 'bridge/out/quote';
+    const body = dir === 'in' ? { assetKey: assetId, amount: value, max: useMax } : { assetKey: assetId, amount: value, max: useMax, recipient: toOther ? recipient.trim() : null };
     const t = setTimeout(() => {
-      kc<Quote>('bridge/quote', { method: 'POST', body: { assetKey: asset.id, amount: value, max: useMax } })
+      kc<Quote>(path, { method: 'POST', body })
         .then(q => { if (!live) return; setQuote(q); if (useMax) setAmt(String(q.amountIn)); })
         .catch(e => { if (!live) return; setQuote(null); setQErr(e instanceof KcError ? (e.data as QErr) : { error: e instanceof Error ? e.message : 'No quote right now' }); })
         .finally(() => { if (live) setBusy(false); });
-    }, 600);
+    }, 650);
     return () => { live = false; clearTimeout(t); };
-  }, [dir, asset, value, useMax]);
-
-  function pick(c: Chain, a: Asset) { setChainKey(c.key); setAssetId(a.id); setAmt(''); setUseMax(false); setQuote(null); setPicker(false); }
+  }, [dir, inA, outA, value, useMax, toOther, recipient, recipientOk]);
 
   async function start() {
     if (!quote) return;
     setStarting(true); setStartErr('');
     try {
-      const job = await kc<Job>('bridge/execute', { method: 'POST', body: { assetKey: quote.assetKey, amount: quote.amountIn, expectReceive: quote.receive, idempotencyKey: keyRef.current } });
+      const path = quote.direction === 'in' ? 'bridge/execute' : 'bridge/out/execute';
+      const body = quote.direction === 'in'
+        ? { assetKey: quote.assetKey, amount: quote.amountIn, expectReceive: quote.receive, idempotencyKey: keyRef.current }
+        : { assetKey: quote.assetKey, amount: quote.amountIn, expectReceive: quote.receive, recipient: quote.ownRecipient ? null : quote.recipient, idempotencyKey: keyRef.current };
+      const job = await kc<Job>(path, { method: 'POST', body });
       setReview(false); store(JOB_KEY, job.id); setJobId(job.id);
     } catch (e) { setStartErr(e instanceof Error ? e.message : 'Could not start the bridge'); keyRef.current = newKey(); }
     finally { setStarting(false); }
   }
-  function onSubmitted(oid: string | null) {
-    store(JOB_KEY, null); setJobId(null);
-    if (oid) { store(ORDER_KEY, oid); setOrderId(oid); }
-  }
-  function finish() {
-    store(JOB_KEY, null); store(ORDER_KEY, null); setJobId(null); setOrderId(null);
-    setAmt(''); setUseMax(false); setQuote(null); keyRef.current = newKey(); load();
-  }
+  const onSubmitted = useCallback((oid: string | null) => { store(JOB_KEY, null); setJobId(null); if (oid) { store(ORDER_KEY, oid); setOrderId(oid); } }, []);
+  function finish() { store(JOB_KEY, null); store(ORDER_KEY, null); setJobId(null); setOrderId(null); setAmt(''); setUseMax(false); setQuote(null); keyRef.current = newKey(); load(); }
 
   if (needsLink) return <div className="space-y-6"><PageHeader title="Bridge" /><div className="surface rounded-3xl p-6 text-center"><p className="muted text-[15px] mb-4">Link your Telegram account to bridge from the web app.</p><Link href="/app/settings" className="btn-primary">Open Settings</Link></div></div>;
 
-  const noBalances = opts && opts.in.chains.every(c => c.assets.every(a => !a.balance));
+  const noInBalances = opts && opts.in.chains.every(c => c.assets.every(a => !a.balance));
+  const amountInput = (dp: number, label: string) => (
+    <input value={amt} onChange={e => { setUseMax(false); setAmt(cleanAmt(e.target.value, dp)); }} inputMode="decimal" placeholder="0" aria-label={label}
+      className="flex-1 min-w-0 bg-transparent outline-none font-display font-bold text-[36px] text-ink dark:text-cream-warm" />
+  );
+  const receiveBox = (sym: string, color: string, sub: string) => (
+    <div className="surface rounded-3xl p-5 mt-2">
+      <div className="text-[13px] muted">{sub}</div>
+      <div className="mt-2 flex items-center gap-3">
+        <div className="flex-1 min-w-0 font-display font-bold text-[36px] tabular-nums text-ink dark:text-cream-warm truncate">
+          {!value && !useMax ? <span className="text-cream-border dark:text-night-border">0</span> : busy || !quote ? <span className="inline-block h-9 w-32 rounded-xl bg-cream-warm dark:bg-night animate-pulse align-middle" /> : `≈ ${fmt(quote.receive, sym === 'USDC' || sym === 'USDT' ? 2 : 6)}`}
+        </div>
+        <span className="inline-flex items-center gap-2 rounded-full bg-cream-warm dark:bg-night pl-1.5 pr-3 min-h-[44px] font-semibold text-[15px]"><span className="grid place-items-center h-8 w-8 rounded-full text-white text-[11px] font-bold" style={{ background: color }}>{sym === 'USDC' || sym === 'USDT' ? '$' : sym.slice(0, 1)}</span>{sym}</span>
+      </div>
+    </div>
+  );
+  const arrow = <div className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 grid place-items-center h-12 w-12 rounded-2xl bg-terracotta text-white shadow-card"><IconBridge size={20} className="rotate-90" /></div>;
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Bridge" subtitle="Move money between chains — it lands as spendable USDC." />
+      <PageHeader title="Bridge" subtitle="Move money between chains. Every fee is paid in stablecoin — no gas to buy." />
       {jobId ? <BridgeJob jobId={jobId} onSubmitted={onSubmitted} onFinish={finish} onPriceMoved={(q) => { store(JOB_KEY, null); setJobId(null); setQuote(q); keyRef.current = newKey(); setReview(true); }} />
         : orderId ? <Tracker orderId={orderId} onFinish={finish} />
         : error ? <div className="surface rounded-2xl p-5 text-[15px]">{error}</div>
-        : !opts || !chain || !asset ? <div className="space-y-3"><Skeleton className="h-12" /><Skeleton className="h-40" /><Skeleton className="h-28" /></div> : (
+        : !opts || !inC || !inA ? <div className="space-y-3"><Skeleton className="h-12" /><Skeleton className="h-40" /><Skeleton className="h-28" /></div> : (
         <div className="space-y-4 animate-fade-up">
           <div role="tablist" className="grid grid-cols-2 gap-1 rounded-2xl bg-cream-warm dark:bg-night p-1">
-            <button role="tab" aria-selected={dir === 'in'} onClick={() => setDir('in')} className={`min-h-[44px] rounded-xl text-[14.5px] font-semibold ${dir === 'in' ? 'bg-white dark:bg-night-card text-terracotta shadow-sm' : 'muted'}`}>Bring in</button>
-            <button role="tab" aria-selected={dir === 'out'} onClick={() => setDir('out')} className={`min-h-[44px] rounded-xl text-[14.5px] font-semibold ${dir === 'out' ? 'bg-white dark:bg-night-card text-terracotta shadow-sm' : 'muted'}`}>Send out <span className="ml-1 rounded-full bg-terracotta/15 text-terracotta px-1.5 py-0.5 text-[10.5px] align-middle">SOON</span></button>
+            {(['in', 'out'] as Dir[]).map(d => (
+              <button key={d} role="tab" aria-selected={dir === d} onClick={() => switchDir(d)} className={`min-h-[44px] rounded-xl text-[14.5px] font-semibold ${dir === d ? 'bg-white dark:bg-night-card text-terracotta shadow-sm' : 'muted'}`}>{d === 'in' ? 'Bring in' : 'Send out'}</button>
+            ))}
           </div>
 
-          {dir === 'out' ? <OutSoon /> : (
+          {dir === 'in' ? (
             <>
-              {noBalances && (
+              {noInBalances && (
                 <div className="rounded-2xl p-4 text-[13.5px]" style={{ background: '#C1502E12' }}>
                   Nothing to bring in yet. Receive ETH, BNB, MATIC, USDC or USDT to your 0x address first — <Link href="/app/add-money?tab=crypto" className="font-semibold text-terracotta">Add money → Crypto</Link>.
                 </div>
@@ -125,48 +161,70 @@ export default function BridgePage() {
               <section className="relative">
                 <div className="surface rounded-3xl p-5">
                   <div className="flex items-center justify-between text-[13px] muted"><span>From</span>
-                    <span>Balance {asset.balance === null ? '—' : fmt(asset.balance, dpOf(asset))}{(asset.balance || 0) > 0 && <button onClick={() => { setUseMax(true); setAmt(''); }} className="ml-2 font-semibold text-terracotta">Max</button>}</span>
+                    <span>Balance {inA.balance == null ? '—' : fmt(inA.balance, dpOf(inA))}{(inA.balance || 0) > 0 && <button onClick={() => { setUseMax(true); setAmt(''); }} className="ml-2 font-semibold text-terracotta">Max</button>}</span>
                   </div>
                   <div className="mt-2 flex items-center gap-3">
-                    <input value={amt} onChange={e => { setUseMax(false); let s = e.target.value.replace(/[^\d.]/g, ''); const [i, ...r] = s.split('.'); s = r.length ? `${i}.${r.join('').slice(0, 6)}` : i; setAmt(s.slice(0, 14)); }}
-                      inputMode="decimal" placeholder="0" aria-label={`Amount of ${asset.symbol}`} className="flex-1 min-w-0 bg-transparent outline-none font-display font-bold text-[36px] text-ink dark:text-cream-warm" />
+                    {amountInput(6, `Amount of ${inA.symbol}`)}
                     <button onClick={() => setPicker(true)} className="inline-flex items-center gap-2 rounded-full bg-cream-warm dark:bg-night pl-1.5 pr-3 min-h-[44px] font-semibold text-[15px] text-ink dark:text-cream-warm">
-                      <span className="grid place-items-center h-8 w-8 rounded-full text-white text-[11px] font-bold" style={{ background: CHAIN_COLOR[chain.key] }}>{asset.native ? asset.symbol.slice(0, 1) : '$'}</span>
-                      <span className="text-left leading-tight">{asset.symbol}<span className="block text-[11px] muted font-normal">{chain.label}</span></span><IconChevron size={14} className="rotate-90 muted" />
+                      <span className="grid place-items-center h-8 w-8 rounded-full text-white text-[11px] font-bold" style={{ background: CHAIN_COLOR[inC.key] }}>{inA.native ? inA.symbol.slice(0, 1) : '$'}</span>
+                      <span className="text-left leading-tight">{inA.symbol}<span className="block text-[11px] muted font-normal">{inC.label}</span></span><IconChevron size={14} className="rotate-90 muted" />
                     </button>
                   </div>
-                  {quote?.usdIn && <div className="text-[13px] muted">≈ ${fmt(quote.usdIn, 2)}</div>}
+                  {quote?.direction === 'in' && quote.usdIn && <div className="text-[13px] muted">≈ ${fmt(quote.usdIn, 2)}</div>}
                 </div>
-                <div className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 grid place-items-center h-12 w-12 rounded-2xl bg-terracotta text-white shadow-card"><IconBridge size={20} className="rotate-90" /></div>
-                <div className="surface rounded-3xl p-5 mt-2">
-                  <div className="text-[13px] muted">To · your Kobocent balance</div>
+                {arrow}
+                {receiveBox('USDC', '#2775CA', 'To · your Kobocent balance')}
+              </section>
+            </>
+          ) : (
+            <>
+              <section className="relative">
+                <div className="surface rounded-3xl p-5">
+                  <div className="flex items-center justify-between text-[13px] muted"><span>From · your Kobocent balance</span>
+                    <span>USDC {opts.out.usdc == null ? '—' : fmt(opts.out.usdc, 2)}{(opts.out.usdc || 0) > 0 && <button onClick={() => { setUseMax(true); setAmt(''); }} className="ml-2 font-semibold text-terracotta">Max</button>}</span>
+                  </div>
                   <div className="mt-2 flex items-center gap-3">
-                    <div className="flex-1 min-w-0 font-display font-bold text-[36px] tabular-nums text-ink dark:text-cream-warm truncate">
-                      {!value && !useMax ? <span className="text-cream-border dark:text-night-border">0</span> : busy || !quote ? <span className="inline-block h-9 w-32 rounded-xl bg-cream-warm dark:bg-night animate-pulse align-middle" /> : `≈ ${fmt(quote.receive, 2)}`}
-                    </div>
+                    {amountInput(2, 'Amount of USDC')}
                     <span className="inline-flex items-center gap-2 rounded-full bg-cream-warm dark:bg-night pl-1.5 pr-3 min-h-[44px] font-semibold text-[15px]"><span className="grid place-items-center h-8 w-8 rounded-full text-white text-[11px] font-bold" style={{ background: '#2775CA' }}>$</span>USDC</span>
                   </div>
                 </div>
+                {arrow}
+                <div className="surface rounded-3xl p-5 mt-2">
+                  <div className="flex items-center justify-between text-[13px] muted"><span>To</span></div>
+                  <div className="mt-2 flex items-center gap-3">
+                    <div className="flex-1 min-w-0 font-display font-bold text-[36px] tabular-nums text-ink dark:text-cream-warm truncate">
+                      {!value && !useMax ? <span className="text-cream-border dark:text-night-border">0</span> : busy || !quote ? <span className="inline-block h-9 w-32 rounded-xl bg-cream-warm dark:bg-night animate-pulse align-middle" /> : `≈ ${fmt(quote.receive, outA && !outA.native ? 2 : 6)}`}
+                    </div>
+                    <button onClick={() => setPicker(true)} className="inline-flex items-center gap-2 rounded-full bg-cream-warm dark:bg-night pl-1.5 pr-3 min-h-[44px] font-semibold text-[15px] text-ink dark:text-cream-warm">
+                      <span className="grid place-items-center h-8 w-8 rounded-full text-white text-[11px] font-bold" style={{ background: CHAIN_COLOR[outC?.key || 'ETH'] }}>{outA?.native ? outA.symbol.slice(0, 1) : '$'}</span>
+                      <span className="text-left leading-tight">{outA?.symbol}<span className="block text-[11px] muted font-normal">{outC?.label}</span></span><IconChevron size={14} className="rotate-90 muted" />
+                    </button>
+                  </div>
+                </div>
               </section>
-
-              {qErr && <QuoteError e={qErr} />}
-              {quote && !qErr && (
-                <>
-                  <dl className="surface rounded-2xl p-4 grid grid-cols-2 gap-y-1.5 text-[13.5px]">
-                    <dt className="muted">You receive</dt><dd className="text-right font-mono font-semibold">≈ {fmt(quote.receive, 2)} USDC</dd>
-                    <dt className="muted">Kobocent fee</dt><dd className="text-right font-mono">{fmt(quote.kobocentFee, 2)} USDC</dd>
-                    <dt className="muted">Bridge fee</dt><dd className="text-right font-mono">{fmt(quote.fixFee, 6)} {quote.native}</dd>
-                    <dt className="muted">Network gas</dt><dd className="text-right">≈ {fmt(quote.gasEstimate, 6)} {quote.native}</dd>
-                    <dt className="muted">Arrives in</dt><dd className="text-right">{eta(quote.etaSeconds)}</dd>
-                  </dl>
-                  {quote.smallWarning && <p className="text-[13px] text-[#B68B2A] px-1">Small bridges lose a big share to fixed network fees — on {quote.chainLabel} we recommend at least ~${quote.minRecommendedUsd}.</p>}
-                </>
-              )}
-              <button disabled={!quote || busy || !!qErr} onClick={() => { setStartErr(''); setReview(true); }} className="btn-primary w-full min-h-[56px] text-[16px] disabled:opacity-40 disabled:pointer-events-none">
-                {!value && !useMax ? 'Enter an amount' : busy ? 'Finding the best route…' : qErr ? 'Adjust the amount' : 'Review bridge'}
-              </button>
+              <section className="surface rounded-2xl p-4 space-y-3">
+                <div className="grid grid-cols-2 gap-1 rounded-xl bg-cream-warm dark:bg-night p-1">
+                  <button onClick={() => setToOther(false)} className={`min-h-[44px] rounded-lg text-[13.5px] font-semibold ${!toOther ? 'bg-white dark:bg-night-card text-terracotta' : 'muted'}`}>My 0x wallet</button>
+                  <button onClick={() => setToOther(true)} className={`min-h-[44px] rounded-lg text-[13.5px] font-semibold ${toOther ? 'bg-white dark:bg-night-card text-terracotta' : 'muted'}`}>Another address</button>
+                </div>
+                {toOther ? (
+                  <>
+                    <input value={recipient} onChange={e => setRecipient(e.target.value.trim())} placeholder="0x…" spellCheck={false} autoCapitalize="off" aria-label="Recipient address"
+                      className="w-full rounded-xl border border-cream-border dark:border-night-border bg-transparent px-3 min-h-[48px] font-mono text-[14px]" />
+                    {recipient && !recipientOk && <div className="text-[13px] text-[#B84A40]">0x addresses are 42 characters long</div>}
+                    <p className="text-[12.5px] muted">Make sure this wallet or exchange supports {outA?.symbol} on {outC?.label}.</p>
+                  </>
+                ) : <p className="text-[12.5px] muted break-all">Your Kobocent 0x wallet: <span className="font-mono">{opts.out.evmAddress || '—'}</span></p>}
+              </section>
             </>
           )}
+
+          {qErr && <div className="text-[13.5px] text-[#B84A40] px-1">{qErr.error || 'Adjust the amount'}</div>}
+          {quote && !qErr && <QuoteDetails q={quote} />}
+
+          <button disabled={!quote || busy || !!qErr} onClick={() => { setStartErr(''); setReview(true); }} className="btn-primary w-full min-h-[56px] text-[16px] disabled:opacity-40 disabled:pointer-events-none">
+            {!value && !useMax ? 'Enter an amount' : !recipientOk ? 'Add a valid address' : busy ? 'Finding the best route…' : qErr ? 'Adjust the amount' : 'Review bridge'}
+          </button>
 
           {opts.recent.length > 0 && (
             <section>
@@ -175,8 +233,8 @@ export default function BridgePage() {
                 {opts.recent.map(o => (
                   <li key={o.orderId}>
                     <button onClick={() => { store(ORDER_KEY, o.orderId); setOrderId(o.orderId); }} className="w-full flex items-center gap-3 py-3 text-left min-h-[56px]">
-                      <span className="grid place-items-center h-9 w-9 rounded-xl text-white text-[11px] font-bold" style={{ background: CHAIN_COLOR[o.chainKey] || '#C1502E' }}>{(o.symbol || '?').slice(0, 1)}</span>
-                      <span className="flex-1 min-w-0"><span className="block text-[14.5px] font-medium">{fmt(o.amountIn, 4)} {o.symbol} → USDC</span><span className="text-[12px] muted">{new Date(o.createdAt).toLocaleString()}</span></span>
+                      <span className="grid place-items-center h-9 w-9 rounded-xl text-white text-[11px] font-bold" style={{ background: CHAIN_COLOR[o.chainKey] || '#C1502E' }}>{o.direction === 'in' ? '↓' : '↑'}</span>
+                      <span className="flex-1 min-w-0"><span className="block text-[14.5px] font-medium">{o.direction === 'in' ? `${fmt(o.amountIn, 4)} ${o.symbol} → USDC` : `${fmt(o.amountIn, 2)} USDC → ${o.symbol} · ${CHAIN_LABEL[o.chainKey] || o.chainKey}`}</span><span className="text-[12px] muted">{new Date(o.createdAt).toLocaleString()}</span></span>
                       <StatusPill s={o.status} />
                     </button>
                   </li>
@@ -188,18 +246,22 @@ export default function BridgePage() {
       )}
 
       {opts && (
-        <Sheet open={picker} onClose={() => setPicker(false)} title="Bring in from">
+        <Sheet open={picker} onClose={() => setPicker(false)} title={dir === 'in' ? 'Bring in from' : 'Send to'}>
           <div className="space-y-4">
-            {opts.in.chains.map(c => (
+            {(dir === 'in' ? opts.in.chains : opts.out.chains).map(c => (
               <div key={c.key}>
                 <div className="text-[12px] muted mb-1.5 flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: CHAIN_COLOR[c.key] }} />{c.label}</div>
                 <ul className="space-y-1.5">
-                  {c.assets.map(a => (
-                    <li key={a.id}><button onClick={() => pick(c, a)} className={`w-full flex items-center gap-3 rounded-2xl border px-4 min-h-[52px] ${a.id === asset?.id ? 'border-terracotta' : 'border-cream-border dark:border-night-border'}`}>
-                      <span className="flex-1 text-left font-semibold">{a.symbol}{a.native && <span className="muted text-[12px] font-normal"> · network coin</span>}</span>
-                      <span className="font-mono text-[13.5px] muted">{a.balance === null ? '—' : fmt(a.balance, dpOf(a))}</span>
-                    </button></li>
-                  ))}
+                  {c.assets.map(a => {
+                    const selected = dir === 'in' ? a.id === inA?.id : a.id === outA?.id;
+                    return (
+                      <li key={a.id}><button onClick={() => { if (dir === 'in') { setInChain(c.key); setInAsset(a.id); } else setOutAsset(a.id); setAmt(''); setUseMax(false); setQuote(null); setPicker(false); }}
+                        className={`w-full flex items-center gap-3 rounded-2xl border px-4 min-h-[52px] ${selected ? 'border-terracotta' : 'border-cream-border dark:border-night-border'}`}>
+                        <span className="flex-1 text-left font-semibold">{a.symbol}{a.native && <span className="muted text-[12px] font-normal"> · network coin</span>}</span>
+                        {dir === 'in' && <span className="font-mono text-[13.5px] muted">{a.balance == null ? '—' : fmt(a.balance, dpOf(a))}</span>}
+                      </button></li>
+                    );
+                  })}
                 </ul>
               </div>
             ))}
@@ -211,11 +273,17 @@ export default function BridgePage() {
         {quote && (
           <>
             <div className="flex items-center justify-center gap-4 py-3">
-              <div className="text-center"><div className="font-display font-bold text-[24px]">{fmt(quote.amountIn, 6)}</div><div className="muted text-[13px]">{quote.symbol} · {quote.chainLabel}</div></div>
+              <div className="text-center"><div className="font-display font-bold text-[24px]">{fmt(quote.amountIn, quote.direction === 'out' ? 2 : 6)}</div><div className="muted text-[13px]">{quote.direction === 'in' ? `${quote.symbol} · ${quote.chainLabel}` : 'USDC · Kobocent'}</div></div>
               <IconBridge size={22} className="text-terracotta" />
-              <div className="text-center"><div className="font-display font-bold text-[24px]">≈ {fmt(quote.receive, 2)}</div><div className="muted text-[13px]">USDC · Kobocent</div></div>
+              <div className="text-center"><div className="font-display font-bold text-[24px]">≈ {fmt(quote.receive, quote.direction === 'in' ? 2 : 6)}</div><div className="muted text-[13px]">{quote.direction === 'in' ? 'USDC · Kobocent' : `${quote.symbol} · ${quote.chainLabel}`}</div></div>
             </div>
-            <p className="text-center muted text-[13px]">Plus {fmt(quote.fixFee, 6)} {quote.native} bridge fee and network gas, paid from your {quote.native} on {quote.chainLabel}. Arrives in {eta(quote.etaSeconds)}; the final amount can shift slightly with the market.</p>
+            {quote.direction === 'out' && <p className="text-center text-[13px] break-all"><span className="muted">To </span><span className="font-mono">{quote.recipient}</span>{quote.ownRecipient && <span className="muted"> (your wallet)</span>}</p>}
+            <p className="text-center muted text-[13px] mt-2">
+              {quote.direction === 'in'
+                ? (quote.gasFront ? `Network fees (~$${fmt(quote.gasFront.usd, 2)}) are paid for you and taken from the USDC that lands.` : `Plus ${fmt(quote.fixFee, 6)} ${quote.native} bridge fee and gas from your ${quote.native}.`)
+                : `Total from your balance: $${fmt(quote.totalUsdc, 2)} USDC${quote.coveredFromUsdc > 0 ? ` (includes ~$${fmt(quote.coveredFromUsdc, 2)} for Solana network fees)` : ''}.`}
+              {' '}Arrives in {eta(quote.etaSeconds)}; the final amount can shift slightly with the market.
+            </p>
             {startErr && <div className="mt-3 text-[14px] text-[#B84A40]">{startErr}</div>}
             <div className="mt-5"><HoldToConfirm label="Hold to bridge" busy={starting} onConfirm={start} /></div>
           </>
@@ -225,42 +293,24 @@ export default function BridgePage() {
   );
 }
 
-function OutSoon() {
+function QuoteDetails({ q }: { q: Quote }) {
   return (
-    <section className="space-y-3">
-      <div className="relative">
-        <div className="surface rounded-3xl p-5 opacity-60">
-          <div className="text-[13px] muted">From · your Kobocent balance</div>
-          <div className="mt-2 font-display font-bold text-[36px] text-cream-border dark:text-night-border">0</div>
-          <div className="text-[13px] muted">USDC</div>
-        </div>
-        <div className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 grid place-items-center h-12 w-12 rounded-2xl bg-terracotta/60 text-white"><IconBridge size={20} className="rotate-90" /></div>
-        <div className="surface rounded-3xl p-5 mt-2 opacity-60">
-          <div className="text-[13px] muted">To · Ethereum, BNB Chain, Polygon, Arbitrum…</div>
-          <div className="mt-2 font-display font-bold text-[36px] text-cream-border dark:text-night-border">0</div>
-          <div className="text-[13px] muted">USDC or USDT</div>
-        </div>
-      </div>
-      <div className="surface rounded-2xl p-4 text-[14px] leading-relaxed">
-        <div className="font-semibold text-ink dark:text-cream-warm">Sending out is coming soon</div>
-        <p className="muted mt-1">Move your USDC to Ethereum, BNB Chain, Polygon or Arbitrum in one step. Until then, <Link href="/app/send-wallet" className="font-semibold text-terracotta">Send to wallet</Link> moves crypto on the network it’s already on.</p>
-      </div>
-    </section>
+    <>
+      <dl className="surface rounded-2xl p-4 grid grid-cols-2 gap-y-1.5 text-[13.5px]">
+        <dt className="muted">{q.direction === 'in' ? 'You receive' : q.ownRecipient ? 'You receive' : 'They receive'}</dt><dd className="text-right font-mono font-semibold">≈ {fmt(q.receive, q.direction === 'in' ? 2 : 6)} {q.direction === 'in' ? 'USDC' : q.symbol}</dd>
+        <dt className="muted">Kobocent fee</dt><dd className="text-right font-mono">{fmt(q.kobocentFee, 2)} USDC</dd>
+        {q.direction === 'in' ? (
+          q.gasFront ? (<><dt className="muted">Network fees</dt><dd className="text-right">~${fmt(q.gasFront.usd, 2)} <span className="muted">· paid for you</span></dd></>)
+            : (<><dt className="muted">Bridge fee</dt><dd className="text-right font-mono">{fmt(q.fixFee, 6)} {q.native}</dd><dt className="muted">Network gas</dt><dd className="text-right">≈ {fmt(q.gasEstimate, 6)} {q.native}</dd></>)
+        ) : (
+          <><dt className="muted">Solana network fees</dt><dd className="text-right">{q.coveredFromUsdc > 0 ? <>~${fmt(q.coveredFromUsdc, 2)} <span className="muted">· from your USDC</span></> : <>{fmt(q.solCost, 4)} SOL</>}</dd>
+            <dt className="muted">Total from balance</dt><dd className="text-right font-mono">{fmt(q.totalUsdc, 2)} USDC</dd></>
+        )}
+        <dt className="muted">Arrives in</dt><dd className="text-right">{eta(q.etaSeconds)}</dd>
+      </dl>
+      {q.smallWarning && <p className="text-[13px] text-[#B68B2A] px-1">Small bridges lose a big share to fixed network costs — we recommend at least ~${q.minRecommendedUsd}.</p>}
+    </>
   );
-}
-
-function QuoteError({ e }: { e: QErr }) {
-  if (e.code === 'NEEDS_GAS' && e.address) {
-    return (
-      <div className="rounded-2xl p-4 text-[13.5px]" style={{ background: '#B68B2A14' }}>
-        <div className="text-[#B68B2A] font-semibold">{e.error}</div>
-        {e.gasNeeded ? <div className="mt-1">Add about <b>{fmt(e.gasNeeded, 6)} {e.native}</b> to:</div> : null}
-        <div className="mt-2 font-mono text-[12.5px] break-all">{e.address}</div>
-        <div className="mt-2"><CopyButton value={e.address} label="Copy address" /></div>
-      </div>
-    );
-  }
-  return <div className="text-[13.5px] text-[#B84A40] px-1">{e.error || 'Adjust the amount'}</div>;
 }
 
 function StatusPill({ s }: { s: string }) {
@@ -284,18 +334,17 @@ function BridgeJob({ jobId, onSubmitted, onFinish, onPriceMoved }: { jobId: stri
   }, [jobId]);
   const r = job?.result;
   useEffect(() => { if (job?.status === 'done' && r?.ok) onSubmitted(r.orderId || null); }, [job, r, onSubmitted]);
-  if (lost) return <Outcome tone="info" title="We lost track of this screen" body="Your recent bridges below show what happened — the bridge itself is unaffected." actions={<button onClick={onFinish} className="btn-primary w-full">Back to Bridge</button>} />;
+  if (lost) return <Outcome tone="info" title="We lost track of this screen" body="Your recent bridges show what happened — the bridge itself is unaffected." actions={<button onClick={onFinish} className="btn-primary w-full">Back to Bridge</button>} />;
   if (job?.status === 'done' && r && !r.ok) {
     if (r.code === 'PRICE_MOVED' && r.q) return <Outcome tone="warn" title="The rate moved" body={r.error || 'Review the new amount.'} actions={<><button onClick={() => onPriceMoved(r.q!)} className="btn-primary w-full">Review new amount</button><button onClick={onFinish} className="btn-ghost w-full">Cancel</button></>} />;
     if (r.code === 'OUTCOME_UNKNOWN') return <Outcome tone="warn" title="Sent — confirming" body={r.error || 'Your bridge is confirming.'} signature={r.txHash} actions={<>{r.orderId ? <button onClick={() => onSubmitted(r.orderId!)} className="btn-primary w-full">Track it</button> : null}<button onClick={onFinish} className="btn-ghost w-full">Close</button></>} />;
-    if (r.code === 'NEEDS_GAS') return <Outcome tone="warn" title="Network fee needed" body={`${r.error}.`} actions={<button onClick={onFinish} className="btn-primary w-full">Back</button>} />;
-    return <Outcome tone="error" title="Not bridged" body={`${r.error || 'Something went wrong'}.`} actions={<><button onClick={onFinish} className="btn-primary w-full">Try again</button><Link href="/app" onClick={onFinish} className="btn-ghost w-full">Check balances</Link></>} />;
+    return <Outcome tone="error" title="Not bridged" body={`${r.error || 'Something went wrong'}`} actions={<><button onClick={onFinish} className="btn-primary w-full">Try again</button><Link href="/app" onClick={onFinish} className="btn-ghost w-full">Check balances</Link></>} />;
   }
   return (
     <section className="surface rounded-3xl p-8 text-center animate-fade-up" aria-live="polite">
       <div className="relative mx-auto h-24 w-24"><span className="absolute inset-0 rounded-full border-4 border-cream-warm dark:border-night" /><span className="absolute inset-0 rounded-full border-4 border-terracotta border-t-transparent animate-spin" style={{ animationDuration: '1.1s' }} /><span className="absolute inset-0 grid place-items-center text-terracotta"><IconBridge size={30} /></span></div>
       <div className="font-display text-[22px] font-bold mt-5 text-ink dark:text-cream-warm">Sending your bridge</div>
-      <p className="muted text-[14px] mt-1">Approving and sending can take a minute, longer on Ethereum.</p>
+      <p className="muted text-[14px] mt-1">{job?.meta.direction === 'out' ? 'Usually under a minute on Solana.' : 'Approving and sending can take a minute, longer on Ethereum.'}</p>
     </section>
   );
 }
@@ -316,19 +365,21 @@ function Tracker({ orderId, onFinish }: { orderId: string; onFinish: () => void 
     return () => { live = false; clearTimeout(t); };
   }, [orderId]);
   if (gone) return <Outcome tone="info" title="Bridge not found" body="It may have been made from another account." actions={<button onClick={onFinish} className="btn-primary w-full">Back to Bridge</button>} />;
+  const out = o?.direction === 'out';
+  const dest = out ? (CHAIN_LABEL[o?.chainKey || ''] || o?.chainKey || 'the other chain') : 'Solana';
   const done = o?.status === 'fulfilled';
   const failed = o?.status === 'cancelled' || o?.status === 'abandoned';
   const steps = [
-    { t: `Sent${o ? ` ${fmt(o.amountIn, 6)} ${o.symbol || ''}` : ''}`, ok: !!o },
-    { t: o?.status === 'stuck' ? 'Crossing to Solana — taking longer than usual' : 'Crossing to Solana', ok: done, active: !!o && !done && !failed },
-    { t: done ? `≈ ${fmt(o?.estOut ?? 0, 2)} USDC in your wallet` : 'USDC in your wallet', ok: done },
+    { t: o ? (out ? `Sent ${fmt(o.amountIn, 2)} USDC` : `Sent ${fmt(o.amountIn, 6)} ${o.symbol || ''}`) : 'Sent', ok: !!o },
+    { t: o?.status === 'stuck' ? `Crossing to ${dest} — taking longer than usual` : `Crossing to ${dest}`, ok: done, active: !!o && !done && !failed },
+    { t: done ? (out ? `≈ ${fmt(o?.estOut ?? 0, 4)} ${o?.symbol || ''} delivered` : `≈ ${fmt(o?.estOut ?? 0, 2)} USDC in your wallet`) : (out ? 'Delivered' : 'USDC in your wallet'), ok: done },
   ];
   return (
     <section className="surface rounded-3xl p-6 animate-fade-up" aria-live="polite">
       <div className="text-center">
         <div className={`mx-auto grid place-items-center h-20 w-20 rounded-full ${done ? 'bg-[#58834C1A] text-[#58834C]' : failed ? 'bg-[#B84A401A] text-[#B84A40]' : 'bg-terracotta/10 text-terracotta'}`}>{done ? <IconCheck size={34} /> : <IconBridge size={30} />}</div>
         <div className="font-display text-[22px] font-bold mt-4 text-ink dark:text-cream-warm">{done ? 'Arrived' : failed ? 'Needs attention' : 'On its way'}</div>
-        <p className="muted text-[14px] mt-1">{done ? 'Your USDC is ready to spend.' : failed ? 'Our team has been alerted and will make sure your funds come back to you.' : 'You can leave this screen — we’ll message you on Telegram when it lands.'}</p>
+        <p className="muted text-[14px] mt-1">{done ? (out ? `Delivered on ${dest}.` : 'Your USDC is ready to use.') : failed ? 'Our team has been alerted and will make sure your funds come back to you.' : 'You can leave this screen — we’ll message you on Telegram when it lands.'}</p>
       </div>
       <ol className="mt-6 space-y-3">
         {steps.map((s, i) => (
@@ -338,6 +389,17 @@ function Tracker({ orderId, onFinish }: { orderId: string; onFinish: () => void 
           </li>
         ))}
       </ol>
+      {done && !out && (
+        <div className="mt-6">
+          <div className="text-[13px] muted mb-2 text-center">What next?</div>
+          <div className="grid grid-cols-2 gap-2">
+            {[{ href: '/app/withdraw', label: 'Withdraw to bank', Icon: IconBank }, { href: '/app/earn', label: 'Earn on it', Icon: IconLeaf },
+              { href: '/app/send', label: 'Send to bank', Icon: IconSend }, { href: '/app/swap', label: 'Swap', Icon: IconSwap }].map(a => (
+              <Link key={a.href} href={a.href} onClick={onFinish} className="surface rounded-2xl min-h-[56px] flex items-center justify-center gap-2 text-[14px] font-semibold text-ink dark:text-cream-warm border border-cream-border dark:border-night-border"><a.Icon size={18} />{a.label}</Link>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="mt-6 grid gap-2">
         {done ? <Link href="/app" onClick={onFinish} className="btn-primary w-full">Done</Link> : <button onClick={onFinish} className="btn-ghost w-full">Back to Bridge</button>}
         <a href={`https://app.debridge.finance/order?orderId=${orderId}`} target="_blank" rel="noopener noreferrer" className="block text-center text-[13.5px] font-semibold text-terracotta min-h-[44px] leading-[44px]">Track on deBridge</a>
