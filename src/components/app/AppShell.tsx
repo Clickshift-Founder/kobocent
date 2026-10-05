@@ -7,6 +7,8 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { IconHome, IconActivity, IconCard, IconSettings, IconTelegram, IconLogout, IconTrophy } from './Icons';
 import { initInstallCapture, registerServiceWorker } from '@/lib/pwa';
 import { SecurityProvider } from './SecurityProvider';
+import { GuideProvider } from './GuideProvider';
+import { Suspense } from 'react';
 import { BOT_URL, loadProfile, clearProfile, type LocalProfile } from '@/lib/kc';
 
 const TABS = [
@@ -55,7 +57,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Link href="/app" aria-label="Kobocent home" className="mb-10 px-2"><LogoLockup /></Link>
         <nav className="flex-1 space-y-1">
           {TABS.map(({ href, label, Icon }) => (
-            <Link key={href} href={href}
+            <Link key={href} href={href} data-tour={`tab-${label.toLowerCase()}`}
               className={`flex items-center gap-3 rounded-xl px-3 py-3 text-[15px] font-medium transition-colors
                 ${active(href) ? 'bg-terracotta-soft text-terracotta' : 'text-warmgray dark:text-warmgray-dark hover:bg-cream-warm dark:hover:bg-night-card hover:text-ink dark:hover:text-cream-warm'}`}>
               <Icon size={20} />{label}
@@ -99,6 +101,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <main className="mx-auto w-full max-w-[880px] px-4 sm:px-6 lg:px-10 py-5 lg:py-10 pb-28 lg:pb-12">
           <SecurityProvider>{children}</SecurityProvider>
+          <Suspense fallback={null}><GuideProvider /></Suspense>
         </main>
 
         {/* Mobile bottom tabs — clear of the home indicator */}
@@ -107,7 +110,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <ul className="grid grid-cols-5">
             {TABS.map(({ href, label, Icon }) => (
               <li key={href}>
-                <Link href={href} aria-current={active(href) ? 'page' : undefined}
+                <Link href={href} data-tour={`tab-${label.toLowerCase()}`} aria-current={active(href) ? 'page' : undefined}
                   className={`flex flex-col items-center justify-center gap-1 h-16 text-[11px] font-medium transition-colors
                     ${active(href) ? 'text-terracotta' : 'text-warmgray dark:text-warmgray-dark'}`}>
                   <Icon size={22} />{label}

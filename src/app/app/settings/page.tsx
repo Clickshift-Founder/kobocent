@@ -9,6 +9,7 @@ import { IconShield, IconTelegram, IconLogout, IconChevron, IconEye, IconGift } 
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { PageHeader } from '@/components/app/PageHeader';
 import { SecuritySettings } from '@/components/app/SecuritySettings';
+import { TIPS } from '@/lib/guide';
 import { GoogleButton, googleEnabled } from '@/components/app/GoogleButton';
 
 export default function SettingsPage() {
@@ -18,6 +19,7 @@ export default function SettingsPage() {
   const [linkCode, setLinkCode] = useState<{ code: string; expiresAt: number } | null>(null);
   const [linkErr, setLinkErr] = useState('');
   const [phraseOpen, setPhraseOpen] = useState(false);
+  const [guideNote, setGuideNote] = useState('');
 
   useEffect(() => {
     setProfile(loadProfile());
@@ -65,6 +67,30 @@ export default function SettingsPage() {
       </section>
 
       <SecuritySettings account={account} onAccount={setAccount} />
+
+      {/* Product guide */}
+      <section id="guide" className="scroll-mt-20">
+        <div className="eyebrow mb-2">Product guide</div>
+        <div className="surface rounded-3xl divide-y divide-cream-border dark:divide-night-border">
+          <button onClick={() => window.dispatchEvent(new Event('kc-guide-replay'))} className="w-full flex items-center gap-4 p-5 text-left min-h-[64px]">
+            <span className="grid place-items-center h-10 w-10 rounded-xl bg-terracotta-soft text-terracotta text-[18px]">🧭</span>
+            <span className="flex-1"><span className="block font-medium text-ink dark:text-cream-warm">Replay the app tour</span><span className="block text-[13.5px] muted">A one-minute walk through everything Kobocent does.</span></span>
+            <IconChevron className="muted" />
+          </button>
+          <button onClick={() => { window.dispatchEvent(new Event('kc-guide-reset')); setGuideNote('Tips will show again the next time you open each feature.'); }} className="w-full flex items-center gap-4 p-5 text-left min-h-[64px]">
+            <span className="grid place-items-center h-10 w-10 rounded-xl bg-cream-warm dark:bg-night text-terracotta text-[18px]">💡</span>
+            <span className="flex-1"><span className="block font-medium text-ink dark:text-cream-warm">Show feature tips again</span><span className="block text-[13.5px] muted">{guideNote || 'The short explainer you see the first time you open a feature.'}</span></span>
+          </button>
+          <div className="p-5">
+            <div className="text-[13px] muted mb-2">Or read a guide now:</div>
+            <div className="flex flex-wrap gap-2">
+              {TIPS.map(t => (
+                <button key={t.key} onClick={() => window.dispatchEvent(new CustomEvent('kc-guide-tip', { detail: t.key }))} className="rounded-full border border-cream-border dark:border-night-border px-3 min-h-[40px] text-[13.5px] hover:border-terracotta">{t.title}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Telegram */}
       <section id="telegram" className="scroll-mt-20">
