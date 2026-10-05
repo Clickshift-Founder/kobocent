@@ -153,6 +153,16 @@ export default function BridgePage() {
 
           {dir === 'in' ? (
             <>
+              <section className="rounded-2xl p-4" style={{ background: 'linear-gradient(135deg,#C1502E14,#C1502E05)' }}>
+                <div className="font-semibold text-[14.5px] text-ink dark:text-cream-warm">Make it spendable</div>
+                <p className="text-[13px] muted mt-0.5">Crypto on other chains just sits there. Bring it into your Kobocent balance and it works for you:</p>
+                <div className="mt-3 grid grid-cols-3 sm:grid-cols-6 gap-2 text-center text-[12px] font-medium">
+                  {[['🛒', 'Spend'], ['↗️', 'Send'], ['🏦', 'Withdraw'], ['⚡', 'Pay bills'], ['🌱', 'Earn'], ['📈', 'Trade']].map(([g, t]) => (
+                    <div key={t} className="rounded-xl bg-white/70 dark:bg-night py-2"><div aria-hidden className="text-[17px]">{g}</div>{t}</div>
+                  ))}
+                </div>
+                <p className="text-[12px] muted mt-2">Lands as USDC on Solana in minutes. Every fee is paid from what you bridge — no gas to buy.</p>
+              </section>
               {noInBalances && (
                 <div className="rounded-2xl p-4 text-[13.5px]" style={{ background: '#C1502E12' }}>
                   Nothing to bring in yet. Receive ETH, BNB, MATIC, USDC or USDT to your 0x address first — <Link href="/app/add-money?tab=crypto" className="font-semibold text-terracotta">Add money → Crypto</Link>.
@@ -160,7 +170,7 @@ export default function BridgePage() {
               )}
               <section className="relative">
                 <div className="surface rounded-3xl p-5">
-                  <div className="flex items-center justify-between text-[13px] muted"><span>From</span>
+                  <div className="flex items-center justify-between text-[13px] muted"><span>From · your 0x wallet</span>
                     <span>Balance {inA.balance == null ? '—' : fmt(inA.balance, dpOf(inA))}{(inA.balance || 0) > 0 && <button onClick={() => { setUseMax(true); setAmt(''); }} className="ml-2 font-semibold text-terracotta">Max</button>}</span>
                   </div>
                   <div className="mt-2 flex items-center gap-3">
@@ -173,14 +183,14 @@ export default function BridgePage() {
                   {quote?.direction === 'in' && quote.usdIn && <div className="text-[13px] muted">≈ ${fmt(quote.usdIn, 2)}</div>}
                 </div>
                 {arrow}
-                {receiveBox('USDC', '#2775CA', 'To · your Kobocent balance')}
+                {receiveBox('USDC', '#2775CA', 'To · spendable Kobocent balance')}
               </section>
             </>
           ) : (
             <>
               <section className="relative">
                 <div className="surface rounded-3xl p-5">
-                  <div className="flex items-center justify-between text-[13px] muted"><span>From · your Kobocent balance</span>
+                  <div className="flex items-center justify-between text-[13px] muted"><span>From · spendable Kobocent balance</span>
                     <span>USDC {opts.out.usdc == null ? '—' : fmt(opts.out.usdc, 2)}{(opts.out.usdc || 0) > 0 && <button onClick={() => { setUseMax(true); setAmt(''); }} className="ml-2 font-semibold text-terracotta">Max</button>}</span>
                   </div>
                   <div className="mt-2 flex items-center gap-3">
@@ -190,7 +200,6 @@ export default function BridgePage() {
                 </div>
                 {arrow}
                 <div className="surface rounded-3xl p-5 mt-2">
-                  <div className="flex items-center justify-between text-[13px] muted"><span>To</span></div>
                   <div className="mt-2 flex items-center gap-3">
                     <div className="flex-1 min-w-0 font-display font-bold text-[36px] tabular-nums text-ink dark:text-cream-warm truncate">
                       {!value && !useMax ? <span className="text-cream-border dark:text-night-border">0</span> : busy || !quote ? <span className="inline-block h-9 w-32 rounded-xl bg-cream-warm dark:bg-night animate-pulse align-middle" /> : `≈ ${fmt(quote.receive, outA && !outA.native ? 2 : 6)}`}

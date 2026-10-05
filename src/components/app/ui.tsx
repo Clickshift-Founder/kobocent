@@ -34,25 +34,44 @@ export function CopyButton({ value, label = 'Copy' }: { value: string; label?: s
 
 /** Bottom sheet on phones, centred dialog on larger screens. Esc / backdrop closes. */
 export function Sheet({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
+  // Keep the latest onClose without re-running the history effect on every parent render.
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeRef.current(); };
     document.addEventListener('keydown', onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
-  }, [open, onClose]);
+    // 2026-10-05: the phone's back button closes the sheet instead of leaving the page (it used to
+    // take people to Home). One history entry per open sheet, keeping Next's own state intact.
+    let poppedByBack = false;
+    const onPop = () => { poppedByBack = true; closeRef.current(); };
+    try { window.history.pushState({ ...(window.history.state || {}), kcSheet: true }, ''); } catch { /* ignore */ }
+    window.addEventListener('popstate', onPop);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prev;
+      window.removeEventListener('popstate', onPop);
+      // Closed by X / backdrop / a choice: drop the entry we added so Back still works normally.
+      if (!poppedByBack) { try { if (window.history.state?.kcSheet) window.history.back(); } catch { /* ignore */ } }
+    };
+  }, [open]);
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" role="dialog" aria-modal="true" aria-label={title}>
       <button className="absolute inset-0 bg-ink/40 backdrop-blur-[2px]" aria-label="Close" onClick={onClose} />
-      <div className="relative w-full sm:max-w-md surface rounded-t-3xl sm:rounded-3xl p-6 pb-8 shadow-lift animate-fade-up"
-           style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}>
-        <div className="sm:hidden mx-auto mb-4 h-1.5 w-10 rounded-full bg-cream-border dark:bg-night-border" />
-        {/* Every sheet can be closed from the corner, not only by its buttons (design rule). */}
-        <button onClick={onClose} aria-label="Close" className="absolute top-3 right-3 grid place-items-center h-11 w-11 rounded-xl muted hover:text-terracotta"><IconClose /></button>
-        <h3 className="font-display text-[21px] font-bold text-ink dark:text-cream-warm mb-2 pr-10">{title}</h3>
-        {children}
+      {/* 2026-10-05: never taller than the screen; the header (with Close) stays put and the body scrolls. */}
+      <div className="relative w-full sm:max-w-md surface rounded-t-3xl sm:rounded-3xl shadow-lift animate-fade-up flex flex-col max-h-[88dvh]">
+        <div className="shrink-0 px-6 pt-4 sm:pt-6">
+          <div className="sm:hidden mx-auto mb-3 h-1.5 w-10 rounded-full bg-cream-border dark:bg-night-border" />
+          {/* Every sheet can be closed from the corner, not only by its buttons (design rule). */}
+          <button onClick={onClose} aria-label="Close" className="absolute top-3 right-3 grid place-items-center h-11 w-11 rounded-xl muted hover:text-terracotta"><IconClose /></button>
+          <h3 className="font-display text-[21px] font-bold text-ink dark:text-cream-warm mb-2 pr-10">{title}</h3>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-8" style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}>
+          {children}
+        </div>
       </div>
     </div>
   );
