@@ -6,6 +6,7 @@ import { LogoLockup, LogoMark } from '@/components/ui/Logo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { IconHome, IconActivity, IconCard, IconSettings, IconTelegram, IconLogout, IconTrophy } from './Icons';
 import { initInstallCapture, registerServiceWorker } from '@/lib/pwa';
+import { SecurityProvider } from './SecurityProvider';
 import { BOT_URL, loadProfile, clearProfile, type LocalProfile } from '@/lib/kc';
 
 const TABS = [
@@ -97,7 +98,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </header>
 
         <main className="mx-auto w-full max-w-[880px] px-4 sm:px-6 lg:px-10 py-5 lg:py-10 pb-28 lg:pb-12">
-          {children}
+          <SecurityProvider>{children}</SecurityProvider>
         </main>
 
         {/* Mobile bottom tabs — clear of the home indicator */}

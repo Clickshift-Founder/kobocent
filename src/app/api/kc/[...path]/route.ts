@@ -50,6 +50,11 @@ const ALLOWED: Record<string, Array<'GET' | 'POST'>> = {
   'transfer/quote': ['POST'],
   'transfer/send': ['POST'],
   'bridge': ['GET'],
+  'security': ['GET'],
+  'security/pin': ['POST'],
+  'security/pin/verify': ['POST'],
+  'security/settings': ['POST'],
+  'auth/google/link': ['POST'],
   'bridge/quote': ['POST'],
   'bridge/execute': ['POST'],
   'bridge/out/quote': ['POST'],
@@ -79,6 +84,8 @@ async function handle(req: NextRequest, path: string[], method: 'GET' | 'POST') 
   const headers: Record<string, string> = {};
   const reauth = req.headers.get('x-reauth-token');
   if (reauth) headers['X-Reauth-Token'] = reauth;
+  const pin = req.headers.get('x-kc-pin');   // app PIN token for payments (sign-in v2)
+  if (pin) headers['X-Kc-Pin'] = pin;
 
   let body: unknown;
   if (method === 'POST') body = await req.json().catch(() => ({}));
