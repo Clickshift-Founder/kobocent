@@ -102,7 +102,7 @@ export default function HomePage() {
       </div>
 
       {/* Balance */}
-      <section className="relative overflow-hidden rounded-3xl bg-terracotta text-white p-6 sm:p-8 shadow-card">
+      <section data-tour="balance" className="relative overflow-hidden rounded-3xl bg-terracotta text-white p-6 sm:p-8 shadow-card">
         <svg className="absolute -right-10 -top-10 opacity-15" width="240" height="240" viewBox="0 0 120 120" aria-hidden="true">
           <circle cx="46" cy="60" r="30" fill="none" stroke="white" strokeWidth="9" /><circle cx="86" cy="60" r="20" fill="white" />
         </svg>
@@ -126,8 +126,8 @@ export default function HomePage() {
             {bal?.totals.partial && <span className="text-white/70">Some prices unavailable</span>}
           </div>
           <div className="mt-6 grid grid-cols-2 gap-3 sm:max-w-sm">
-            <Link href="/app/add-money" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white text-terracotta-dark font-semibold min-h-[48px]"><IconPlus size={18} />Add money</Link>
-            <Link href="/app/card" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/15 hover:bg-white/25 font-semibold min-h-[48px]"><IconCard size={18} />Card</Link>
+            <Link href="/app/add-money" data-tour="add-money" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white text-terracotta-dark font-semibold min-h-[48px]"><IconPlus size={18} />Add money</Link>
+            <Link href="/app/card" data-tour="card" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/15 hover:bg-white/25 font-semibold min-h-[48px]"><IconCard size={18} />Card</Link>
           </div>
         </div>
       </section>
@@ -137,7 +137,7 @@ export default function HomePage() {
         <SectionTitle>Move money</SectionTitle>
         <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 sm:gap-3">
           {ACTIONS.slice(1).map(a => (
-            <button key={a.key} onClick={() => (a.href ? router.push(a.href) : setSheet(a))}
+            <button key={a.key} data-tour={`action-${a.key}`} onClick={() => (a.href ? router.push(a.href) : setSheet(a))}
               className="group flex flex-col items-center gap-2 rounded-2xl p-2.5 min-h-[88px] hover:bg-white dark:hover:bg-night-card transition-colors">
               <span className="grid place-items-center h-12 w-12 rounded-2xl surface text-terracotta group-hover:border-terracotta transition-colors"><a.Icon size={22} /></span>
               <span className="text-[12.5px] font-medium text-ink dark:text-cream-warm text-center leading-tight">{a.label}</span>
