@@ -344,11 +344,12 @@ function Funded({ ov, reload }: { ov: Overview; reload: (silent?: boolean) => Pr
           {quote && (
             <div className="mt-2 grid grid-cols-2 gap-y-1 text-[13px]">
               <span className="text-cream/70">Rate</span><span className="text-right font-mono">₦{quote.rate.toLocaleString('en-NG')} / $1</span>
-              <span className="text-cream/70">Fee ({(quote.feeRate * 100).toFixed(1).replace(/\.0$/, '')}%)</span><span className="text-right font-mono">{naira(quote.feeNgn)}</span>
+              <span className="text-cream/70">Fee</span><span className="text-right font-mono">{naira(quote.feeNgn)}</span>
             </div>
           )}
         </div>
-        <FeeTiers tiers={ov.tiers} />
+        {/* Fee tiers are not shown (2026-10-05: business decision) — the estimate shows the fee amount. */}
+        <p className="mt-3 text-center text-[13px] muted">The estimate uses today’s rate; your USDC is priced when the transfer arrives.</p>
       </section>
 
       {!watching && !arrived && (
@@ -385,18 +386,3 @@ function Funded({ ov, reload }: { ov: Overview; reload: (silent?: boolean) => Pr
   );
 }
 
-function FeeTiers({ tiers }: { tiers: Overview['tiers'] }) {
-  const rows = useMemo(() => tiers.map((t, i) => {
-    const from = i === 0 ? 0 : tiers[i - 1].upToUsd!;
-    return { label: t.upToUsd ? (i === 0 ? `Under $${t.upToUsd}` : `$${from} – under $${t.upToUsd}`) : `$${from} and above`, pct: t.pct };
-  }), [tiers]);
-  return (
-    <details className="group mt-3 text-[13.5px] muted">
-      <summary className="cursor-pointer list-none flex items-center justify-center gap-1 min-h-[44px]">How fees work <IconChevron size={14} className="transition-transform group-open:rotate-90" /></summary>
-      <ul className="rounded-2xl bg-cream-warm dark:bg-night px-4 py-2 divide-y divide-cream-border dark:divide-night-border">
-        {rows.map(r => <li key={r.label} className="flex justify-between py-2"><span>{r.label}</span><span className="font-mono text-ink dark:text-cream-warm">{r.pct}%</span></li>)}
-      </ul>
-      <p className="mt-2 text-center">Bigger deposits pay a smaller fee. The estimate uses today’s rate; your USDC is priced when the transfer arrives.</p>
-    </details>
-  );
-}

@@ -349,7 +349,7 @@ function AmountStep({ ov, onChangeBank, onStarted }: { ov: Overview; onChangeBan
             </div>
             {quote && (
               <dl className="mt-4 grid grid-cols-2 gap-y-2 text-[14px]">
-                <dt className="text-cream/70">Fee ({(quote.feeRate * 100).toFixed(1).replace(/\.0$/, '')}%)</dt><dd className="text-right font-mono">{usd(quote.fee)}</dd>
+                <dt className="text-cream/70">Fee</dt><dd className="text-right font-mono">{usd(quote.fee)}</dd>
                 <dt className="text-cream/70">Rate</dt><dd className="text-right font-mono">₦{quote.displayRate.toLocaleString('en-NG')} / $1</dd>
                 {quote.displayRate > quote.midMarket && (<><dt className="text-cream/70">Above mid-market</dt><dd className="text-right font-mono text-terracotta-light">+₦{(quote.displayRate - quote.midMarket).toLocaleString('en-NG')} / $1</dd></>)}
                 <dt className="text-cream/70">Arrives</dt><dd className="text-right">Usually within minutes</dd>
@@ -363,16 +363,8 @@ function AmountStep({ ov, onChangeBank, onStarted }: { ov: Overview; onChangeBan
         {quoting && value ? 'Getting your rate…' : 'Review withdrawal'}
       </button>
 
-      <details className="group text-[13.5px] muted">
-        <summary className="cursor-pointer list-none flex items-center justify-center gap-1 min-h-[44px]">How fees work <IconChevron size={14} className="transition-transform group-open:rotate-90" /></summary>
-        <ul className="surface rounded-2xl px-4 py-2 mt-1 divide-y divide-cream-border dark:divide-night-border">
-          {ov.feeTiers.map((t, i) => {
-            const from = i === 0 ? ov.limits.minUsd : ov.feeTiers[i - 1].upToUsd!;
-            return <li key={i} className="flex justify-between py-2"><span>{t.upToUsd ? `${usd(from)} – under ${usd(t.upToUsd)}` : `${usd(from)} and above`}</span><span className="font-mono text-ink dark:text-cream-warm">{t.pct}%</span></li>;
-          })}
-        </ul>
-        <p className="mt-2 text-center">No network fees for you — Kobocent covers them.</p>
-      </details>
+      {/* Fee tiers are not shown (2026-10-05: business decision) — the quote shows the fee amount. */}
+      <p className="text-center text-[13.5px] muted">No network fees for you — Kobocent covers them.</p>
 
       <Sheet open={review} onClose={() => !starting && setReview(false)} title="Review withdrawal">
         {quote && (
