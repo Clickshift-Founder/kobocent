@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Fraunces, Inter, IBM_Plex_Mono } from 'next/font/google';
 import { THEME_INIT_SCRIPT } from '@/lib/theme';
 import { Analytics } from '@/components/Analytics';
+import { PageTracker } from '@/components/PageTracker';
 import './globals.css';
 
 const fraunces = Fraunces({ subsets: ['latin'], variable: '--font-fraunces', display: 'swap' });
@@ -47,6 +48,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         {children}
         <Analytics />
+        <PageTracker />
       </body>
     </html>
   );
