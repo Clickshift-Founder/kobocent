@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { IconCopy, IconCheck, IconBank, IconBolt, IconChart, IconLeaf, IconBridge, IconSend, IconClose, IconPlus, IconGift } from './Icons';
 import { naira, usd, amount, timeLabel, type HistoryItem } from '@/lib/kc';
 
@@ -60,8 +61,10 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
       if (!poppedByBack) { try { if (window.history.state?.kcSheet === id) window.history.back(); } catch { /* ignore */ } }
     };
   }, [open]);
-  if (!open) return null;
-  return (
+  if (!open || typeof document === 'undefined') return null;
+  // 2026-10-06: rendered into <body>. Inside the mobile top bar (backdrop-blur) a `fixed` overlay is
+  // trapped in the 56px bar — the bell's sheet showed as a white strip over the top that never closed.
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" role="dialog" aria-modal="true" aria-label={title}>
       <button className="absolute inset-0 bg-ink/40 backdrop-blur-[2px]" aria-label="Close" onClick={onClose} />
       {/* 2026-10-05: never taller than the screen; the header (with Close) stays put and the body scrolls. */}
@@ -76,7 +79,8 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
