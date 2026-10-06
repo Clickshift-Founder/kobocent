@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
 import { createPortal } from 'react-dom';
+import { useRouter } from 'next/navigation';
 import { kc, KcError, BOT_URL } from '@/lib/kc';
 import { newKey, HoldToConfirm } from './money';
 import { IconClose, IconSend, IconChevron } from './Icons';
@@ -111,6 +111,11 @@ function PalPanel({ onClose }: { onClose: () => void }) {
   const lastSupportId = useRef(0);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
+  const router = useRouter();
+  // Going to a screen from Pal: the destination REPLACES Pal's history entry, so closing does not step
+  // back over it (2026-10-06: buttons landed on Home because that step-back raced the navigation).
+  const leaving = useRef(false);
+  const go = (href: string) => { leaving.current = true; router.replace(href); onClose(); };
 
   // Back button closes the panel; Escape too; page behind doesn't scroll.
   useEffect(() => {
@@ -129,7 +134,7 @@ function PalPanel({ onClose }: { onClose: () => void }) {
       document.body.style.overflow = prev;
       window.removeEventListener('popstate', onPop);
       document.removeEventListener('keydown', onKey);
-      if (!popped) { try { if (window.history.state?.kcSheet === id) window.history.back(); } catch { /* ignore */ } }
+      if (!popped && !leaving.current) { try { if (window.history.state?.kcSheet === id) window.history.back(); } catch { /* ignore */ } }
     };
   }, []);
 
@@ -233,7 +238,7 @@ function PalPanel({ onClose }: { onClose: () => void }) {
           <button onClick={onClose} aria-label="Close" className="grid place-items-center h-11 w-11 rounded-xl muted hover:text-terracotta"><IconClose /></button>
         </div>
 
-        {view === 'tip' && state ? <TipView state={state} onDone={async () => { await load(); setView('chat'); }} /> : (
+        {view === 'tip' && state ? <TipView state={state} onNavigate={go} onDone={async () => { await load(); setView('chat'); }} /> : (
           <>
             {/* VIP strip */}
             {state && !caseOpen && (
@@ -277,7 +282,7 @@ function PalPanel({ onClose }: { onClose: () => void }) {
                       <div className="mt-2 flex flex-wrap gap-2">
                         {m.actions.filter(a => SCREENS[a]).map(a => SCREENS[a].external
                           ? <a key={a} href={SCREENS[a].href} target="_blank" rel="noopener noreferrer" className="rounded-full bg-terracotta-soft text-terracotta px-3.5 min-h-[40px] inline-flex items-center text-[13.5px] font-semibold">{SCREENS[a].label}</a>
-                          : <Link key={a} href={SCREENS[a].href} onClick={onClose} className="rounded-full bg-terracotta-soft text-terracotta px-3.5 min-h-[40px] inline-flex items-center text-[13.5px] font-semibold">{SCREENS[a].label}</Link>)}
+                          : <button key={a} onClick={() => go(SCREENS[a].href)} className="rounded-full bg-terracotta-soft text-terracotta px-3.5 min-h-[40px] inline-flex items-center text-[13.5px] font-semibold">{SCREENS[a].label}</button>)}
                       </div>
                     )}
                   </div>
@@ -326,7 +331,7 @@ function PalPanel({ onClose }: { onClose: () => void }) {
   );
 }
 
-function TipView({ state, onDone }: { state: PalState; onDone: () => void }) {
+function TipView({ state, onDone, onNavigate }: { state: PalState; onDone: () => void; onNavigate: (href: string) => void }) {
   const [pick, setPick] = useState<Tier | null>(null);
   const [starting, setStarting] = useState(false);
   const [job, setJob] = useState<Job | null>(null);
@@ -362,7 +367,7 @@ function TipView({ state, onDone }: { state: PalState; onDone: () => void }) {
     <div className="flex-1 overflow-y-auto px-5 py-8 text-center">
       <h2 className="font-display text-[22px] font-bold text-ink dark:text-cream-warm">{res.code === 'OUTCOME_UNKNOWN' ? 'Confirming your tip' : 'The tip did not go through'}</h2>
       <p className="muted text-[15px] mt-2 leading-relaxed">{res.error}</p>
-      {res.code === 'INSUFFICIENT' && <Link href="/app/add-money" className="btn-primary w-full mt-6 min-h-[52px]">Add money</Link>}
+      {res.code === 'INSUFFICIENT' && <button onClick={() => onNavigate('/app/add-money')} className="btn-primary w-full mt-6 min-h-[52px]">Add money</button>}
       <button onClick={onDone} className="btn-ghost w-full mt-3 min-h-[48px]">Back to chat</button>
     </div>
   );

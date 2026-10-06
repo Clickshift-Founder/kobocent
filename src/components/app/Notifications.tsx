@@ -57,12 +57,20 @@ export function NotificationsBell({ label }: { label?: string }) {
   const act = (i: Item) => {
     // Permission prompts must come straight from the tap, so this one runs before the sheet closes.
     if (i.action?.event === 'kc-push-enable') { enablePush().then(setPush).catch(() => {}); setOpen(false); return; }
+    // Wait until the sheet's history entry is gone (its "back" lands) before moving on — otherwise that
+    // late step-back can undo the navigation (same race that sent Pal's buttons to Home, 2026-10-06).
+    let done = false;
+    const next = () => {
+      if (done) return; done = true;
+      window.removeEventListener('popstate', next);
+      setTimeout(() => {
+        if (i.action?.event) window.dispatchEvent(new Event(i.action.event));
+        else if (i.action?.href) router.push(i.action.href);
+      }, 0);
+    };
+    window.addEventListener('popstate', next);
+    setTimeout(next, 600);
     setOpen(false);
-    // Let the sheet close (and its history entry go) before opening the next thing.
-    setTimeout(() => {
-      if (i.action?.event) window.dispatchEvent(new Event(i.action.event));
-      else if (i.action?.href) router.push(i.action.href);
-    }, 60);
   };
 
   return (
