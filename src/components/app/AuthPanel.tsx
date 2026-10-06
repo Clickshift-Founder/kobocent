@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LogoLockup } from '@/components/ui/Logo';
@@ -14,12 +14,22 @@ import { saveProfile, BOT_URL, type Account } from '@/lib/kc';
  * and history (same account as the bot); new users get an account and Kobocent creates their wallets (import removed 2026-10-05).
  * Google sign-in (2026-10-05): the same account if Google was added, or a new account whose wallets work
  * at once (internal user number); connect Telegram later for referrals and $SHIFT. No phone number.
+ *
+ * First question (founder, 2026-10-06): "Have you used Kobocent (formerly ClickBot) on Telegram?"
+ * Yes → Telegram only, so a bot user never makes a second, empty wallet with Google. No → Google first.
+ * The answer is remembered on this device. (Backstop on the server: an empty Google account that later
+ * connects an existing Telegram user is folded into it — identityV2.adoptIntoTelegram.)
  */
+const PATH_KEY = 'kc-signin-path';
 export function AuthPanel({ mode }: { mode: 'signin' | 'signup' }) {
   const router = useRouter();
   const params = useSearchParams();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [path, setPath] = useState<null | 'telegram' | 'new'>(null);
+  useEffect(() => { try { const v = localStorage.getItem(PATH_KEY); if (v === 'telegram' || v === 'new') setPath(v); } catch { /* ignore */ } }, []);
+  const choose = (v: null | 'telegram' | 'new') => { setPath(v); try { if (v) localStorage.setItem(PATH_KEY, v); else localStorage.removeItem(PATH_KEY); } catch { /* ignore */ } };
+  const google = googleEnabled();
 
   async function onAuth(user: TelegramUser) {
     setBusy(true);
@@ -82,15 +92,43 @@ export function AuthPanel({ mode }: { mode: 'signin' | 'signup' }) {
               : 'Continue with Telegram or Google — the same account, wallet and history everywhere.'}
           </p>
 
-          <div className={busy ? 'opacity-50 pointer-events-none' : ''}>
-            <TelegramLogin onAuth={onAuth} />
-            {googleEnabled() && (
-              <>
-                <div className="flex items-center gap-3 my-4 text-[12px] muted"><span className="h-px flex-1 bg-cream-border dark:bg-night-border" />or<span className="h-px flex-1 bg-cream-border dark:bg-night-border" /></div>
-                <GoogleButton onCredential={onGoogle} text={mode === 'signup' ? 'signup_with' : 'continue_with'} />
-              </>
-            )}
-          </div>
+          {google && path === null ? (
+            <div>
+              <p className="font-semibold text-ink dark:text-cream-warm text-[16px] mb-3">Have you used Kobocent (formerly ClickBot) on Telegram?</p>
+              <div className="grid gap-3">
+                <button onClick={() => choose('telegram')} className="surface rounded-2xl p-4 text-left min-h-[72px] flex items-center gap-3 hover:border-terracotta transition-colors">
+                  <span className="grid place-items-center h-11 w-11 shrink-0 rounded-2xl bg-[#229ED9]/12 text-[#229ED9]"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9.8 15.3 9.6 19c.4 0 .6-.2.8-.4l1.9-1.8 4 2.9c.7.4 1.3.2 1.5-.7l2.7-12.6c.3-1.1-.4-1.6-1.1-1.3L3.6 10.9c-1.1.4-1.1 1-.2 1.3l4.1 1.3 9.5-6c.4-.3.9-.1.6.2z" /></svg></span>
+                  <span><span className="block font-semibold text-ink dark:text-cream-warm">Yes, I use the bot</span><span className="block muted text-[13.5px]">Sign in with Telegram to see the same wallet and history</span></span>
+                </button>
+                <button onClick={() => choose('new')} className="surface rounded-2xl p-4 text-left min-h-[72px] flex items-center gap-3 hover:border-terracotta transition-colors">
+                  <span className="grid place-items-center h-11 w-11 shrink-0 rounded-2xl bg-terracotta-soft text-terracotta"><IconGift /></span>
+                  <span><span className="block font-semibold text-ink dark:text-cream-warm">No, I&apos;m new to Kobocent</span><span className="block muted text-[13.5px]">Start with Google or Telegram — it takes a few seconds</span></span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className={busy ? 'opacity-50 pointer-events-none' : ''}>
+              {google && path === 'telegram' && (
+                <div className="mb-4 rounded-2xl bg-cream-warm dark:bg-night p-4 text-[13.5px] leading-relaxed">
+                  Sign in with the <b>same Telegram account</b> you use with the bot — your wallet, balance and history are waiting. Please don&apos;t start with Google: that would create a new, empty wallet.
+                </div>
+              )}
+              {google && path === 'new' ? (
+                <>
+                  <GoogleButton onCredential={onGoogle} text={mode === 'signup' ? 'signup_with' : 'continue_with'} />
+                  <div className="flex items-center gap-3 my-4 text-[12px] muted"><span className="h-px flex-1 bg-cream-border dark:bg-night-border" />or<span className="h-px flex-1 bg-cream-border dark:bg-night-border" /></div>
+                  <TelegramLogin onAuth={onAuth} />
+                </>
+              ) : (
+                <TelegramLogin onAuth={onAuth} />
+              )}
+              {google && (
+                <button onClick={() => choose(null)} className="mt-4 text-[13.5px] text-terracotta font-medium min-h-[44px]">
+                  {path === 'telegram' ? 'Not a bot user? Go back' : 'Already use the Telegram bot? Go back'}
+                </button>
+              )}
+            </div>
+          )}
           {busy && <p className="text-center text-[14px] muted mt-4">Signing you in…</p>}
           {error && <p role="alert" className="mt-4 rounded-xl bg-terracotta-soft text-terracotta-dark dark:text-terracotta-light px-4 py-3 text-[14px]">{error}</p>}
 
