@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { kc, KcError } from '@/lib/kc';
@@ -18,6 +18,9 @@ export default function SetupPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [address, setAddress] = useState('');
+  // Wallets are made automatically on first visit (founder, 2026-10-06) — the button is only a retry.
+  const started = useRef(false);
+  useEffect(() => { if (!started.current) { started.current = true; doCreate(); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function doCreate() {
     setError('');
@@ -42,11 +45,11 @@ export default function SetupPage() {
 
       {!created ? (
         <div className="space-y-4">
-          <button onClick={doCreate} disabled={busy} className="w-full surface rounded-2xl p-5 flex items-center gap-4 text-left hover:border-terracotta transition-colors min-h-[88px] disabled:opacity-60">
-            <span className="grid place-items-center h-12 w-12 rounded-2xl bg-terracotta-soft text-terracotta shrink-0"><IconPlus /></span>
+          <button onClick={doCreate} disabled={busy || !error} aria-live="polite" className="w-full surface rounded-2xl p-5 flex items-center gap-4 text-left hover:border-terracotta transition-colors min-h-[88px] disabled:cursor-default">
+            <span className={`grid place-items-center h-12 w-12 rounded-2xl bg-terracotta-soft text-terracotta shrink-0 ${busy ? 'animate-pulse' : ''}`}><IconPlus /></span>
             <span>
-              <span className="block font-semibold text-ink dark:text-cream-warm text-[16px]">{busy ? 'Creating your wallets…' : 'Create my wallets'}</span>
-              <span className="block muted text-[14px]">Ready in seconds — with a little SOL to start, so fees are covered</span>
+              <span className="block font-semibold text-ink dark:text-cream-warm text-[16px]">{error ? 'Try again' : 'Creating your wallets…'}</span>
+              <span className="block muted text-[14px]">{error ? 'Tap to create your wallets' : 'Ready in seconds — with a little SOL to start, so fees are covered'}</span>
             </span>
           </button>
           <div className="flex gap-3 rounded-2xl bg-cream-warm dark:bg-night p-4 text-[13.5px] muted leading-relaxed">
