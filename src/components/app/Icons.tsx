@@ -18,6 +18,7 @@ export const IconCheck = ({ size = 18, className }: P) => (<svg {...base(size)} 
 export const IconChevron = ({ size = 18, className }: P) => (<svg {...base(size)} className={className}><path d="m9 6 6 6-6 6" /></svg>);
 export const IconDownload = ({ size = 18, className }: P) => (<svg {...base(size)} className={className}><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14" /></svg>);
 export const IconShield = ({ size = 22, className }: P) => (<svg {...base(size)} className={className}><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z" /></svg>);
+export const IconBell = ({ size = 22, className }: P) => (<svg {...base(size)} className={className}><path d="M6 9a6 6 0 1 1 12 0c0 4.5 1.5 6 2 7H4c.5-1 2-2.5 2-7zM10 19.5a2 2 0 0 0 4 0" /></svg>);
 export const IconGift = ({ size = 22, className }: P) => (<svg {...base(size)} className={className}><path d="M4 11h16v10H4zM2 7h20v4H2zM12 7v14M12 7c-2-4-6-4-6-1s6 1 6 1zm0 0c2-4 6-4 6-1s-6 1-6 1z" /></svg>);
 export const IconTelegram = ({ size = 18, className }: P) => (<svg width={size} height={size} viewBox="0 0 24 24" className={className} fill="currentColor"><path d="M21.9 4.3 18.7 19.4c-.2 1-.9 1.3-1.8.8l-4.9-3.6-2.4 2.3c-.3.3-.5.5-1 .5l.3-5 9.1-8.2c.4-.4-.1-.6-.6-.2L6.2 13.1l-4.8-1.5c-1-.3-1-1 .2-1.5l18.9-7.3c.9-.3 1.6.2 1.4 1.5z" /></svg>);
 export const IconEye = ({ size = 18, className }: P) => (<svg {...base(size)} className={className}><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>);

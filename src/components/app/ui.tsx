@@ -45,16 +45,19 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
     document.body.style.overflow = 'hidden';
     // 2026-10-05: the phone's back button closes the sheet instead of leaving the page (it used to
     // take people to Home). One history entry per open sheet, keeping Next's own state intact.
+    // Each open sheet owns one history entry (its own id). A child sheet closing steps back onto OUR
+    // entry — that is not "back" for us (2026-10-06: the PIN sheet used to close the Pal panel behind it).
+    const id = `s${Date.now()}${Math.random().toString(36).slice(2, 7)}`;
     let poppedByBack = false;
-    const onPop = () => { poppedByBack = true; closeRef.current(); };
-    try { window.history.pushState({ ...(window.history.state || {}), kcSheet: true }, ''); } catch { /* ignore */ }
+    const onPop = () => { if (window.history.state?.kcSheet === id) return; poppedByBack = true; closeRef.current(); };
+    try { window.history.pushState({ ...(window.history.state || {}), kcSheet: id }, ''); } catch { /* ignore */ }
     window.addEventListener('popstate', onPop);
     return () => {
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = prev;
       window.removeEventListener('popstate', onPop);
       // Closed by X / backdrop / a choice: drop the entry we added so Back still works normally.
-      if (!poppedByBack) { try { if (window.history.state?.kcSheet) window.history.back(); } catch { /* ignore */ } }
+      if (!poppedByBack) { try { if (window.history.state?.kcSheet === id) window.history.back(); } catch { /* ignore */ } }
     };
   }, [open]);
   if (!open) return null;

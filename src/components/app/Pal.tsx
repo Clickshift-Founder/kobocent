@@ -76,10 +76,10 @@ export function PalButton({ className = '', label }: { className?: string; label
     };
     tick();
     const t = setInterval(tick, 60_000);
-    const onOpen = () => setOpen(true);
+    const onOpen = () => { const desktop = window.matchMedia('(min-width: 1024px)').matches; if (!!label === desktop) setOpen(true); };
     window.addEventListener('kc-open-pal', onOpen);
     return () => { live = false; clearInterval(t); window.removeEventListener('kc-open-pal', onOpen); };
-  }, []);
+  }, [label]);
   if (!available) return null;
   return (
     <>
@@ -111,10 +111,12 @@ function PalPanel({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    // Own history entry; the PIN sheet stepping back onto it must not close Pal (tip success was lost).
+    const id = `pal${Date.now()}`;
     let popped = false;
-    const onPop = () => { popped = true; closeRef.current(); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeRef.current(); };
-    try { window.history.pushState({ ...(window.history.state || {}), kcSheet: true }, ''); } catch { /* ignore */ }
+    const onPop = () => { if (window.history.state?.kcSheet === id) return; popped = true; closeRef.current(); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && document.querySelectorAll('[role="dialog"]').length <= 1) closeRef.current(); };
+    try { window.history.pushState({ ...(window.history.state || {}), kcSheet: id }, ''); } catch { /* ignore */ }
     window.addEventListener('popstate', onPop);
     document.addEventListener('keydown', onKey);
     setMsgs(loadChat());
@@ -122,7 +124,7 @@ function PalPanel({ onClose }: { onClose: () => void }) {
       document.body.style.overflow = prev;
       window.removeEventListener('popstate', onPop);
       document.removeEventListener('keydown', onKey);
-      if (!popped) { try { if (window.history.state?.kcSheet) window.history.back(); } catch { /* ignore */ } }
+      if (!popped) { try { if (window.history.state?.kcSheet === id) window.history.back(); } catch { /* ignore */ } }
     };
   }, []);
 

@@ -72,6 +72,7 @@ const ALLOWED: Record<string, Array<'GET' | 'POST'>> = {
   'support/message': ['POST'],
   'support/close': ['POST'],
   'support/rate': ['POST'],
+  'notifications': ['GET'],
 };
 // Routes with an id in the path.
 const ALLOWED_PATTERNS: Array<{ re: RegExp; methods: Array<'GET' | 'POST'> }> = [
