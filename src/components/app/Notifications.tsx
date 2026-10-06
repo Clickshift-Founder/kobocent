@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { kc } from '@/lib/kc';
 import { Sheet } from './ui';
 import { IconBell } from './Icons';
+import { pushState, enablePush, type PushState } from '@/lib/push';
 
 /**
  * Notifications bell (2026-10-06). The backend (GET /notifications) lists what the user should finish
@@ -24,6 +25,8 @@ export function NotificationsBell({ label }: { label?: string }) {
   const [open, setOpen] = useState(false);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [seen, setSeen] = useState<Set<string>>(new Set());
+  const [push, setPush] = useState<PushState | null>(null);
+  useEffect(() => { pushState().then(setPush).catch(() => {}); }, []);
 
   const load = useCallback(async () => {
     try { setItems((await kc<{ items: Item[] }>('notifications')).items); } catch { /* backend without the bell yet */ }
@@ -39,7 +42,11 @@ export function NotificationsBell({ label }: { label?: string }) {
   }, [load]);
 
   if (items === null) return null;
-  const visible = items.filter(i => !dismissed.has(i.id));
+  // This device can get phone notifications but hasn't turned them on → offer it here (one tap).
+  const local: Item[] = push === 'off' ? [{ id: 'push-off', tone: 'action', title: 'Turn on notifications', body: 'Know the moment money arrives, a payment finishes, or support replies — even when the app is closed.', action: { label: 'Turn on', event: 'kc-push-enable' }, dismissible: true }]
+    : push === 'ios-install' ? [{ id: 'push-ios', tone: 'info', title: 'Get notifications on iPhone', body: 'Tap Share → “Add to Home Screen”, open Kobocent from there, and turn notifications on in Settings.', dismissible: true }]
+    : [];
+  const visible = [...local, ...items].filter(i => !dismissed.has(i.id));
   const unseen = visible.filter(i => !seen.has(i.id)).length;
 
   const openSheet = () => {
@@ -48,6 +55,8 @@ export function NotificationsBell({ label }: { label?: string }) {
   };
   const dismiss = (id: string) => { const next = new Set(dismissed); next.add(id); setDismissed(next); writeSet(DISMISSED, next); };
   const act = (i: Item) => {
+    // Permission prompts must come straight from the tap, so this one runs before the sheet closes.
+    if (i.action?.event === 'kc-push-enable') { enablePush().then(setPush).catch(() => {}); setOpen(false); return; }
     setOpen(false);
     // Let the sheet close (and its history entry go) before opening the next thing.
     setTimeout(() => {

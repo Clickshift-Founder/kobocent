@@ -9,6 +9,7 @@ import { IconShield, IconTelegram, IconLogout, IconChevron, IconEye, IconGift } 
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { PageHeader } from '@/components/app/PageHeader';
 import { SecuritySettings } from '@/components/app/SecuritySettings';
+import { PushSettings } from '@/components/app/PushSettings';
 import { TIPS } from '@/lib/guide';
 import { GoogleButton, googleEnabled } from '@/components/app/GoogleButton';
 
@@ -67,6 +68,8 @@ export default function SettingsPage() {
       </section>
 
       <SecuritySettings account={account} onAccount={setAccount} />
+
+      <PushSettings />
 
       {/* Product guide */}
       <section id="guide" className="scroll-mt-20">

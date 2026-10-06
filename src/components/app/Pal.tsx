@@ -75,6 +75,11 @@ export function PalButton({ className = '', label }: { className?: string; label
       catch { /* not signed in yet / backend without Pal */ }
     };
     tick();
+    // Tapped a "support replied" notification → /app?pal=1 opens the chat (only the visible button).
+    try {
+      const desktop = window.matchMedia('(min-width: 1024px)').matches;
+      if (new URLSearchParams(window.location.search).get('pal') === '1' && !!label === desktop) setOpen(true);
+    } catch { /* ignore */ }
     const t = setInterval(tick, 60_000);
     const onOpen = () => { const desktop = window.matchMedia('(min-width: 1024px)').matches; if (!!label === desktop) setOpen(true); };
     window.addEventListener('kc-open-pal', onOpen);
