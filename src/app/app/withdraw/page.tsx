@@ -3,7 +3,7 @@ import { ErrorNote } from '@/components/app/ErrorNote';
 import { AskPalButton } from '@/components/app/Pal';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { kc, KcError, usd, naira, BOT_URL } from '@/lib/kc';
+import { kc, KcError, usd, naira, amount, BOT_URL } from '@/lib/kc';
 import { PageHeader } from '@/components/app/PageHeader';
 import { Sheet, Skeleton, CopyButton, ReceiptButton } from '@/components/app/ui';
 import { TelegramLogin, type TelegramUser } from '@/components/app/TelegramLogin';
@@ -27,11 +27,27 @@ interface Overview {
   feeTiers: Array<{ upToUsd: number | null; pct: number }>;
   running: boolean;
 }
-interface Quote { amountUsd: number; feeRate: number; fee: number; net: number; displayRate: number; midMarket: number; payoutNgn: number; enough: boolean | null }
+// Spend from any chain (2026-10-07): a withdrawal can be paid from SOL, or USDT/USDC/native coins on EVM chains.
+interface Source { id: string; chain: string; chainLabel: string; symbol: string; kind: 'solana_stable' | 'sol' | 'evm_stable' | 'evm_native'; balance: number | null; priceUsd: number | null; valueUsd: number | null }
+interface NetworkFee { payer: 'user' | 'kobocent' | 'recovered'; native: string; amount: number; usd: number | null }
+interface Funding { sourceId: string; label: string; chain: string; chainLabel: string; collect: { amount: number; symbol: string } | null; priceUsd: number; networkFee: NetworkFee | null; eta?: string }
+interface Quote { amountUsd: number; feeRate: number; fee: number; net: number; displayRate: number; midMarket: number; payoutNgn: number; enough: boolean | null; funding?: Funding }
+interface JobFunding { label: string; amount: number; asset: string; explorerUrl: string | null }
 interface Job {
   id: string; status: 'running' | 'done'; stage: string; amountUsd: number;
-  result: null | { ok: boolean; code: string | null; reference: string | null; payoutNgn: number | null; signature: string | null; error: string | null };
+  result: null | { ok: boolean; code: string | null; reference: string | null; payoutNgn: number | null; signature: string | null; error: string | null; funding?: JobFunding | null; explorerUrl?: string | null };
 }
+interface PayFrom { id: string; title: string; sub: string; symbol: string; kind: Source['kind']; chain: string; balance: number | null; valueUsd: number | null }
+const SOLANA_STABLES = 'solana';
+// Which balance to use when the user hasn't chosen: Solana stablecoins, then stablecoins on cheap chains,
+// then SOL and native coins, then Ethereum stablecoins (its network fee is the highest).
+function rank(o: PayFrom) {
+  if (o.id === SOLANA_STABLES) return 0;
+  if (o.kind === 'evm_stable') return o.chain === 'ETH' ? 4 : 1;
+  if (o.kind === 'sol') return 2;
+  return 3;
+}
+function coinAmount(n: number) { return amount(n, n < 1 ? 6 : 4); }
 type Screen = 'loading' | 'bank' | 'amount' | 'progress';
 
 const JOB_KEY = 'kc-withdraw-job';
@@ -239,18 +255,44 @@ function BankSetup({ current, onSaved, onCancel }: { current: Bank | null; onSav
 
 function AmountStep({ ov, onChangeBank, onStarted }: { ov: Overview; onChangeBank: () => void; onStarted: (jobId: string) => void }) {
   const bank = ov.bank!;
-  const total = ov.balances?.total ?? null;
   const [raw, setRaw] = useState('');
   const [quote, setQuote] = useState<Quote | null>(null);
   const [qErr, setQErr] = useState('');
+  const [serverMax, setServerMax] = useState<number | null>(null);
   const [quoting, setQuoting] = useState(false);
   const [review, setReview] = useState(false);
   const [starting, setStarting] = useState(false);
   const [startErr, setStartErr] = useState('');
   const keyRef = useRef<string>(newKey());
 
+  // Pay from: Solana USDC/USDT (one option, as before) + every other balance worth spending.
+  const [sources, setSources] = useState<Source[] | null>(null);
+  const [from, setFrom] = useState(SOLANA_STABLES);
+  const [manual, setManual] = useState(false);
+  const [picking, setPicking] = useState(false);
+  useEffect(() => { kc<{ sources: Source[] }>('withdraw/sources').then(r => setSources(r.sources)).catch(() => setSources([])); }, []);
+  const options = useMemo<PayFrom[]>(() => {
+    const sol: PayFrom = { id: SOLANA_STABLES, title: 'USDC & USDT', sub: 'Solana', symbol: 'USD', kind: 'solana_stable', chain: 'SOLANA', balance: ov.balances?.total ?? null, valueUsd: ov.balances?.total ?? null };
+    const rest = (sources || []).filter(s => s.kind !== 'solana_stable' && (s.valueUsd ?? 0) >= 0.5)
+      .map(s => ({ id: s.id, title: s.symbol, sub: s.chainLabel, symbol: s.symbol, kind: s.kind, chain: s.chain, balance: s.balance, valueUsd: s.valueUsd }))
+      .sort((a, b) => (b.valueUsd ?? 0) - (a.valueUsd ?? 0));
+    return [sol, ...rest];
+  }, [sources, ov.balances?.total]);
+  const sel = options.find(o => o.id === from) || options[0];
+  const totalAll = options.reduce((s, o) => s + (o.valueUsd ?? 0), 0);
+  const isSolana = sel.id === SOLANA_STABLES;
+
   const value = Number(raw) || 0;
-  const maxUsd = total === null ? null : Math.min(Math.floor(total * 100) / 100, ov.limits.maxUsd);
+  // Until the user picks, choose the balance that covers the amount at the lowest cost.
+  useEffect(() => {
+    if (manual) return;
+    const covers = options.filter(o => (o.valueUsd ?? 0) >= value);
+    const best = (covers.length ? covers : [...options].sort((a, b) => (b.valueUsd ?? 0) - (a.valueUsd ?? 0))).sort((a, b) => (covers.length ? rank(a) - rank(b) : 0))[0];
+    if (best && best.id !== from) setFrom(best.id);
+  }, [value, options, manual, from]);
+
+  const selValue = sel.valueUsd;
+  const maxUsd = serverMax ?? (selValue === null ? null : Math.min(Math.floor(selValue * 100) / 100, ov.limits.maxUsd));
   const shownNgn = useCountUp(quote && value > 0 ? quote.payoutNgn : null);
 
   // Debounced live quote.
@@ -261,17 +303,31 @@ function AmountStep({ ov, onChangeBank, onStarted }: { ov: Overview; onChangeBan
     if (value > ov.limits.maxUsd) { setQuote(null); setQErr(`Above ${usd(ov.limits.maxUsd)} we process withdrawals by hand — message support and we’ll do it for you.`); return; }
     let live = true;
     setQuoting(true);
+    setServerMax(null);
     const t = setTimeout(() => {
-      kc<Quote>('withdraw/quote', { method: 'POST', body: { amountUsd: value } })
+      kc<Quote>('withdraw/quote', { method: 'POST', body: { amountUsd: value, ...(isSolana ? {} : { from }) } })
         .then(q => { if (live) setQuote(q); })
-        .catch(e => { if (live) { setQuote(null); setQErr(e instanceof Error ? e.message : 'Could not get a rate'); } })
+        .catch(e => {
+          if (!live) return;
+          setQuote(null);
+          setQErr(e instanceof Error ? e.message : 'Could not get a rate');
+          const m = e instanceof KcError ? Number(e.data?.maxUsd) : NaN;
+          if (Number.isFinite(m) && m > 0) setServerMax(Math.min(m, ov.limits.maxUsd));
+        })
         .finally(() => { if (live) setQuoting(false); });
     }, 350);
     return () => { live = false; clearTimeout(t); };
-  }, [value, ov.limits.minUsd, ov.limits.maxUsd]);
+  }, [value, from, isSolana, ov.limits.minUsd, ov.limits.maxUsd]);
 
-  const short = total !== null && value > total;
+  // Solana stablecoins are exact; other balances are checked by the quote (it knows gas and live prices).
+  const short = isSolana && selValue !== null && value > selValue;
   const canReview = !!quote && !short && !quoting && value >= ov.limits.minUsd;
+  const nf = quote?.funding?.networkFee || null;
+  const feeLine = !quote?.funding ? null
+    : !nf || nf.payer === 'kobocent' ? 'Covered by Kobocent'
+    : nf.payer === 'user' ? `${coinAmount(nf.amount)} ${nf.native} from your balance${nf.usd ? ` (≈${usd(nf.usd)})` : ''}`
+    : `${usd(nf.usd)} ${quote.funding.chainLabel} network fee`;
+  const paidFrom = quote?.funding?.collect ? `${coinAmount(quote.funding.collect.amount)} ${quote.funding.collect.symbol} on ${quote.funding.chainLabel}` : 'USDC first, then USDT';
 
   function onInput(v: string) {
     let s = v.replace(/[^\d.]/g, '');
@@ -284,7 +340,7 @@ function AmountStep({ ov, onChangeBank, onStarted }: { ov: Overview; onChangeBan
   async function start() {
     setStarting(true); setStartErr('');
     try {
-      const job = await kc<Job>('withdraw', { method: 'POST', body: { amountUsd: value, idempotencyKey: keyRef.current } });
+      const job = await kc<Job>('withdraw', { method: 'POST', body: { amountUsd: value, idempotencyKey: keyRef.current, ...(isSolana ? {} : { from }) } });
       setReview(false);
       onStarted(job.id);
     } catch (e) {
@@ -319,7 +375,10 @@ function AmountStep({ ov, onChangeBank, onStarted }: { ov: Overview; onChangeBan
             className="bg-transparent font-display font-bold text-[56px] leading-none text-ink dark:text-cream-warm outline-none text-center placeholder:text-cream-border dark:placeholder:text-night-border max-w-full" />
         </div>
         <div className="mt-3 text-[13.5px] muted">
-          {ov.balances ? <>Available <strong className="text-ink dark:text-cream-warm">{usd(ov.balances.total)}</strong> · USDC {usd(ov.balances.usdc)} · USDT {usd(ov.balances.usdt)}</> : 'Balance unavailable right now'}
+          {isSolana
+            ? (ov.balances ? <>Available <strong className="text-ink dark:text-cream-warm">{usd(ov.balances.total)}</strong> · USDC {usd(ov.balances.usdc)} · USDT {usd(ov.balances.usdt)}</> : 'Balance unavailable right now')
+            : <>From {sel.title} on {sel.sub}: about <strong className="text-ink dark:text-cream-warm">{usd(selValue)}</strong></>}
+          {options.length > 1 && totalAll > (selValue ?? 0) + 0.5 && <div className="mt-1">You can spend {usd(totalAll)} across all your balances</div>}
         </div>
         <div className="mt-4 flex flex-wrap justify-center gap-2">
           {chips.map(c => (
@@ -330,6 +389,18 @@ function AmountStep({ ov, onChangeBank, onStarted }: { ov: Overview; onChangeBan
           )}
         </div>
       </section>
+
+      {/* Pay from — any chain; picked automatically until the user chooses */}
+      {options.length > 1 && (
+        <button onClick={() => setPicking(true)} className="w-full surface rounded-2xl px-4 py-3 flex items-center gap-3 text-left hover:border-terracotta transition-colors min-h-[60px]">
+          <ChainBadge o={sel} />
+          <div className="flex-1 min-w-0">
+            <div className="text-[12.5px] muted">Pay from{!manual && ' · picked for the lowest cost'}</div>
+            <div className="font-semibold text-ink dark:text-cream-warm truncate">{sel.title} <span className="muted font-normal">on {sel.sub}</span></div>
+          </div>
+          <span className="text-[13px] font-semibold text-terracotta">Change</span>
+        </button>
+      )}
 
       {/* Quote */}
       <section className={`rounded-3xl p-6 transition-all ${quote && !short ? 'bg-ink dark:bg-night-card text-cream shadow-card' : 'surface'}`}>
@@ -354,7 +425,11 @@ function AmountStep({ ov, onChangeBank, onStarted }: { ov: Overview; onChangeBan
                 <dt className="text-cream/70">Fee</dt><dd className="text-right font-mono">{usd(quote.fee)}</dd>
                 <dt className="text-cream/70">Rate</dt><dd className="text-right font-mono">₦{quote.displayRate.toLocaleString('en-NG')} / $1</dd>
                 {quote.displayRate > quote.midMarket && (<><dt className="text-cream/70">Above mid-market</dt><dd className="text-right font-mono text-terracotta-light">+₦{(quote.displayRate - quote.midMarket).toLocaleString('en-NG')} / $1</dd></>)}
-                <dt className="text-cream/70">Arrives</dt><dd className="text-right">Usually within minutes</dd>
+                {quote.funding && (<>
+                  <dt className="text-cream/70">Paid from</dt><dd className="text-right font-mono">{paidFrom}</dd>
+                  <dt className="text-cream/70">Network fee</dt><dd className="text-right">{feeLine}</dd>
+                </>)}
+                <dt className="text-cream/70">Arrives</dt><dd className="text-right">{quote.funding?.eta && quote.funding.eta !== 'seconds' ? `Confirms on ${quote.funding.chainLabel} in ${quote.funding.eta}, then minutes` : 'Usually within minutes'}</dd>
               </dl>
             )}
           </div>
@@ -366,7 +441,30 @@ function AmountStep({ ov, onChangeBank, onStarted }: { ov: Overview; onChangeBan
       </button>
 
       {/* Fee tiers are not shown (2026-10-05: business decision) — the quote shows the fee amount. */}
-      <p className="text-center text-[13.5px] muted">No network fees for you — Kobocent covers them.</p>
+      {(!nf || nf.payer === 'kobocent') && <p className="text-center text-[13.5px] muted">No network fees for you — Kobocent covers them.</p>}
+
+      <Sheet open={picking} onClose={() => setPicking(false)} title="Pay from">
+        <p className="muted text-[14px] -mt-1 mb-3">Spend from any balance — we handle the network behind the scenes.</p>
+        <ul className="space-y-2">
+          {options.map(o => (
+            <li key={o.id}>
+              <button onClick={() => { setFrom(o.id); setManual(true); setPicking(false); }}
+                className={`w-full flex items-center gap-3 rounded-2xl border p-3.5 min-h-[64px] text-left transition-colors ${o.id === sel.id ? 'border-terracotta bg-terracotta-soft' : 'border-cream-border dark:border-night-border hover:border-terracotta'}`}>
+                <ChainBadge o={o} />
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-ink dark:text-cream-warm">{o.title}</div>
+                  <div className="muted text-[13px] truncate">{o.sub}{o.id !== SOLANA_STABLES && o.balance !== null ? ` · ${coinAmount(o.balance)} ${o.symbol}` : ''}</div>
+                </div>
+                <div className="text-right">
+                  <div className="font-mono text-[14px] text-ink dark:text-cream-warm">{usd(o.valueUsd)}</div>
+                  {o.id === sel.id && <IconCheck size={16} className="text-terracotta ml-auto mt-0.5" />}
+                </div>
+              </button>
+            </li>
+          ))}
+        </ul>
+        {sources === null && <p className="muted text-[13px] mt-3">Checking your other balances…</p>}
+      </Sheet>
 
       <Sheet open={review} onClose={() => !starting && setReview(false)} title="Review withdrawal">
         {quote && (
@@ -380,8 +478,12 @@ function AmountStep({ ov, onChangeBank, onStarted }: { ov: Overview; onChangeBan
               <dt className="muted">You withdraw</dt><dd className="text-right font-mono">{usd(quote.amountUsd)}</dd>
               <dt className="muted">Fee</dt><dd className="text-right font-mono">{usd(quote.fee)}</dd>
               <dt className="muted">Rate</dt><dd className="text-right font-mono">₦{quote.displayRate.toLocaleString('en-NG')} / $1</dd>
-              <dt className="muted">Paid from</dt><dd className="text-right">USDC first, then USDT</dd>
+              <dt className="muted">Paid from</dt><dd className="text-right">{paidFrom}</dd>
+              {feeLine && (<><dt className="muted">Network fee</dt><dd className="text-right">{feeLine}</dd></>)}
             </dl>
+            {quote.funding && quote.funding.collect && quote.funding.priceUsd !== 1 && (
+              <p className="mt-2 text-[12.5px] muted text-center">Priced at {usd(quote.funding.priceUsd)} per {quote.funding.collect.symbol}, live — the exact amount is set the moment you confirm.</p>
+            )}
             <ErrorNote msg={startErr} className="mt-4 text-[14px] text-[#B84A40]" />
             <div className="mt-5">
               <HoldToConfirm label={`Hold to send ${naira(quote.payoutNgn)}`} busy={starting} onConfirm={start} />
@@ -394,10 +496,21 @@ function AmountStep({ ov, onChangeBank, onStarted }: { ov: Overview; onChangeBan
   );
 }
 
+const CHAIN_COLOR: Record<string, string> = { SOLANA: '#7A5AF8', ETH: '#627EEA', BNB: '#D9A400', POLYGON: '#8247E5', ARBITRUM: '#2D74DA', ROBINHOOD: '#1F9D55' };
+function ChainBadge({ o }: { o: PayFrom }) {
+  const text = o.id === SOLANA_STABLES ? '$' : o.symbol.slice(0, 4);
+  return (
+    <span className="relative grid place-items-center h-11 w-11 shrink-0 rounded-2xl bg-cream-warm dark:bg-night font-semibold text-[12.5px] text-ink dark:text-cream-warm">
+      {text}
+      <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full ring-2 ring-white dark:ring-night-card" style={{ background: CHAIN_COLOR[o.chain] || '#C1502E' }} aria-hidden />
+    </span>
+  );
+}
+
 // ───────────────────────────── Progress + outcome ─────────────────────────────
 
 const STEPS = [
-  { key: 'sending', title: 'Securing your stablecoins', sub: 'Moving them to the Kobocent vault on-chain' },
+  { key: 'sending', title: 'Securing your funds', sub: 'Moving them to Kobocent on-chain' },
   { key: 'payout', title: 'Sending naira', sub: 'Paying out to your bank' },
   { key: 'done', title: 'On its way', sub: 'Your bank credits you, usually within minutes' },
 ];
@@ -441,10 +554,12 @@ function Progress({ jobId, bankName, onFinish }: { jobId: string; bankName: stri
   if (job?.status === 'done' && r) {
     if (r.ok) {
       return (
-        <Outcome tone="success" title={`${naira(r.payoutNgn)} is on its way`} body={`We’ve sent it to ${bankName}. It usually arrives within minutes — your receipt and cashback land in Telegram.`}
-          reference={r.reference} signature={r.signature}
+        <Outcome tone="success" title={`${naira(r.payoutNgn)} is on its way`}
+          body={`We’ve sent it to ${bankName}${r.funding ? `, paid from ${coinAmount(r.funding.amount)} ${r.funding.label}` : ''}. It usually arrives within minutes — your receipt and cashback land in Telegram.`}
+          reference={r.reference} signature={r.funding ? null : r.signature}
           actions={<>
             <Link href="/app" onClick={() => onFinish(false)} className="btn-primary w-full">Done</Link>
+            {r.funding?.explorerUrl && <a href={r.funding.explorerUrl} target="_blank" rel="noopener noreferrer" className="block text-center text-[14px] font-semibold text-terracotta min-h-[44px] leading-[44px]">View the on-chain transfer</a>}
             {r.reference && <div><ReceiptButton reference={r.reference} wait /></div>}
             <Link href="/app/activity" onClick={() => onFinish(false)} className="block text-center text-[14px] font-semibold text-terracotta min-h-[44px] leading-[44px]">View activity</Link>
           </>} />
@@ -452,8 +567,11 @@ function Progress({ jobId, bankName, onFinish }: { jobId: string; bankName: stri
     }
     if (r.code === 'OUTCOME_UNKNOWN') {
       return (
-        <Outcome tone="warn" title="Being confirmed on the network" body="Please don’t withdraw again. We’re checking the transfer and will complete it or message you on Telegram."
-          reference={r.signature} actions={<button onClick={() => onFinish(false)} className="btn-primary w-full">Got it</button>} />
+        <Outcome tone="warn" title="Being confirmed on the network" body={r.error || 'Please don’t withdraw again. We’re checking the transfer and will complete it or message you on Telegram.'}
+          reference={r.signature} actions={<>
+            <button onClick={() => onFinish(false)} className="btn-primary w-full">Got it</button>
+            {r.explorerUrl && <a href={r.explorerUrl} target="_blank" rel="noopener noreferrer" className="block text-center text-[14px] font-semibold text-terracotta min-h-[44px] leading-[44px]">View the on-chain transfer</a>}
+          </>} />
       );
     }
     if (r.code === 'PAYOUT_FAILED' || r.code === 'NEEDS_REVIEW' || r.code === 'SPLIT_USDT_FAILED') {
@@ -462,7 +580,7 @@ function Progress({ jobId, bankName, onFinish }: { jobId: string; bankName: stri
           reference={r.signature} actions={<><a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer" className="btn-primary w-full">Message support</a><button onClick={() => onFinish(false)} className="btn-ghost w-full">Close</button></>} />
       );
     }
-    const msg = r.code === 'INSUFFICIENT' ? 'Your balance changed before we could send it.' : r.code === 'IN_PROGRESS' ? 'Another withdrawal was still being processed.' : (r.error || 'Something went wrong.');
+    const msg = r.code === 'INSUFFICIENT' ? (r.error || 'Your balance changed before we could send it.') : r.code === 'IN_PROGRESS' ? 'Another withdrawal was still being processed.' : (r.error || 'Something went wrong.');
     return (
       <Outcome tone="error" title="Nothing left your wallet" body={msg}
         actions={<><button onClick={() => onFinish(true)} className="btn-primary w-full">Try again</button><a href={BOT_URL} target="_blank" rel="noopener noreferrer" className="btn-ghost w-full">Use Telegram instead</a></>} />
