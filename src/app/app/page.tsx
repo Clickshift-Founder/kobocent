@@ -20,11 +20,11 @@ const ACTIONS: Action[] = [
   { key: 'fund', label: 'Add money', Icon: IconPlus, title: 'Add money', body: 'Buy USDC with naira by bank transfer — it lands in your wallet in a few minutes. Or receive crypto to your addresses.', href: '/app/add-money' },
   { key: 'send', label: 'Send to bank', Icon: IconSend, title: 'Send to a bank account', body: 'Pay anyone in naira — type "send 5000 to GTBank 0123456789" or send a screenshot of their account details. Gasless, with a receipt and 0.2% cashback.', href: '/app/send' },
   { key: 'wallet', label: 'Send to wallet', Icon: IconWallet, title: 'Send to another wallet', body: 'Send SOL, USDC, USDT, ETH, BNB or MATIC to any wallet or exchange — on Solana, Ethereum, BNB Chain, Polygon, Arbitrum or Robinhood Chain.', href: '/app/send-wallet' },
-  { key: 'bills', label: 'Pay bills', Icon: IconBolt, title: 'Pay bills', body: 'Electricity, airtime, data and cable TV with your stablecoins. Type it, send a screenshot of the bill, or use a voice note.', href: '/app/bills' },
-  { key: 'withdraw', label: 'Withdraw', Icon: IconBank, title: 'Withdraw to bank', body: 'Turn USDC or USDT into naira in any Nigerian bank account, usually in minutes.', href: '/app/withdraw' },
+  { key: 'bills', label: 'Pay bills', Icon: IconBolt, title: 'Pay bills', body: 'Electricity, airtime, data and cable TV — paid from any balance on any chain. Type it, send a screenshot of the bill, or use a voice note.', href: '/app/bills' },
+  { key: 'withdraw', label: 'Withdraw', Icon: IconBank, title: 'Withdraw to bank', body: 'Turn what you hold — USDC, USDT, SOL, ETH, BNB or POL on any chain — into naira in any Nigerian bank account, usually in minutes.', href: '/app/withdraw' },
   { key: 'swap', label: 'Swap', Icon: IconSwap, title: 'Swap', body: 'Convert between SOL, USDC and USDT in seconds at the best route — gasless.', href: '/app/swap' },
   { key: 'earn', label: 'Earn', Icon: IconLeaf, title: 'Earn on your stablecoins', body: 'Put idle USDC to work — flexible or locked plans, earnings every hour. Rates can change.', href: '/app/earn' },
-  { key: 'bridge', label: 'Bridge in', Icon: IconBridge, title: 'Bridge in from another chain', body: 'Bring ETH, BNB, MATIC or USDC/USDT from Ethereum, BNB Chain, Polygon, Arbitrum or Robinhood Chain into spendable USDC.', href: '/app/bridge' },
+  { key: 'bridge', label: 'Bridge', Icon: IconBridge, title: 'Bridge between chains', body: 'Move money in or out — between Solana and Ethereum, BNB Chain, Polygon, Arbitrum or Robinhood Chain. You don’t need it to spend: Withdraw, Send and Bills pay from any chain.', href: '/app/bridge' },
   { key: 'trade', label: 'Trade', Icon: IconChart, title: 'Trade tokens', body: 'Analyse any token with an AI risk score before you buy, then trade in seconds.' },
 ];
 

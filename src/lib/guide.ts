@@ -69,7 +69,7 @@ export const TOUR: TourStep[] = [
   {
     target: 'action-bridge',
     title: 'Bridge',
-    body: 'Move money between chains. Bring crypto from Ethereum, BNB Chain, Polygon or Arbitrum into spendable USDC — or send your USDC out to those chains.',
+    body: 'Move money between chains — bring crypto from Ethereum, BNB Chain, Polygon or Arbitrum in as USDC, or send your USDC out. You don’t need it to spend: Withdraw, Send and Bills pay from any chain.',
     bullets: ['Every fee is paid from what you bridge — you never need to buy gas first.', 'We track the transfer and message you the moment it lands.'],
   },
   {

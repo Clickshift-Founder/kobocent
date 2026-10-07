@@ -12,7 +12,7 @@ import { newKey, store, read, HoldToConfirm, Outcome } from '@/components/app/mo
 /**
  * Bridge — move money between chains (deBridge). One layout, two directions:
  *   Bring in  — ETH/BNB/MATIC or USDC/USDT on Ethereum, BNB Chain, Polygon, Arbitrum, Robinhood Chain
- *               → USDC on Solana, spendable in Kobocent.
+ *               → USDC on Solana.
  *   Send out  — your USDC → USDC/USDT or the network coin on those chains, to your own 0x wallet or another.
  * Every fee is paid in stablecoin (founder, 2026-10-05): if the user lacks the network coin, Kobocent
  * covers the network costs and takes the USDC equivalent — never an "add gas" step.
@@ -155,16 +155,8 @@ export default function BridgePage() {
 
           {dir === 'in' ? (
             <>
-              <section className="rounded-2xl p-4" style={{ background: 'linear-gradient(135deg,#C1502E14,#C1502E05)' }}>
-                <div className="font-semibold text-[14.5px] text-ink dark:text-cream-warm">Make it spendable</div>
-                <p className="text-[13px] muted mt-0.5">Crypto on other chains just sits there. Bring it into your Kobocent balance and it works for you:</p>
-                <div className="mt-3 grid grid-cols-3 sm:grid-cols-6 gap-2 text-center text-[12px] font-medium">
-                  {[['🛒', 'Spend'], ['↗️', 'Send'], ['🏦', 'Withdraw'], ['⚡', 'Pay bills'], ['🌱', 'Earn'], ['📈', 'Trade']].map(([g, t]) => (
-                    <div key={t} className="rounded-xl bg-white/70 dark:bg-night py-2"><div aria-hidden className="text-[17px]">{g}</div>{t}</div>
-                  ))}
-                </div>
-                <p className="text-[12px] muted mt-2">Lands as USDC on Solana in minutes. Every fee is paid from what you bridge — no gas to buy.</p>
-              </section>
+              {/* 2026-10-07: spending no longer needs a bridge (Pay from any chain) — this screen only moves money. */}
+              <p className="text-[13px] muted px-1">Turns ETH, BNB, POL, USDC or USDT on another chain into USDC on Solana — every fee comes out of what you bridge. To <b>spend</b>, you don’t need this: Withdraw, Send to bank and Bills pay straight from any chain.</p>
               {noInBalances && (
                 <div className="rounded-2xl p-4 text-[13.5px]" style={{ background: '#C1502E12' }}>
                   Nothing to bring in yet. Receive ETH, BNB, MATIC, USDC or USDT to your 0x address first — <Link href="/app/add-money?tab=crypto" className="font-semibold text-terracotta">Add money → Crypto</Link>.
@@ -185,14 +177,14 @@ export default function BridgePage() {
                   {quote?.direction === 'in' && quote.usdIn && <div className="text-[13px] muted">≈ ${fmt(quote.usdIn, 2)}</div>}
                 </div>
                 {arrow}
-                {receiveBox('USDC', '#2775CA', 'To · spendable Kobocent balance')}
+                {receiveBox('USDC', '#2775CA', 'To · USDC on Solana')}
               </section>
             </>
           ) : (
             <>
               <section className="relative">
                 <div className="surface rounded-3xl p-5">
-                  <div className="flex items-center justify-between text-[13px] muted"><span>From · spendable Kobocent balance</span>
+                  <div className="flex items-center justify-between text-[13px] muted"><span>From · your USDC on Solana</span>
                     <span>USDC {opts.out.usdc == null ? '—' : fmt(opts.out.usdc, 2)}{(opts.out.usdc || 0) > 0 && <button onClick={() => { setUseMax(true); setAmt(''); }} className="ml-2 font-semibold text-terracotta">Max</button>}</span>
                   </div>
                   <div className="mt-2 flex items-center gap-3">

@@ -32,7 +32,7 @@ export function ReceiveCrypto() {
         note="Send USDC or USDT on Solana (SPL), or SOL. Lands as spendable balance right away." />
       {a.evm && (
         <AddressCard title="Ethereum · BNB Chain · Polygon · Arbitrum · Robinhood" tag="One address, five networks" address={a.evm}
-          note="Same address on every network listed. Choose the network carefully — Ethereum and Arbitrum both use ETH but are different networks. Bridge it into spendable USDC from Telegram." />
+          note="Same address on every network listed. Choose the network carefully — Ethereum and Arbitrum both use ETH but are different networks. Once it lands you can spend it directly: Withdraw, Send and Bills pay from any chain." />
       )}
     </div>
   );
