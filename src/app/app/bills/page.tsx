@@ -1,4 +1,5 @@
 'use client';
+import { ErrorNote } from '@/components/app/ErrorNote';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { kc, KcError, usd, naira, BOT_URL } from '@/lib/kc';
@@ -171,7 +172,7 @@ function AmountField({ value, onChange, chips, min }: { value: string; onChange:
 
 function CostCard({ quote, err, busy, amountNgn }: { quote: Quote | null; err: string; busy: boolean; amountNgn: number }) {
   const shown = useCountUp(quote ? quote.totalUsd : null);
-  if (err) return <div className="surface rounded-3xl p-5 text-[14.5px] text-[#B84A40]">{err}</div>;
+  if (err) return <ErrorNote msg={err} className="surface rounded-3xl p-5 text-[14.5px] text-[#B84A40]" />;
   if (!amountNgn) return null;
   if (quote && !quote.canPay) {
     return (
@@ -212,7 +213,7 @@ function ReviewSheet({ open, onClose, title, lines, quote, onConfirm, busy, erro
             {lines.map(([k, v]) => (<Fragment key={k}><dt className="muted">{k}</dt><dd className="text-right font-medium break-all">{v}</dd></Fragment>))}
             <dt className="muted">You pay</dt><dd className="text-right font-mono">{usd(quote.totalUsd)} {quote.isSplit ? 'USDC + USDT' : quote.stable}</dd>
           </dl>
-          {error && <div className="mt-4 text-[14px] text-[#B84A40]">{error}</div>}
+          <ErrorNote msg={error} className="mt-4 text-[14px] text-[#B84A40]" />
           <div className="mt-5"><HoldToConfirm label={holdLabel} busy={busy} onConfirm={onConfirm} /></div>
           <p className="mt-3 text-center text-[12.5px] muted">Press and hold so nothing is paid by accident.</p>
         </>
@@ -427,7 +428,7 @@ function Electricity({ cat, recent, onStarted }: { cat: Catalog['electricity']; 
             <div className="min-w-0"><div className="font-semibold text-ink dark:text-cream-warm">{verified.customerName}</div>{verified.address && <div className="text-[13px] muted truncate">{verified.address}</div>}</div>
           </div>
         )}
-        {vErr && <div className="mt-2 text-[14px] text-[#B84A40]">{vErr}</div>}
+        <ErrorNote msg={vErr} className="mt-2 text-[14px] text-[#B84A40]" />
       </section>
 
       {verified && (
@@ -662,7 +663,7 @@ function Cable({ services, recent, onStarted }: { services: Service[]; recent: R
             <div className="font-semibold text-ink dark:text-cream-warm">{verified.customerName}</div>
           </div>
         )}
-        {vErr && <div className="mt-2 text-[14px] text-[#B84A40]">{vErr}</div>}
+        <ErrorNote msg={vErr} className="mt-2 text-[14px] text-[#B84A40]" />
       </section>
 
       {verified && (

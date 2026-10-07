@@ -1,4 +1,5 @@
 'use client';
+import { ErrorNote } from '@/components/app/ErrorNote';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { kc, KcError, usd, naira } from '@/lib/kc';
@@ -141,7 +142,7 @@ function NewRecipient({ onPick, onCancel }: { onPick: (r: Recipient) => void; on
           {checking ? <div className="flex items-center gap-3 muted text-[14px]"><span className="h-5 w-5 rounded-full border-2 border-terracotta border-t-transparent animate-spin" />Checking with {bank?.name}…</div>
             : name ? <div className="flex items-center gap-3 rounded-2xl bg-[#58834C]/10 px-4 py-3 animate-fade-up"><span className="grid place-items-center h-8 w-8 rounded-full bg-[#58834C] text-white"><IconCheck size={16} /></span><div><div className="text-[12px] muted">Account name</div><div className="font-semibold text-ink dark:text-cream-warm">{name}</div></div></div>
             : acct.length > 0 && acct.length < 10 ? <div className="muted text-[13.5px]">{10 - acct.length} more digit{10 - acct.length === 1 ? '' : 's'}</div> : null}
-          {err && <div className="text-[14px] text-[#B84A40] mt-1">{err}</div>}
+          <ErrorNote msg={err} className="text-[14px] text-[#B84A40] mt-1" />
         </div>
       </section>
 
@@ -214,7 +215,7 @@ function Amount({ to, onBack, onStarted }: { to: Recipient; onBack: () => void; 
           className="mt-4 w-full rounded-xl border border-cream-border dark:border-night-border bg-cream dark:bg-night px-4 min-h-[48px] text-[15px] text-center outline-none focus:border-terracotta" />
       </section>
 
-      {qErr ? <div className="surface rounded-3xl p-5 text-[14.5px] text-[#B84A40]">{qErr}</div>
+      {qErr ? <ErrorNote msg={qErr} className="surface rounded-3xl p-5 text-[14.5px] text-[#B84A40]" />
         : quote && !quote.canPay ? (
           <div className="surface rounded-3xl p-5"><div className="font-semibold text-ink dark:text-cream-warm">Not enough USDC/USDT</div><p className="muted text-[14px] mt-1">This needs {usd(quote.totalUsd)} and you have {usd(quote.balanceUsd)}.</p><Link href="/app/add-money" className="inline-flex items-center gap-1.5 mt-3 text-terracotta font-semibold text-[14px]"><IconPlus size={16} />Add money</Link></div>
         ) : quote?.aboveLimit ? (
@@ -244,7 +245,7 @@ function Amount({ to, onBack, onStarted }: { to: Recipient; onBack: () => void; 
               <dt className="muted">Fee</dt><dd className="text-right font-mono">{usd(quote.feeUsd)}</dd>
               {note && (<><dt className="muted">Note</dt><dd className="text-right truncate">{note}</dd></>)}
             </dl>
-            {startErr && <div className="mt-4 text-[14px] text-[#B84A40]">{startErr}</div>}
+            <ErrorNote msg={startErr} className="mt-4 text-[14px] text-[#B84A40]" />
             <div className="mt-5"><HoldToConfirm label={`Hold to send ${naira(value)}`} busy={starting} onConfirm={start} /></div>
             <p className="mt-3 text-center text-[12.5px] muted">Press and hold so nothing is sent by accident.</p>
           </>

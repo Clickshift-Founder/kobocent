@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { CopyButton } from '@/components/app/ui';
 import { IconShield } from '@/components/app/Icons';
+import { AskPalButton } from '@/components/app/Pal';
 
 /** Shared pieces of the money screens (withdraw, bills, …): keep every money flow consistent. */
 
@@ -115,6 +116,8 @@ export function Outcome({ tone, title, body, reference, signature, actions }: {
         </div>
       )}
       <div className="mt-6 space-y-3">{actions}</div>
+      {/* Every failure or unclear outcome offers Kobo Pal, who gets this exact message (founder, 2026-10-07). */}
+      {(tone === 'error' || tone === 'warn') && <div className="mt-3"><AskPalButton about={`${title}. ${body}`} /></div>}
       <style>{`@keyframes kcDraw { to { stroke-dashoffset: 0; } }`}</style>
     </section>
   );

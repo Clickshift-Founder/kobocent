@@ -1,4 +1,6 @@
 'use client';
+import { ErrorNote } from '@/components/app/ErrorNote';
+import { AskPalButton } from '@/components/app/Pal';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { kc, KcError, naira, amount, loadProfile, dayLabel } from '@/lib/kc';
@@ -134,7 +136,7 @@ function GetAccount({ kyc, example, onReady }: { kyc: Kyc; example: Quote | null
         <span className="mx-auto grid place-items-center h-16 w-16 rounded-2xl bg-terracotta-soft text-terracotta"><IconBank size={30} /></span>
         <h2 className="font-display text-[24px] font-bold text-ink dark:text-cream-warm mt-4">Get your account number</h2>
         <p className="muted text-[15px] mt-2 leading-relaxed">Your {kyc.type.toUpperCase()} ({kyc.masked}) is on file. We’ll open a permanent Nigerian account number that’s yours alone.</p>
-        {err && <p className="mt-3 text-[14px] text-[#B84A40]">{err}</p>}
+        <ErrorNote msg={err} className="mt-3 text-[14px] text-[#B84A40]" />
         <button onClick={createAccount} disabled={busy} className="btn-primary w-full mt-5 min-h-[56px]">
           {busy ? <><span className="h-5 w-5 rounded-full border-2 border-white border-t-transparent animate-spin" />Opening your account…</> : 'Create my account number'}
         </button>
@@ -185,7 +187,7 @@ function GetAccount({ kyc, example, onReady }: { kyc: Kyc; example: Quote | null
           <li className="flex gap-2"><IconShield size={16} className="text-terracotta shrink-0 mt-0.5" />Encrypted the moment it’s saved — never shown in full again.</li>
           <li className="flex gap-2"><IconCheck size={16} className="text-terracotta shrink-0 mt-0.5" />Used only to open your account. We can’t move money with it.</li>
         </ul>
-        {err && <p className="mt-3 text-[14px] text-[#B84A40]">{err}</p>}
+        <ErrorNote msg={err} className="mt-3 text-[14px] text-[#B84A40]" />
         <button disabled={digits.length !== 11 || busy} onClick={() => setConfirm(true)} className="btn-primary w-full mt-5 min-h-[56px] disabled:opacity-40 disabled:pointer-events-none">
           {busy ? <><span className="h-5 w-5 rounded-full border-2 border-white border-t-transparent animate-spin" />Opening your account…</> : 'Continue'}
         </button>
@@ -372,6 +374,7 @@ function Funded({ ov, reload }: { ov: Overview; reload: (silent?: boolean) => Pr
                   <div className="flex-1 min-w-0">
                     <div className="text-[15px] font-medium text-ink dark:text-cream-warm">{naira(d.amountNgn)}</div>
                     <div className="text-[12.5px] muted">{dayLabel(d.at)}{d.usdc ? ` · ${amount(d.usdc, 2)} USDC` : ''}</div>
+                    {failed && <AskPalButton className="-ml-1" about={`My naira deposit of ${naira(d.amountNgn)} (${dayLabel(d.at)}) shows "Needs attention"${d.reference ? `, reference ${d.reference}` : ''}.`} />}
                   </div>
                   <span className={`text-[12px] font-semibold rounded-full px-2.5 py-1 ${done ? 'bg-[#58834C]/12 text-[#58834C]' : failed ? 'bg-[#B84A40]/12 text-[#B84A40]' : 'bg-[#B68B2A]/12 text-[#B68B2A]'}`}>
                     {done ? 'Credited' : failed ? 'Needs attention' : d.status === 'crediting' ? 'Sending USDC' : 'Waiting'}

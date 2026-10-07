@@ -1,4 +1,5 @@
 'use client';
+import { ErrorNote } from './ErrorNote';
 import { useEffect, useState } from 'react';
 import { pushState, enablePush, disablePush, type PushState } from '@/lib/push';
 import { IconBell } from './Icons';
@@ -32,7 +33,7 @@ export function PushSettings() {
         <div className="flex-1 min-w-0">
           <p className="font-medium text-ink dark:text-cream-warm">Notifications on this device</p>
           <p className="text-[13.5px] muted leading-snug mt-0.5">{note}</p>
-          {err && <p className="text-[13px] text-[#B84A40] mt-1">{err}</p>}
+          <ErrorNote msg={err} className="text-[13px] text-[#B84A40] mt-1" />
         </div>
         {(state === 'on' || state === 'off') && (
           <button role="switch" aria-checked={state === 'on'} aria-label="Phone notifications" onClick={toggle} disabled={busy}

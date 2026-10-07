@@ -99,6 +99,7 @@ export const TOUR: TourStep[] = [
     body: 'Tap Pal at the top of any screen. Ask how to do something, check on a payment, or get advice on your money — answers come with buttons that take you straight there.',
     bullets: [
       'Free answers every day.',
+      'Something didn’t work? Tap “Ask Kobo Pal” under the message — Pal sees what happened and tells you what to do next.',
       'Tip Pal to unlock Pal VIP: money check-ups, Earn plans, spending insights and market deep-dives from a far more capable AI.',
       'Need a person? Tap “Talk to a person” — someone from the Kobocent team joins the chat by name.',
     ],

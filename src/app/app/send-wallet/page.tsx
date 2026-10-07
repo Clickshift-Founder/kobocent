@@ -1,4 +1,5 @@
 'use client';
+import { ErrorNote } from '@/components/app/ErrorNote';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { kc, KcError, amount as fmt } from '@/lib/kc';
@@ -255,7 +256,7 @@ export default function SendWalletPage() {
               <input type="checkbox" checked={checked} onChange={e => setChecked(e.target.checked)} className="mt-1 h-5 w-5 accent-[#C1502E]" />
               <span className="text-[13.5px]">I’ve checked the first and last characters, and this is a <b>{quote.chainLabel}</b> address. Transfers can’t be reversed.</span>
             </label>
-            {startErr && <div className="mt-3 text-[14px] text-[#B84A40]">{startErr}</div>}
+            <ErrorNote msg={startErr} className="mt-3 text-[14px] text-[#B84A40]" />
             <div className="mt-4">{checked ? <HoldToConfirm label="Hold to send" busy={starting} onConfirm={start} /> : <button disabled className="btn-primary w-full min-h-[56px] opacity-40">Tick the box to continue</button>}</div>
           </>
         )}

@@ -63,8 +63,25 @@ function Initials({ name }: { name: string | null | undefined }) {
   return <span className="grid place-items-center h-8 w-8 shrink-0 rounded-full bg-ink text-cream-warm dark:bg-cream-warm dark:text-ink text-[12px] font-semibold">{ini}</span>;
 }
 
+/** Open Kobo Pal from anywhere; with `prompt`, Pal is asked it straight away (failure screens, 2026-10-07). */
+export function askPal(prompt?: string) {
+  window.dispatchEvent(new CustomEvent('kc-open-pal', { detail: { prompt } }));
+}
+
+/** "Ask Kobo Pal" under a failure message: Pal gets the message and explains what to do next. */
+export function AskPalButton({ about, className = '' }: { about?: string; className?: string }) {
+  const prompt = about ? `I just got this message in Kobocent: "${about.slice(0, 600)}". What happened, and what should I do now?` : undefined;
+  return (
+    <button type="button" onClick={() => askPal(prompt)}
+      className={`inline-flex items-center gap-2 min-h-[44px] px-1 text-[14px] font-semibold text-terracotta hover:text-terracotta-dark ${className}`}>
+      <IconPal size={18} />Ask Kobo Pal
+    </button>
+  );
+}
+
 export function PalButton({ className = '', label }: { className?: string; label?: string }) {
   const [open, setOpen] = useState(false);
+  const [ask, setAsk] = useState<string | undefined>(undefined);
   const [dot, setDot] = useState(false);
   const [available, setAvailable] = useState(false);   // hidden until the backend has Pal (deploys can land in either order)
   // A reply from support while the panel is closed → a dot on the button.
@@ -81,29 +98,35 @@ export function PalButton({ className = '', label }: { className?: string; label
       if (new URLSearchParams(window.location.search).get('pal') === '1' && !!label === desktop) setOpen(true);
     } catch { /* ignore */ }
     const t = setInterval(tick, 60_000);
-    const onOpen = () => { const desktop = window.matchMedia('(min-width: 1024px)').matches; if (!!label === desktop) setOpen(true); };
+    const onOpen = (e: Event) => {
+      const desktop = window.matchMedia('(min-width: 1024px)').matches;
+      if (!!label !== desktop) return;
+      setAsk((e as CustomEvent<{ prompt?: string }>).detail?.prompt);
+      setOpen(true);
+    };
     window.addEventListener('kc-open-pal', onOpen);
     return () => { live = false; clearInterval(t); window.removeEventListener('kc-open-pal', onOpen); };
   }, [label]);
   if (!available) return null;
   return (
     <>
-      <button onClick={() => { setOpen(true); setDot(false); }} aria-label="Ask Kobo Pal" data-tour="pal"
+      <button onClick={() => { setAsk(undefined); setOpen(true); setDot(false); }} aria-label="Ask Kobo Pal" data-tour="pal"
         className={label ? `relative flex w-full items-center gap-3 rounded-xl px-3 py-3 text-[15px] font-medium text-terracotta hover:bg-terracotta-soft ${className}`
           : `relative grid place-items-center h-11 w-11 rounded-xl text-terracotta hover:bg-terracotta-soft ${className}`}>
         <IconPal />{label}
         {dot && <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-[#B84A40] ring-2 ring-cream dark:ring-night" />}
       </button>
       {/* Portal: the phone header's backdrop blur would otherwise trap a fixed panel inside it. */}
-      {open && typeof document !== 'undefined' && createPortal(<PalPanel onClose={() => setOpen(false)} />, document.body)}
+      {open && typeof document !== 'undefined' && createPortal(<PalPanel ask={ask} onClose={() => { setOpen(false); setAsk(undefined); }} />, document.body)}
     </>
   );
 }
 
-function PalPanel({ onClose }: { onClose: () => void }) {
+function PalPanel({ onClose, ask }: { onClose: () => void; ask?: string }) {
   const [state, setState] = useState<PalState | null>(null);
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
-  const [draft, setDraft] = useState('');
+  const [draft, setDraft] = useState(ask || '');   // shown at once; sent as soon as Pal has loaded (below)
+  const asked = useRef(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [view, setView] = useState<'chat' | 'tip'>('chat');
@@ -173,6 +196,14 @@ function PalPanel({ onClose }: { onClose: () => void }) {
   useEffect(() => { endRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' }); }, [msgs.length, busy, view]);
 
   const push = (m: ChatMsg) => setMsgs(prev => { const next = [...prev, m]; saveChat(next); return next; });
+
+  // Opened from "Ask Kobo Pal" on a failure: ask about it once Pal's state is in (a case may be open).
+  useEffect(() => {
+    if (!ask || !state || asked.current) return;
+    asked.current = true;
+    send(ask);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ask, state]);
 
   async function send(textIn?: string) {
     const text = (textIn ?? draft).trim();

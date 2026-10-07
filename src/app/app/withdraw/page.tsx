@@ -1,4 +1,6 @@
 'use client';
+import { ErrorNote } from '@/components/app/ErrorNote';
+import { AskPalButton } from '@/components/app/Pal';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { kc, KcError, usd, naira, BOT_URL } from '@/lib/kc';
@@ -76,7 +78,7 @@ export default function WithdrawPage() {
     <div className="space-y-6">
       <PageHeader title="Withdraw to bank" subtitle={screen === 'bank' ? 'Where should we send your naira?' : 'USDC or USDT to naira, straight to your bank.'} />
       {error && screen !== 'progress' ? (
-        <div className="surface rounded-2xl p-5 text-[15px]">{error} <button onClick={() => { setError(''); load(); }} className="underline font-semibold text-terracotta">Retry</button></div>
+        <div className="surface rounded-2xl p-5 text-[15px]">{error} <button onClick={() => { setError(''); load(); }} className="underline font-semibold text-terracotta">Retry</button><div><AskPalButton about={error} className="-ml-1" /></div></div>
       ) : screen === 'loading' || !ov ? (
         screen === 'progress' && jobId ? null : <div className="space-y-3"><Skeleton className="h-24" /><Skeleton className="h-40" /><Skeleton className="h-28" /></div>
       ) : screen === 'bank' ? (
@@ -201,7 +203,7 @@ function BankSetup({ current, onSaved, onCancel }: { current: Bank | null; onSav
           ) : acct.length > 0 && acct.length < 10 ? (
             <div className="muted text-[13.5px]">{10 - acct.length} more digit{10 - acct.length === 1 ? '' : 's'}</div>
           ) : null}
-          {err && <div className="text-[14px] text-[#B84A40] mt-1">{err}</div>}
+          <ErrorNote msg={err} className="text-[14px] text-[#B84A40] mt-1" />
         </div>
       </section>
 
@@ -380,7 +382,7 @@ function AmountStep({ ov, onChangeBank, onStarted }: { ov: Overview; onChangeBan
               <dt className="muted">Rate</dt><dd className="text-right font-mono">₦{quote.displayRate.toLocaleString('en-NG')} / $1</dd>
               <dt className="muted">Paid from</dt><dd className="text-right">USDC first, then USDT</dd>
             </dl>
-            {startErr && <div className="mt-4 text-[14px] text-[#B84A40]">{startErr}</div>}
+            <ErrorNote msg={startErr} className="mt-4 text-[14px] text-[#B84A40]" />
             <div className="mt-5">
               <HoldToConfirm label={`Hold to send ${naira(quote.payoutNgn)}`} busy={starting} onConfirm={start} />
             </div>

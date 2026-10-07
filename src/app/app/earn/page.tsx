@@ -1,4 +1,5 @@
 'use client';
+import { ErrorNote } from '@/components/app/ErrorNote';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { kc, KcError, amount as fmt } from '@/lib/kc';
@@ -229,7 +230,7 @@ function StakeSheet({ plan, balances, onClose, onStarted }: { plan: Plan | null;
         ))}
       </dl>
       <p className="mt-3 text-[13px] muted">{unlock ? <>Locked until <span className="font-semibold text-ink dark:text-cream-warm">{day(unlock)}</span> — you can’t withdraw before then.</> : 'Withdraw anytime, stake plus earnings.'} At today’s rate; rates can change. Network fees are covered.</p>
-      {err && <div className="mt-3 text-[14px] text-[#B84A40]">{err}</div>}
+      <ErrorNote msg={err} className="mt-3 text-[14px] text-[#B84A40]" />
       <div className="mt-5">{ready ? <HoldToConfirm label={`Hold to stake ${money(value, asset)}`} busy={starting} onConfirm={start} /> : <button disabled className="btn-primary w-full min-h-[56px] opacity-40">{value ? (over ? 'Not enough balance' : 'Below the minimum') : 'Enter an amount'}</button>}</div>
     </Sheet>
   );
@@ -262,7 +263,7 @@ function WithdrawSheet({ p, asOf, onClose, onStarted }: { p: Position | null; as
         <dt className="muted">To</dt><dd className="text-right">Your Kobocent wallet</dd>
       </dl>
       <p className="mt-3 text-[13px] muted">This position stops earning once withdrawn. The final amount is worked out to the second.</p>
-      {err && <div className="mt-3 text-[14px] text-[#B84A40]">{err}</div>}
+      <ErrorNote msg={err} className="mt-3 text-[14px] text-[#B84A40]" />
       <div className="mt-5"><HoldToConfirm label="Hold to withdraw" busy={starting} onConfirm={start} /></div>
     </Sheet>
   );

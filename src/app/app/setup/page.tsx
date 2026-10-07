@@ -1,4 +1,5 @@
 'use client';
+import { ErrorNote } from '@/components/app/ErrorNote';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -41,7 +42,7 @@ export default function SetupPage() {
     <div className="max-w-xl mx-auto">
       <PageHeader fallback="/app/settings" title="Set up your wallet" subtitle="One wallet on Telegram and here — an address for Solana and a 0x address for Ethereum, BNB Chain, Polygon and Arbitrum." />
 
-      {error && <p role="alert" className="mb-5 rounded-xl bg-terracotta-soft text-terracotta-dark dark:text-terracotta-light px-4 py-3 text-[14px]">{error}</p>}
+      <ErrorNote msg={error} className="mb-5 rounded-xl bg-terracotta-soft text-terracotta-dark dark:text-terracotta-light px-4 py-3 text-[14px]" />
 
       {!created ? (
         <div className="space-y-4">

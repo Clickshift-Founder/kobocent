@@ -1,4 +1,6 @@
 'use client';
+import { AskPalButton } from '@/components/app/Pal';
+import { ErrorNote } from '@/components/app/ErrorNote';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { kc, KcError, amount as fmt } from '@/lib/kc';
@@ -293,7 +295,7 @@ export default function BridgePage() {
                 : `Total from your balance: $${fmt(quote.totalUsdc, 2)} USDC${quote.coveredFromUsdc > 0 ? ` (includes ~$${fmt(quote.coveredFromUsdc, 2)} for Solana network fees)` : ''}.`}
               {' '}Arrives in {eta(quote.etaSeconds)}; the final amount can shift slightly with the market.
             </p>
-            {startErr && <div className="mt-3 text-[14px] text-[#B84A40]">{startErr}</div>}
+            <ErrorNote msg={startErr} className="mt-3 text-[14px] text-[#B84A40]" />
             <div className="mt-5"><HoldToConfirm label="Hold to bridge" busy={starting} onConfirm={start} /></div>
           </>
         )}
@@ -389,6 +391,7 @@ function Tracker({ orderId, onFinish }: { orderId: string; onFinish: () => void 
         <div className={`mx-auto grid place-items-center h-20 w-20 rounded-full ${done ? 'bg-[#58834C1A] text-[#58834C]' : failed ? 'bg-[#B84A401A] text-[#B84A40]' : 'bg-terracotta/10 text-terracotta'}`}>{done ? <IconCheck size={34} /> : <IconBridge size={30} />}</div>
         <div className="font-display text-[22px] font-bold mt-4 text-ink dark:text-cream-warm">{done ? 'Arrived' : failed ? 'Needs attention' : 'On its way'}</div>
         <p className="muted text-[14px] mt-1">{done ? (out ? `Delivered on ${dest}.` : 'Your USDC is ready to use.') : failed ? 'Our team has been alerted and will make sure your funds come back to you.' : 'You can leave this screen — we’ll message you on Telegram when it lands.'}</p>
+        {failed && <AskPalButton about="My bridge needs attention: our team has been alerted and will make sure your funds come back to you." className="mt-2" />}
       </div>
       <ol className="mt-6 space-y-3">
         {steps.map((s, i) => (

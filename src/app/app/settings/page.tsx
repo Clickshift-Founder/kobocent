@@ -1,4 +1,5 @@
 'use client';
+import { ErrorNote } from '@/components/app/ErrorNote';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { kc, loadProfile, referralLink, BOT, BOT_URL, type Account, type LocalProfile } from '@/lib/kc';
@@ -110,7 +111,7 @@ export default function SettingsPage() {
               ) : (
                 <button onClick={makeLinkCode} className="btn-primary w-full">Get a link code</button>
               )}
-              {linkErr && <p className="text-[13.5px] text-[#B84A40]">{linkErr}</p>}
+              <ErrorNote msg={linkErr} className="text-[13.5px] text-[#B84A40]" />
             </>
           ) : (
             <p className="text-[14.5px] muted">Your Telegram is connected — @{BOT} and this app share one wallet, balance and history.</p>
@@ -195,7 +196,7 @@ function RecoveryPhraseSheet({ open, onClose }: { open: boolean; onClose: () => 
             <TelegramLogin onAuth={onAuth} />
             {googleEnabled() && <div className="mt-3"><GoogleButton onCredential={(credential) => reveal({ credential })} /></div>}
           </div>
-          {error && <p role="alert" className="text-[13.5px] text-[#B84A40]">{error}</p>}
+          <ErrorNote msg={error} className="text-[13.5px] text-[#B84A40]" />
         </div>
       )}
       {step === 'show' && (

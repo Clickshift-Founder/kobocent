@@ -1,4 +1,5 @@
 'use client';
+import { ErrorNote } from '@/components/app/ErrorNote';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { kc, KcError, amount as fmt } from '@/lib/kc';
@@ -125,7 +126,7 @@ export default function SwapPage() {
             </div>
           </section>
 
-          {qErr ? <div className="text-[14px] text-[#B84A40] text-center">{qErr}</div> : quote && (
+          {qErr ? <ErrorNote msg={qErr} className="text-[14px] text-[#B84A40] text-center" /> : quote && (
             <dl className="surface rounded-2xl p-4 grid grid-cols-2 gap-y-1.5 text-[13.5px]">
               <dt className="muted">Rate</dt><dd className="text-right font-mono">1 {from} ≈ {fmt(quote.rate, from === 'SOL' ? 2 : 6)} {to}</dd>
               <dt className="muted">Fee</dt><dd className="text-right">{quote.feePct}% (included)</dd>
@@ -162,7 +163,7 @@ export default function SwapPage() {
               <div className="text-center"><div className="font-display font-bold text-[26px]">≈ {fmt(quote.out, META[to].dp)}</div><div className="muted text-[13px]">{to}</div></div>
             </div>
             <p className="text-center muted text-[13px]">You’ll get at least {fmt(quote.minOut, META[to].dp)} {to}; the final amount depends on the market at the moment of the swap.</p>
-            {startErr && <div className="mt-3 text-[14px] text-[#B84A40]">{startErr}</div>}
+            <ErrorNote msg={startErr} className="mt-3 text-[14px] text-[#B84A40]" />
             <div className="mt-5"><HoldToConfirm label="Hold to swap" busy={starting} onConfirm={start} /></div>
           </>
         )}

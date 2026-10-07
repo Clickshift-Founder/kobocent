@@ -1,4 +1,5 @@
 'use client';
+import { ErrorNote } from './ErrorNote';
 import { useCallback, useEffect, useState } from 'react';
 import { kc, KcError, BOT, type Account } from '@/lib/kc';
 import { Sheet } from './ui';
@@ -78,7 +79,7 @@ export function SecuritySettings({ account, onAccount }: { account: Account | nu
             </>
           )}
           {note && <p className="text-[13px] text-[#58834C]">{note}</p>}
-          {err && <p className="text-[13px] text-[#B84A40]">{err}</p>}
+          <ErrorNote msg={err} className="text-[13px] text-[#B84A40]" />
         </div>
 
         {/* Sign-in methods */}
