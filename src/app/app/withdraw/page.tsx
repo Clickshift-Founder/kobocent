@@ -471,7 +471,7 @@ function Progress({ jobId, bankName, onFinish }: { jobId: string; bankName: stri
     if (r.ok) {
       return (
         <Outcome tone="success" title={`${naira(r.payoutNgn)} is on its way`}
-          body={`We’ve sent it to ${bankName}${r.funding ? `, paid from ${coinAmount(r.funding.amount)} ${r.funding.label}` : ''}. It usually arrives within minutes — your receipt and cashback land in Telegram.`}
+          body={`We’ve sent it to ${bankName}${r.funding ? `, paid from ${r.funding.label}` : ''}. It usually arrives within minutes — your receipt and cashback land in Telegram.`}
           reference={r.reference} signature={r.funding ? null : r.signature}
           actions={<>
             <Link href="/app" onClick={() => onFinish(false)} className="btn-primary w-full">Done</Link>

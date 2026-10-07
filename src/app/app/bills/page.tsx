@@ -748,7 +748,7 @@ function Progress({ jobId, onFinish }: { jobId: string; onFinish: () => void }) 
               : `${naira(job.amountNgn)} airtime sent`}
             body={(isElec ? `${r.serviceName} · meter ${r.customerId}${r.customerName ? ` · ${r.customerName}` : ''}`
               : job.category === 'cable' ? `${r.serviceName} · smartcard ${r.customerId}${r.customerName ? ` · ${r.customerName}` : ''}. It usually activates within minutes.`
-              : `To ${r.customerId}. It usually lands in seconds.`) + (r.funding ? ` Paid from ${coinAmount(r.funding.amount)} ${r.funding.label}.` : '')}
+              : `To ${r.customerId}. It usually lands in seconds.`) + (r.funding ? ` Paid from ${r.funding.label}.` : '')}
             reference={r.reference}
             actions={<>
               <Link href="/app" onClick={onFinish} className="btn-primary w-full">Done</Link>

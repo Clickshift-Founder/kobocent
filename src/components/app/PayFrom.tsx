@@ -9,22 +9,28 @@ import { IconCheck } from './Icons';
  * "Pay from" — spend from any chain (2026-10-07). Shared by Withdraw, Send to bank and Bills.
  * Lists Solana USDC/USDT (one option, the classic path) plus every other balance the user holds
  * (SOL; USDT/USDC on Ethereum, BNB Chain, Polygon, Arbitrum; ETH, BNB, POL, ETH on Arbitrum and
- * Robinhood Chain). Picks the cheapest balance that covers the amount until the user chooses.
+ * Robinhood Chain). Picks the cheapest balance that covers the amount until the user chooses; when no single
+ * balance covers it, "Split across balances" takes it from up to three (each collected on its own chain, the
+ * payment made once all have landed, anything taken returned if one fails — backend funding.js).
  * Backend: GET /withdraw/sources; quotes/payments take `from` (omitted for Solana stablecoins).
  */
 
-export interface Source { id: string; chain: string; chainLabel: string; symbol: string; kind: 'solana_stable' | 'sol' | 'evm_stable' | 'evm_native'; balance: number | null; priceUsd: number | null; valueUsd: number | null }
+export interface Source { id: string; chain: string; chainLabel: string; symbol: string; kind: 'solana_stable' | 'sol' | 'evm_stable' | 'evm_native' | 'split'; balance: number | null; priceUsd: number | null; valueUsd: number | null }
 export interface NetworkFee { payer: 'user' | 'kobocent' | 'recovered'; native: string; amount: number; usd: number | null }
-export interface Funding { sourceId: string; label: string; chain: string; chainLabel: string; collect: { amount: number; symbol: string } | null; priceUsd: number; networkFee: NetworkFee | null; eta?: string }
-export interface JobFunding { label: string; amount: number; asset: string; explorerUrl: string | null }
+export interface FundingLeg { label: string; chainLabel: string; collect: { amount: number; symbol: string }; priceUsd: number | null; networkFee: NetworkFee | null }
+export interface Funding { sourceId: string; label: string; chain: string; chainLabel: string; collect: { amount: number; symbol: string } | null; priceUsd: number | null; networkFee: NetworkFee | null; eta?: string; legs?: FundingLeg[] | null }
+/** What a finished payment was paid from. label already includes the amounts ("0.02 ETH on Arbitrum + 80 USDT on BNB Chain"). */
+export interface JobFunding { label: string; asset: string; explorerUrl: string | null; legs?: Array<{ chainLabel: string; asset: string; amount: number; explorerUrl: string | null }> | null }
 export interface PayFromOption { id: string; title: string; sub: string; symbol: string; kind: Source['kind']; chain: string; balance: number | null; valueUsd: number | null }
 
 export const SOLANA_STABLES = 'solana';
+export const SPLIT = 'split';
 
 export function coinAmount(n: number) { return amount(n, n < 1 ? 6 : 4); }
 
 // Solana stablecoins, then stablecoins on cheap chains, then SOL / native coins, then Ethereum stablecoins.
 function rank(o: PayFromOption) {
+  if (o.id === SPLIT) return 9;
   if (o.id === SOLANA_STABLES) return 0;
   if (o.kind === 'evm_stable') return o.chain === 'ETH' ? 4 : 1;
   if (o.kind === 'sol') return 2;
@@ -35,6 +41,12 @@ function rank(o: PayFromOption) {
 export function fundingLines(f: Funding | null | undefined) {
   if (!f) return { paidFrom: null as string | null, feeLine: null as string | null, priceNote: null as string | null };
   const nf = f.networkFee;
+  if (f.legs && f.legs.length) {
+    const paidFrom = f.legs.map(l => `${coinAmount(l.collect.amount)} ${l.collect.symbol} on ${l.chainLabel}`).join(' + ');
+    const feeLine = !nf || nf.payer === 'kobocent' ? 'Covered by Kobocent' : nf.payer === 'recovered' ? `${usd(nf.usd)} network fees` : 'Small network fees from your coins';
+    const priceNote = f.legs.some(l => l.priceUsd !== 1) ? 'Coins are priced live — the exact amounts are set the moment you confirm. If one part can’t go through, anything already taken is returned.' : 'If one part can’t go through, anything already taken is returned.';
+    return { paidFrom, feeLine, priceNote };
+  }
   const paidFrom = f.collect ? `${coinAmount(f.collect.amount)} ${f.collect.symbol} on ${f.chainLabel}` : null;
   const feeLine = !nf || nf.payer === 'kobocent' ? 'Covered by Kobocent'
     : nf.payer === 'user' ? `${coinAmount(nf.amount)} ${nf.native} from your balance${nf.usd ? ` (≈${usd(nf.usd)})` : ''}`
@@ -57,18 +69,26 @@ export function usePayFrom(needUsd: number, solanaTotalOverride: number | null =
     const rest = (sources || []).filter(s => s.kind !== 'solana_stable' && ((s.valueUsd ?? 0) >= 0.5 || (s.valueUsd === null && (s.balance ?? 0) > 0)))
       .map(s => ({ id: s.id, title: s.symbol, sub: s.chainLabel, symbol: s.symbol, kind: s.kind, chain: s.chain, balance: s.balance, valueUsd: s.valueUsd }))
       .sort((a, b) => (b.valueUsd ?? 0) - (a.valueUsd ?? 0));
-    return [sol, ...rest];
+    const all = [sol, ...rest];
+    const funded = all.filter(o => (o.valueUsd ?? 0) >= 0.5);
+    if (funded.length >= 2) {
+      all.push({ id: SPLIT, title: 'Split across balances', sub: `Up to 3 at once · ${funded.map(o => o.title).slice(0, 3).join(', ')}${funded.length > 3 ? '…' : ''}`, symbol: '+', kind: 'split', chain: 'MULTI', balance: null,
+                 valueUsd: Number(funded.reduce((t, o) => t + (o.valueUsd ?? 0), 0).toFixed(2)) });
+    }
+    return all;
   }, [sources, solanaTotalOverride]);
 
   useEffect(() => {
     if (manual) return;
-    const covers = options.filter(o => (o.valueUsd ?? 0) >= needUsd);
-    const best = covers.length ? [...covers].sort((a, b) => rank(a) - rank(b))[0] : [...options].sort((a, b) => (b.valueUsd ?? 0) - (a.valueUsd ?? 0))[0];
+    // One balance that covers it, cheapest first; else split across balances; else the biggest balance.
+    const covers = options.filter(o => o.id !== SPLIT && (o.valueUsd ?? 0) >= needUsd);
+    const split = options.find(o => o.id === SPLIT && (o.valueUsd ?? 0) >= needUsd);
+    const best = covers.length ? [...covers].sort((a, b) => rank(a) - rank(b))[0] : split || [...options].filter(o => o.id !== SPLIT).sort((a, b) => (b.valueUsd ?? 0) - (a.valueUsd ?? 0))[0];
     if (best && best.id !== from) setFrom(best.id);
   }, [needUsd, options, manual, from]);
 
   const sel = options.find(o => o.id === from) || options[0];
-  const totalAll = options.reduce((s, o) => s + (o.valueUsd ?? 0), 0);
+  const totalAll = options.filter(o => o.id !== SPLIT).reduce((s, o) => s + (o.valueUsd ?? 0), 0);
   const choose = (id: string) => { setFrom(id); setManual(true); setPicking(false); };
   /** Body fields for quote / pay calls: nothing for Solana stablecoins (the classic path). */
   const fromBody = sel.id === SOLANA_STABLES ? {} : { from: sel.id };
@@ -76,11 +96,11 @@ export function usePayFrom(needUsd: number, solanaTotalOverride: number | null =
 }
 export type PayFromState = ReturnType<typeof usePayFrom>;
 
-const CHAIN_COLOR: Record<string, string> = { SOLANA: '#7A5AF8', ETH: '#627EEA', BNB: '#D9A400', POLYGON: '#8247E5', ARBITRUM: '#2D74DA', ROBINHOOD: '#1F9D55' };
+const CHAIN_COLOR: Record<string, string> = { MULTI: '#C1502E', SOLANA: '#7A5AF8', ETH: '#627EEA', BNB: '#D9A400', POLYGON: '#8247E5', ARBITRUM: '#2D74DA', ROBINHOOD: '#1F9D55' };
 export function ChainBadge({ o }: { o: PayFromOption }) {
   return (
     <span className="relative grid place-items-center h-11 w-11 shrink-0 rounded-2xl bg-cream-warm dark:bg-night font-semibold text-[12.5px] text-ink dark:text-cream-warm">
-      {o.id === SOLANA_STABLES ? '$' : o.symbol.slice(0, 4)}
+      {o.id === SOLANA_STABLES ? '$' : o.id === SPLIT ? '+' : o.symbol.slice(0, 4)}
       <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full ring-2 ring-white dark:ring-night-card" style={{ background: CHAIN_COLOR[o.chain] || '#C1502E' }} aria-hidden />
     </span>
   );
@@ -98,7 +118,7 @@ export function PayFromPicker({ pf, note }: { pf: PayFromState; note?: string })
         <ChainBadge o={sel} />
         <div className="flex-1 min-w-0">
           <div className="text-[12.5px] muted">Pay from{!pf.manual && ' · cheapest picked for you'}</div>
-          <div className="font-semibold text-ink dark:text-cream-warm truncate">{sel.title} <span className="muted font-normal">on {sel.sub}</span></div>
+          <div className="font-semibold text-ink dark:text-cream-warm truncate">{sel.title} {sel.id !== SPLIT && <span className="muted font-normal">on {sel.sub}</span>}</div>
           <div className="text-[12.5px] muted">{sel.valueUsd !== null ? `${usd(sel.valueUsd)} available` : sel.balance !== null ? `${coinAmount(sel.balance)} ${sel.symbol}` : ''}{pf.options.length > 1 && pf.totalAll > (sel.valueUsd ?? 0) + 0.5 ? ` · ${usd(pf.totalAll)} across all balances` : ''}</div>
         </div>
         <span className="text-[13px] font-semibold text-terracotta">Change</span>
@@ -114,7 +134,7 @@ export function PayFromPicker({ pf, note }: { pf: PayFromState; note?: string })
                 <ChainBadge o={o} />
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-ink dark:text-cream-warm">{o.title}</div>
-                  <div className="muted text-[13px] truncate">{o.sub}{o.id !== SOLANA_STABLES && o.balance !== null ? ` · ${coinAmount(o.balance)} ${o.symbol}` : ''}</div>
+                  <div className="muted text-[13px] truncate">{o.sub}{o.id !== SOLANA_STABLES && o.id !== SPLIT && o.balance !== null ? ` · ${coinAmount(o.balance)} ${o.symbol}` : ''}</div>
                 </div>
                 <div className="text-right">
                   <div className="font-mono text-[14px] text-ink dark:text-cream-warm">{usd(o.valueUsd)}</div>
