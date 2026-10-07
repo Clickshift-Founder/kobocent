@@ -273,7 +273,8 @@ function AmountStep({ ov, onChangeBank, onStarted }: { ov: Overview; onChangeBan
   useEffect(() => { kc<{ sources: Source[] }>('withdraw/sources').then(r => setSources(r.sources)).catch(() => setSources([])); }, []);
   const options = useMemo<PayFrom[]>(() => {
     const sol: PayFrom = { id: SOLANA_STABLES, title: 'USDC & USDT', sub: 'Solana', symbol: 'USD', kind: 'solana_stable', chain: 'SOLANA', balance: ov.balances?.total ?? null, valueUsd: ov.balances?.total ?? null };
-    const rest = (sources || []).filter(s => s.kind !== 'solana_stable' && (s.valueUsd ?? 0) >= 0.5)
+    // Every other balance the user holds (a coin without a live price still shows; its quote explains).
+    const rest = (sources || []).filter(s => s.kind !== 'solana_stable' && ((s.valueUsd ?? 0) >= 0.5 || (s.valueUsd === null && (s.balance ?? 0) > 0)))
       .map(s => ({ id: s.id, title: s.symbol, sub: s.chainLabel, symbol: s.symbol, kind: s.kind, chain: s.chain, balance: s.balance, valueUsd: s.valueUsd }))
       .sort((a, b) => (b.valueUsd ?? 0) - (a.valueUsd ?? 0));
     return [sol, ...rest];
@@ -390,8 +391,8 @@ function AmountStep({ ov, onChangeBank, onStarted }: { ov: Overview; onChangeBan
         </div>
       </section>
 
-      {/* Pay from — any chain; picked automatically until the user chooses */}
-      {options.length > 1 && (
+      {/* Pay from — any chain; picked automatically until the user chooses. Always shown, so people discover it. */}
+      {sources !== null && (
         <button onClick={() => setPicking(true)} className="w-full surface rounded-2xl px-4 py-3 flex items-center gap-3 text-left hover:border-terracotta transition-colors min-h-[60px]">
           <ChainBadge o={sel} />
           <div className="flex-1 min-w-0">
@@ -464,6 +465,11 @@ function AmountStep({ ov, onChangeBank, onStarted }: { ov: Overview; onChangeBan
           ))}
         </ul>
         {sources === null && <p className="muted text-[13px] mt-3">Checking your other balances…</p>}
+        <div className="mt-4 rounded-2xl bg-cream-warm dark:bg-night p-4 text-[13.5px]">
+          <div className="font-semibold text-ink dark:text-cream-warm">{options.length > 1 ? 'Got coins elsewhere?' : 'Hold crypto on another chain?'}</div>
+          <p className="muted mt-1 leading-relaxed">Send SOL, or USDT, USDC, ETH, BNB or POL on Ethereum, BNB Chain, Polygon, Arbitrum or Robinhood Chain to your Kobocent wallet — then withdraw it here as naira. No bridging.</p>
+          <Link href="/app/receive" className="inline-flex items-center gap-1 mt-2 font-semibold text-terracotta min-h-[44px]">Show my wallet addresses</Link>
+        </div>
       </Sheet>
 
       <Sheet open={review} onClose={() => !starting && setReview(false)} title="Review withdrawal">
