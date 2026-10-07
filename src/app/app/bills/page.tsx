@@ -1,15 +1,17 @@
 'use client';
 import { ErrorNote } from '@/components/app/ErrorNote';
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { kc, KcError, usd, naira, BOT_URL } from '@/lib/kc';
 import { PageHeader } from '@/components/app/PageHeader';
 import { Sheet, Skeleton, CopyButton, ReceiptButton } from '@/components/app/ui';
 import { IconBolt, IconCheck, IconChevron, IconPlus } from '@/components/app/Icons';
 import { newKey, store, read, initials, useCountUp, HoldToConfirm, Outcome } from '@/components/app/money';
+import { usePayFrom, PayFromPicker, fundingLines, coinAmount, type Funding, type JobFunding, type PayFromState } from '@/components/app/PayFrom';
 
 /**
  * Pay bills — backend /api/v1/bills (the same service as Telegram utility payments).
+ * Pay from any balance (2026-10-07): Solana USDC/USDT, SOL, or USDT/USDC/ETH/BNB/POL on EVM chains.
  * Airtime (network detected from the number) and electricity (meter verified with the disco);
  * data and cable TV come next. Live stablecoin cost → hold-to-confirm → server job (polled,
  * resumable, idempotency key) → outcome with token, receipt and cashback.
@@ -20,10 +22,10 @@ interface Catalog { airtime: Service[]; electricity: { prepaid: Service[]; postp
 interface RecentItem { serviceId: string; serviceName: string; customerId: string; customerName: string | null; phone: string | null; lastAt: number | null }
 interface Recents { airtime: RecentItem[]; electricity: RecentItem[]; data: RecentItem[]; cable: RecentItem[] }
 interface Plan { code: string; name: string; amountNgn: number }
-interface Quote { amountNgn: number; amountUsd: number; feeUsd: number; totalUsd: number; rate: number; stable: string; isSplit: boolean; usdcAmount: number; usdtAmount: number; balanceUsd: number; canPay: boolean }
+interface Quote { amountNgn: number; amountUsd: number; feeUsd: number; totalUsd: number; rate: number; stable: string; isSplit: boolean; usdcAmount: number; usdtAmount: number; balanceUsd: number; canPay: boolean; funding?: Funding | null; fundingError?: string | null }
 interface Job {
   id: string; status: 'running' | 'done'; stage: string; category: string; amountNgn: number;
-  result: null | { ok: boolean; code: string | null; reference: string | null; serviceName: string; planName?: string | null; customerId: string; customerName: string | null; token: string | null; units: string | null; cashback: { amount: number; asset: string } | null; error: string | null };
+  result: null | { ok: boolean; code: string | null; reference: string | null; serviceName: string; planName?: string | null; customerId: string; customerName: string | null; token: string | null; units: string | null; cashback: { amount: number; asset: string } | null; error: string | null; funding?: JobFunding | null };
 }
 type Tab = 'airtime' | 'electricity' | 'data' | 'cable';
 const TABS: Array<{ key: Tab; label: string }> = [
@@ -51,6 +53,9 @@ function RecentRow({ items, onPick, label }: { items: RecentItem[]; onPick: (r: 
   );
 }
 
+// One "Pay from" for the whole page; the forms read it (quote, pay) and report what they cost (automatic pick).
+const PayFromCtx = createContext<{ pf: PayFromState; setNeedUsd: (n: number) => void } | null>(null);
+
 const JOB_KEY = 'kc-bills-job';
 const SUPPORT_URL = 'https://t.me/ClickShiftAlerts';
 // Telco colours only identify the network at a glance.
@@ -68,6 +73,8 @@ export default function BillsPage() {
   const [needsLink, setNeedsLink] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
   const [recent, setRecent] = useState<Recents | null>(null);
+  const [needUsd, setNeedUsd] = useState(0);
+  const pf = usePayFrom(needUsd);
 
   useEffect(() => {
     const saved = read(JOB_KEY);
@@ -96,7 +103,7 @@ export default function BillsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Pay bills" subtitle="Airtime, data, electricity and cable TV with your USDC or USDT — gasless, with a receipt and 0.2% cashback." />
+      <PageHeader title="Pay bills" subtitle="Airtime, data, electricity and cable TV from any balance — USDC, USDT, SOL, ETH, BNB or POL on any chain — with a receipt and 0.2% cashback." />
       {jobId ? (
         <Progress jobId={jobId} onFinish={finished} />
       ) : error ? (
@@ -104,7 +111,8 @@ export default function BillsPage() {
       ) : !cat ? (
         <div className="space-y-3"><Skeleton className="h-12" /><Skeleton className="h-40" /><Skeleton className="h-28" /></div>
       ) : (
-        <>
+        <PayFromCtx.Provider value={{ pf, setNeedUsd }}>
+          <PayFromPicker pf={pf} />
           <div role="tablist" aria-label="Bill type" className="grid grid-cols-4 gap-1 rounded-2xl bg-cream-warm dark:bg-night p-1">
             {TABS.map(t => (
               <button key={t.key} role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)}
@@ -122,7 +130,7 @@ export default function BillsPage() {
               Postpaid meters: <a href={BOT_URL} target="_blank" rel="noopener noreferrer" className="text-terracotta font-semibold">pay on Telegram</a> for now.
             </p>
           )}
-        </>
+        </PayFromCtx.Provider>
       )}
     </div>
   );
@@ -131,6 +139,9 @@ export default function BillsPage() {
 // ───────────────────────────── Shared: live quote + review ─────────────────────────────
 
 function useQuote(serviceId: string | null, amountNgn: number, minNgn: number) {
+  const ctx = useContext(PayFromCtx);
+  const fromBody = ctx?.pf.fromBody || {};
+  const fromKey = ctx?.pf.from || '';
   const [quote, setQuote] = useState<Quote | null>(null);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
@@ -140,13 +151,14 @@ function useQuote(serviceId: string | null, amountNgn: number, minNgn: number) {
     if (amountNgn < minNgn) { setQuote(null); setErr(`The minimum is ${naira(minNgn)}`); return; }
     let live = true; setBusy(true);
     const t = setTimeout(() => {
-      kc<Quote>('bills/quote', { method: 'POST', body: { serviceId, amountNgn } })
-        .then(q => { if (live) setQuote(q); })
+      kc<Quote>('bills/quote', { method: 'POST', body: { serviceId, amountNgn, ...fromBody } })
+        .then(q => { if (live) { setQuote(q); ctx?.setNeedUsd(q.totalUsd || 0); } })
         .catch(e => { if (live) { setQuote(null); setErr(e instanceof Error ? e.message : 'Could not price this'); } })
         .finally(() => { if (live) setBusy(false); });
     }, 350);
     return () => { live = false; clearTimeout(t); };
-  }, [serviceId, amountNgn, minNgn]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serviceId, amountNgn, minNgn, fromKey]);
   return { quote, err, busy };
 }
 
@@ -172,13 +184,15 @@ function AmountField({ value, onChange, chips, min }: { value: string; onChange:
 
 function CostCard({ quote, err, busy, amountNgn }: { quote: Quote | null; err: string; busy: boolean; amountNgn: number }) {
   const shown = useCountUp(quote ? quote.totalUsd : null);
+  const ctx = useContext(PayFromCtx);
+  const lines = fundingLines(quote?.funding);
   if (err) return <ErrorNote msg={err} className="surface rounded-3xl p-5 text-[14.5px] text-[#B84A40]" />;
   if (!amountNgn) return null;
   if (quote && !quote.canPay) {
     return (
       <div className="surface rounded-3xl p-5">
-        <div className="font-semibold text-ink dark:text-cream-warm">Not enough USDC/USDT</div>
-        <p className="muted text-[14px] mt-1">This needs {usd(quote.totalUsd)} and you have {usd(quote.balanceUsd)}.</p>
+        <div className="font-semibold text-ink dark:text-cream-warm">{!ctx || ctx.pf.isSolana ? 'Not enough USDC/USDT' : `Can’t pay this from ${ctx.pf.sel.title} on ${ctx.pf.sel.sub}`}</div>
+        <p className="muted text-[14px] mt-1">{!ctx || ctx.pf.isSolana ? <>This needs {usd(quote.totalUsd)} and you have {usd(quote.balanceUsd)}.</> : (quote.fundingError || `This needs ${usd(quote.totalUsd)}.`)}{ctx && !ctx.pf.isSolana && <> <button onClick={() => ctx.pf.setPicking(true)} className="text-terracotta font-semibold">Pay from another balance</button></>}</p>
         <Link href="/app" className="inline-flex items-center gap-1.5 mt-3 text-terracotta font-semibold text-[14px]"><IconPlus size={16} />Add money</Link>
       </div>
     );
@@ -188,13 +202,14 @@ function CostCard({ quote, err, busy, amountNgn }: { quote: Quote | null; err: s
       <div className="text-[13.5px] text-cream/70">You pay</div>
       <div className="font-display font-bold text-[34px] leading-tight tabular-nums">
         {shown === null || busy ? <span className="inline-block h-9 w-32 rounded-xl bg-white/10 animate-pulse align-middle" /> : `$${shown.toFixed(2)}`}
-        {quote && !busy && <span className="text-[15px] font-sans font-medium text-cream/70 ml-2">{quote.isSplit ? 'USDC + USDT' : quote.stable}</span>}
+        {quote && !busy && !quote.funding && <span className="text-[15px] font-sans font-medium text-cream/70 ml-2">{quote.isSplit ? 'USDC + USDT' : quote.stable}</span>}
       </div>
       {quote && (
         <dl className="mt-3 grid grid-cols-2 gap-y-1.5 text-[13.5px]">
           <dt className="text-cream/70">Includes fee</dt><dd className="text-right font-mono">{usd(quote.feeUsd)}</dd>
           <dt className="text-cream/70">Rate</dt><dd className="text-right font-mono">₦{Math.round(quote.rate).toLocaleString('en-NG')} / $1</dd>
           <dt className="text-cream/70">Cashback</dt><dd className="text-right text-terracotta-light">0.2% back</dd>
+          {lines.paidFrom && (<><dt className="text-cream/70">Paid from</dt><dd className="text-right font-mono">{lines.paidFrom}</dd><dt className="text-cream/70">Network fee</dt><dd className="text-right">{lines.feeLine}</dd></>)}
         </dl>
       )}
     </div>
@@ -205,14 +220,17 @@ function ReviewSheet({ open, onClose, title, lines, quote, onConfirm, busy, erro
   open: boolean; onClose: () => void; title: string; lines: Array<[string, string]>; quote: Quote | null;
   onConfirm: () => void; busy: boolean; error: string; holdLabel: string;
 }) {
+  const lines2 = fundingLines(quote?.funding);
   return (
     <Sheet open={open} onClose={() => !busy && onClose()} title={title}>
       {quote && (
         <>
           <dl className="rounded-2xl bg-cream-warm dark:bg-night p-4 grid grid-cols-[auto,1fr] gap-x-4 gap-y-2 text-[14px]">
             {lines.map(([k, v]) => (<Fragment key={k}><dt className="muted">{k}</dt><dd className="text-right font-medium break-all">{v}</dd></Fragment>))}
-            <dt className="muted">You pay</dt><dd className="text-right font-mono">{usd(quote.totalUsd)} {quote.isSplit ? 'USDC + USDT' : quote.stable}</dd>
+            <dt className="muted">You pay</dt><dd className="text-right font-mono">{lines2.paidFrom ? `${usd(quote.totalUsd)} · ${lines2.paidFrom}` : `${usd(quote.totalUsd)} ${quote.isSplit ? 'USDC + USDT' : quote.stable}`}</dd>
+            {lines2.feeLine && (<><dt className="muted">Network fee</dt><dd className="text-right">{lines2.feeLine}</dd></>)}
           </dl>
+          {lines2.priceNote && <p className="mt-2 text-[12.5px] muted text-center">{lines2.priceNote}</p>}
           <ErrorNote msg={error} className="mt-4 text-[14px] text-[#B84A40]" />
           <div className="mt-5"><HoldToConfirm label={holdLabel} busy={busy} onConfirm={onConfirm} /></div>
           <p className="mt-3 text-center text-[12.5px] muted">Press and hold so nothing is paid by accident.</p>
@@ -223,13 +241,15 @@ function ReviewSheet({ open, onClose, title, lines, quote, onConfirm, busy, erro
 }
 
 function usePay(onStarted: (id: string) => void) {
+  const ctx = useContext(PayFromCtx);
+  const fromBody = ctx?.pf.fromBody;
   const keyRef = useRef(newKey());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const pay = useCallback(async (body: Record<string, unknown>) => {
     setBusy(true); setError('');
     try {
-      const job = await kc<Job>('bills/pay', { method: 'POST', body: { ...body, idempotencyKey: keyRef.current } });
+      const job = await kc<Job>('bills/pay', { method: 'POST', body: { ...body, ...(fromBody || {}), idempotencyKey: keyRef.current } });
       onStarted(job.id);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not start the payment');
@@ -237,7 +257,7 @@ function usePay(onStarted: (id: string) => void) {
     } finally {
       setBusy(false);
     }
-  }, [onStarted]);
+  }, [onStarted, fromBody]);
   return { pay, busy, error, setError };
 }
 
@@ -726,9 +746,9 @@ function Progress({ jobId, onFinish }: { jobId: string; onFinish: () => void }) 
               : job.category === 'data' ? `${r.planName || 'Data'} sent`
               : job.category === 'cable' ? `${r.planName || 'Subscription'} paid`
               : `${naira(job.amountNgn)} airtime sent`}
-            body={isElec ? `${r.serviceName} · meter ${r.customerId}${r.customerName ? ` · ${r.customerName}` : ''}`
+            body={(isElec ? `${r.serviceName} · meter ${r.customerId}${r.customerName ? ` · ${r.customerName}` : ''}`
               : job.category === 'cable' ? `${r.serviceName} · smartcard ${r.customerId}${r.customerName ? ` · ${r.customerName}` : ''}. It usually activates within minutes.`
-              : `To ${r.customerId}. It usually lands in seconds.`}
+              : `To ${r.customerId}. It usually lands in seconds.`) + (r.funding ? ` Paid from ${coinAmount(r.funding.amount)} ${r.funding.label}.` : '')}
             reference={r.reference}
             actions={<>
               <Link href="/app" onClick={onFinish} className="btn-primary w-full">Done</Link>

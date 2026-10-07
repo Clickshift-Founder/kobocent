@@ -7,9 +7,11 @@ import { PageHeader } from '@/components/app/PageHeader';
 import { Sheet, Skeleton, ReceiptButton } from '@/components/app/ui';
 import { IconCheck, IconChevron, IconPlus, IconSend } from '@/components/app/Icons';
 import { newKey, store, read, initials, useCountUp, HoldToConfirm, Outcome } from '@/components/app/money';
+import { usePayFrom, PayFromPicker, fundingLines, coinAmount, type Funding, type JobFunding } from '@/components/app/PayFrom';
 
 /**
- * Send to bank — pay anyone in Nigeria from USDC/USDT; they receive naira.
+ * Send to bank — pay anyone in Nigeria from any balance (Solana USDC/USDT, SOL, or USDT/USDC/ETH/BNB/POL on
+ * EVM chains — 2026-10-07); they receive naira.
  * Backend /api/v1/send (billsPaymentEngine — same engine as Telegram). Banks + name check reuse
  * /withdraw/banks and /withdraw/resolve. The name always comes from the bank. Hold-to-confirm →
  * server job (resumable, idempotency key) → outcome. Receipt + cashback follow when the bank confirms.
@@ -17,8 +19,8 @@ import { newKey, store, read, initials, useCountUp, HoldToConfirm, Outcome } fro
 
 interface Recipient { accountNumber: string; bankCode: string; bankName: string; accountName: string; lastAt: number | null }
 interface Bank { code: string; name: string }
-interface Quote { amountNgn: number; totalUsd: number; feeUsd: number; rate: number; stable: string; isSplit: boolean; balanceUsd: number; canPay: boolean; aboveLimit: boolean; limitUsd: number }
-interface Job { id: string; status: 'running' | 'done'; stage: string; meta: { amountNgn: number }; result: null | { ok: boolean; code: string | null; error: string | null; reference: string | null; amountNgn: number; recipientName: string | null; recipientBank: string | null } }
+interface Quote { amountNgn: number; totalUsd: number; feeUsd: number; rate: number; stable: string; isSplit: boolean; balanceUsd: number; canPay: boolean; aboveLimit: boolean; limitUsd: number; funding?: Funding | null; fundingError?: string | null; maxUsd?: number | null }
+interface Job { id: string; status: 'running' | 'done'; stage: string; meta: { amountNgn: number }; result: null | { ok: boolean; code: string | null; error: string | null; reference: string | null; amountNgn: number; recipientName: string | null; recipientBank: string | null; funding?: JobFunding | null } }
 
 const JOB_KEY = 'kc-send-job';
 const SUPPORT_URL = 'https://t.me/ClickShiftAlerts';
@@ -165,6 +167,9 @@ function Amount({ to, onBack, onStarted }: { to: Recipient; onBack: () => void; 
   const keyRef = useRef(newKey());
   const value = Number(ngn) || 0;
   const usdShown = useCountUp(quote && value ? quote.totalUsd : null);
+  // Pay from (any chain): roughly what this costs in dollars, for the automatic pick.
+  const pf = usePayFrom(quote?.totalUsd ?? value / 1500);
+  const lines = fundingLines(quote?.funding);
 
   useEffect(() => {
     setQErr('');
@@ -172,21 +177,23 @@ function Amount({ to, onBack, onStarted }: { to: Recipient; onBack: () => void; 
     if (value < 100) { setQuote(null); setQErr('The minimum is ₦100'); return; }
     let live = true; setBusy(true);
     const t = setTimeout(() => {
-      kc<Quote>('send/quote', { method: 'POST', body: { amountNgn: value } })
+      kc<Quote>('send/quote', { method: 'POST', body: { amountNgn: value, ...pf.fromBody } })
         .then(q => { if (live) setQuote(q); }).catch(e => { if (live) { setQuote(null); setQErr(e instanceof Error ? e.message : 'Could not price this'); } })
         .finally(() => { if (live) setBusy(false); });
     }, 350);
     return () => { live = false; clearTimeout(t); };
-  }, [value]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, pf.from]);
 
   const start = useCallback(async () => {
     setStarting(true); setStartErr('');
     try {
-      const job = await kc<Job>('send/pay', { method: 'POST', body: { bankCode: to.bankCode, accountNumber: to.accountNumber, amountNgn: value, narration: note, idempotencyKey: keyRef.current } });
+      const job = await kc<Job>('send/pay', { method: 'POST', body: { bankCode: to.bankCode, accountNumber: to.accountNumber, amountNgn: value, narration: note, idempotencyKey: keyRef.current, ...pf.fromBody } });
       setReview(false); onStarted(job.id);
     } catch (e) { setStartErr(e instanceof Error ? e.message : 'Could not start the payment'); keyRef.current = newKey(); }
     finally { setStarting(false); }
-  }, [to, value, note, onStarted]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [to, value, note, onStarted, pf.from]);
 
   const ready = !!quote && quote.canPay && !quote.aboveLimit && !busy;
 
@@ -197,6 +204,8 @@ function Amount({ to, onBack, onStarted }: { to: Recipient; onBack: () => void; 
         <div className="flex-1 min-w-0"><div className="font-semibold text-ink dark:text-cream-warm truncate">{to.accountName}</div><div className="text-[13.5px] muted truncate">{to.bankName} · {to.accountNumber}</div></div>
         <span className="text-[13px] font-semibold text-terracotta">Change</span>
       </button>
+
+      <PayFromPicker pf={pf} />
 
       <section className="surface rounded-3xl p-6 text-center">
         <label htmlFor="amt" className="eyebrow">They receive</label>
@@ -217,14 +226,14 @@ function Amount({ to, onBack, onStarted }: { to: Recipient; onBack: () => void; 
 
       {qErr ? <ErrorNote msg={qErr} className="surface rounded-3xl p-5 text-[14.5px] text-[#B84A40]" />
         : quote && !quote.canPay ? (
-          <div className="surface rounded-3xl p-5"><div className="font-semibold text-ink dark:text-cream-warm">Not enough USDC/USDT</div><p className="muted text-[14px] mt-1">This needs {usd(quote.totalUsd)} and you have {usd(quote.balanceUsd)}.</p><Link href="/app/add-money" className="inline-flex items-center gap-1.5 mt-3 text-terracotta font-semibold text-[14px]"><IconPlus size={16} />Add money</Link></div>
+          <div className="surface rounded-3xl p-5"><div className="font-semibold text-ink dark:text-cream-warm">{pf.isSolana ? 'Not enough USDC/USDT' : `Can’t pay this from ${pf.sel.title} on ${pf.sel.sub}`}</div><p className="muted text-[14px] mt-1">{pf.isSolana ? <>This needs {usd(quote.totalUsd)} and you have {usd(quote.balanceUsd)}.</> : (quote.fundingError || `This needs ${usd(quote.totalUsd)}.`)} {!pf.isSolana && <button onClick={() => pf.setPicking(true)} className="text-terracotta font-semibold">Pay from another balance</button>}</p><Link href="/app/add-money" className="inline-flex items-center gap-1.5 mt-3 text-terracotta font-semibold text-[14px]"><IconPlus size={16} />Add money</Link></div>
         ) : quote?.aboveLimit ? (
           <div className="surface rounded-3xl p-5 text-[14.5px]">Above {usd(quote.limitUsd)} we send payments by hand. <a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer" className="text-terracotta font-semibold underline">Message support</a></div>
         ) : value ? (
           <div className="rounded-3xl p-5 bg-ink dark:bg-night-card text-cream shadow-card">
             <div className="text-[13.5px] text-cream/70">You pay</div>
-            <div className="font-display font-bold text-[34px] leading-tight tabular-nums">{busy || usdShown === null ? <span className="inline-block h-9 w-32 rounded-xl bg-white/10 animate-pulse align-middle" /> : `$${usdShown.toFixed(2)}`}{quote && !busy && <span className="text-[15px] font-sans font-medium text-cream/70 ml-2">{quote.isSplit ? 'USDC + USDT' : quote.stable}</span>}</div>
-            {quote && <dl className="mt-3 grid grid-cols-2 gap-y-1.5 text-[13.5px]"><dt className="text-cream/70">Includes fee</dt><dd className="text-right font-mono">{usd(quote.feeUsd)}</dd><dt className="text-cream/70">Rate</dt><dd className="text-right font-mono">₦{Math.round(quote.rate).toLocaleString('en-NG')} / $1</dd><dt className="text-cream/70">Cashback</dt><dd className="text-right text-terracotta-light">0.2% back</dd></dl>}
+            <div className="font-display font-bold text-[34px] leading-tight tabular-nums">{busy || usdShown === null ? <span className="inline-block h-9 w-32 rounded-xl bg-white/10 animate-pulse align-middle" /> : `$${usdShown.toFixed(2)}`}{quote && !busy && <span className="text-[15px] font-sans font-medium text-cream/70 ml-2">{quote.funding ? '' : quote.isSplit ? 'USDC + USDT' : quote.stable}</span>}</div>
+            {quote && <dl className="mt-3 grid grid-cols-2 gap-y-1.5 text-[13.5px]"><dt className="text-cream/70">Includes fee</dt><dd className="text-right font-mono">{usd(quote.feeUsd)}</dd><dt className="text-cream/70">Rate</dt><dd className="text-right font-mono">₦{Math.round(quote.rate).toLocaleString('en-NG')} / $1</dd><dt className="text-cream/70">Cashback</dt><dd className="text-right text-terracotta-light">0.2% back</dd>{lines.paidFrom && (<><dt className="text-cream/70">Paid from</dt><dd className="text-right font-mono">{lines.paidFrom}</dd><dt className="text-cream/70">Network fee</dt><dd className="text-right">{lines.feeLine}</dd></>)}</dl>}
           </div>
         ) : null}
 
@@ -241,10 +250,12 @@ function Amount({ to, onBack, onStarted }: { to: Recipient; onBack: () => void; 
               <div className="muted text-[13.5px]">{to.bankName} · {to.accountNumber}</div>
             </div>
             <dl className="mt-4 rounded-2xl bg-cream-warm dark:bg-night p-4 grid grid-cols-2 gap-y-2 text-[14px]">
-              <dt className="muted">You pay</dt><dd className="text-right font-mono">{usd(quote.totalUsd)} {quote.isSplit ? 'USDC + USDT' : quote.stable}</dd>
+              <dt className="muted">You pay</dt><dd className="text-right font-mono">{lines.paidFrom ? `${usd(quote.totalUsd)} · ${lines.paidFrom}` : `${usd(quote.totalUsd)} ${quote.isSplit ? 'USDC + USDT' : quote.stable}`}</dd>
+              {lines.feeLine && (<><dt className="muted">Network fee</dt><dd className="text-right">{lines.feeLine}</dd></>)}
               <dt className="muted">Fee</dt><dd className="text-right font-mono">{usd(quote.feeUsd)}</dd>
               {note && (<><dt className="muted">Note</dt><dd className="text-right truncate">{note}</dd></>)}
             </dl>
+            {lines.priceNote && <p className="mt-2 text-[12.5px] muted text-center">{lines.priceNote}</p>}
             <ErrorNote msg={startErr} className="mt-4 text-[14px] text-[#B84A40]" />
             <div className="mt-5"><HoldToConfirm label={`Hold to send ${naira(value)}`} busy={starting} onConfirm={start} /></div>
             <p className="mt-3 text-center text-[12.5px] muted">Press and hold so nothing is sent by accident.</p>
@@ -272,7 +283,7 @@ function Progress({ jobId, onFinish }: { jobId: string; onFinish: () => void }) 
   if (lost) return <Outcome tone="info" title="We lost track of this screen" body="The payment itself is unaffected — check Activity for its status." actions={<><Link href="/app/activity" onClick={onFinish} className="btn-primary w-full">Open Activity</Link><button onClick={onFinish} className="btn-ghost w-full">Close</button></>} />;
   const r = job?.result;
   if (job?.status === 'done' && r) {
-    if (r.ok) return <Outcome tone="success" title={`${naira(r.amountNgn)} is on its way`} body={`To ${r.recipientName || 'your recipient'}${r.recipientBank ? ` at ${r.recipientBank}` : ''}. Usually arrives within minutes. Get the receipt below to share as proof — it’s ready the moment the bank confirms.`} reference={r.reference} actions={<>{r.reference && <ReceiptButton reference={r.reference} kind="bill" wait className="btn-primary w-full" />}<Link href="/app" onClick={onFinish} className="btn-ghost w-full">Done</Link><button onClick={onFinish} className="block w-full text-center text-[14px] font-semibold text-terracotta min-h-[44px]">Send another</button></>} />;
+    if (r.ok) return <Outcome tone="success" title={`${naira(r.amountNgn)} is on its way`} body={`To ${r.recipientName || 'your recipient'}${r.recipientBank ? ` at ${r.recipientBank}` : ''}${r.funding ? `, paid from ${coinAmount(r.funding.amount)} ${r.funding.label}` : ''}. Usually arrives within minutes. Get the receipt below to share as proof — it’s ready the moment the bank confirms.`} reference={r.reference} actions={<>{r.reference && <ReceiptButton reference={r.reference} kind="bill" wait className="btn-primary w-full" />}<Link href="/app" onClick={onFinish} className="btn-ghost w-full">Done</Link><button onClick={onFinish} className="block w-full text-center text-[14px] font-semibold text-terracotta min-h-[44px]">Send another</button></>} />;
     if (r.code === 'OUTCOME_UNKNOWN') return <Outcome tone="warn" title="Being confirmed" body="Please don’t send again. We’re confirming the payment and will complete it or refund you — you’ll hear from us on Telegram." reference={r.reference} actions={<button onClick={onFinish} className="btn-primary w-full">Got it</button>} />;
     const nothingMoved = ['INSUFFICIENT', 'BAD_ACCOUNT', 'IN_PROGRESS', 'BELOW_MIN', 'ABOVE_LIMIT'].includes(r.code || '');
     return <Outcome tone="error" title={nothingMoved ? 'Nothing was sent' : 'The payment didn’t go through'} body={`${r.error ? `${r.error}. ` : ''}${nothingMoved ? 'No money left your wallet.' : 'If any money left your wallet, our team has already been alerted and will refund it.'}`} reference={r.reference} actions={<><button onClick={onFinish} className="btn-primary w-full">Try again</button>{!nothingMoved && <a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer" className="btn-ghost w-full">Message support</a>}</>} />;
