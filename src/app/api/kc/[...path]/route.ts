@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { backend, getSessionToken, setSessionToken, clearSessionToken, isSessionError, maybeRefreshSession } from '@/lib/server/backend';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
 
 /**
  * Authenticated proxy: /api/kc/<path> → backend /api/v1/<path> with the session cookie
@@ -24,6 +25,7 @@ const ALLOWED: Record<string, Array<'GET' | 'POST'>> = {
   'withdraw/banks': ['GET'],
   'withdraw/resolve': ['POST'],
   'withdraw/bank': ['POST'],
+  'withdraw/sources': ['GET'],
   'withdraw/quote': ['POST'],
   'bills': ['GET'],
   'bills/network': ['POST'],
