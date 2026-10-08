@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { kc, KcError, BOT_URL } from '@/lib/kc';
 import { newKey, HoldToConfirm } from './money';
 import { IconClose, IconSend, IconChevron } from './Icons';
+import { usePayFrom, PayFromPicker } from './PayFrom';
 
 /**
  * Kobo Pal in the web app (2026-10-05) — the same assistant as Telegram (backend src/services/assistant.js).
@@ -20,7 +21,7 @@ interface SupportCase { id: number; status: 'waiting' | 'active' | 'closed'; age
 interface SupportMsg { id: number; sender: 'user' | 'agent' | 'pal' | 'system'; agentName: string | null; body: string; at: number }
 interface ChatMsg { id: string; from: 'user' | 'pal' | 'agent' | 'system'; text: string; name?: string | null; actions?: string[]; tier?: string }
 interface ChatRes { reply: string | null; tier: string; actions: string[]; caseId: number | null; routedToCase: boolean; credit: number | null; freeLeft: number | null; limited: string | null }
-interface Job { id: string; status: 'running' | 'done'; result: null | { ok: boolean; code?: string; error?: string; amount?: number; creditAdded?: number; credit?: number; answersLeft?: number; signature?: string } }
+interface Job { id: string; status: 'running' | 'done'; result: null | { ok: boolean; code?: string; error?: string; amount?: number; creditAdded?: number; credit?: number; answersLeft?: number; signature?: string; explorerUrl?: string | null; paidFrom?: string } }
 
 const SCREENS: Record<string, { label: string; href: string; external?: boolean }> = {
   add_money: { label: 'Add money', href: '/app/add-money' }, send_bank: { label: 'Send to bank', href: '/app/send' },
@@ -368,12 +369,14 @@ function TipView({ state, onDone, onNavigate }: { state: PalState; onDone: () =>
   const [job, setJob] = useState<Job | null>(null);
   const [err, setErr] = useState('');
   const keyRef = useRef<string>(newKey());
+  // Pay from any balance (2026-10-08) — the same picker as Withdraw, Send and Bills; cheapest balance that covers the tip.
+  const pf = usePayFrom(pick?.usd ?? 0);
 
   async function start() {
     if (!pick) return;
     setStarting(true); setErr('');
     try {
-      let j = await kc<Job>('pal/tip', { method: 'POST', body: { amount: pick.usd, idempotencyKey: keyRef.current } });
+      let j = await kc<Job>('pal/tip', { method: 'POST', body: { amount: pick.usd, idempotencyKey: keyRef.current, ...pf.fromBody } });
       setJob(j);
       for (let i = 0; i < 90 && j.status !== 'done'; i++) {
         await new Promise(r => setTimeout(r, 1500));
@@ -390,7 +393,8 @@ function TipView({ state, onDone, onNavigate }: { state: PalState; onDone: () =>
       <h2 className="font-display text-[26px] font-bold mt-5 text-ink dark:text-cream-warm">Pal VIP unlocked</h2>
       <p className="muted text-[15px] mt-2 leading-relaxed">Thank you for the ${res.amount} tip. ${res.creditAdded?.toFixed(2)} went into your VIP credit — you now have <b className="text-ink dark:text-cream-warm">${res.credit?.toFixed(2)}</b>, about {res.answersLeft} deep answers.</p>
       <p className="muted text-[14px] mt-4">Try: “Give me a money check-up” or “Build me a 30-day growth plan”.</p>
-      {res.signature && <a href={`https://solscan.io/tx/${res.signature}`} target="_blank" rel="noopener noreferrer" className="block mt-4 text-[13px] text-terracotta font-semibold">View the on-chain transfer</a>}
+      {res.paidFrom && <p className="muted text-[13px] mt-3">Paid from {res.paidFrom}</p>}
+      {(res.explorerUrl || res.signature) && <a href={res.explorerUrl || `https://solscan.io/tx/${res.signature}`} target="_blank" rel="noopener noreferrer" className="block mt-2 text-[13px] text-terracotta font-semibold min-h-[44px] leading-[44px]">View the on-chain transfer</a>}
       <button onClick={onDone} className="btn-primary w-full mt-6 min-h-[52px]">Ask Pal VIP</button>
     </div>
   );
@@ -398,7 +402,10 @@ function TipView({ state, onDone, onNavigate }: { state: PalState; onDone: () =>
     <div className="flex-1 overflow-y-auto px-5 py-8 text-center">
       <h2 className="font-display text-[22px] font-bold text-ink dark:text-cream-warm">{res.code === 'OUTCOME_UNKNOWN' ? 'Confirming your tip' : 'The tip did not go through'}</h2>
       <p className="muted text-[15px] mt-2 leading-relaxed">{res.error}</p>
-      {res.code === 'INSUFFICIENT' && <button onClick={() => onNavigate('/app/add-money')} className="btn-primary w-full mt-6 min-h-[52px]">Add money</button>}
+      {res.code === 'INSUFFICIENT' && <>
+        <button onClick={() => { setJob(null); keyRef.current = newKey(); pf.setPicking(true); }} className="btn-primary w-full mt-6 min-h-[52px]">Pay from another balance</button>
+        <button onClick={() => onNavigate('/app/add-money')} className="btn-ghost w-full mt-3 min-h-[48px]">Add money</button>
+      </>}
       <button onClick={onDone} className="btn-ghost w-full mt-3 min-h-[48px]">Back to chat</button>
     </div>
   );
@@ -408,7 +415,7 @@ function TipView({ state, onDone, onNavigate }: { state: PalState; onDone: () =>
       <p className="text-[14.5px] leading-relaxed text-ink dark:text-cream-warm">
         Pal VIP runs on a far more capable AI. It digs into your real balances, spending and Earn options, explains Smart Picks momentum signals with the risks, and builds you a money plan.
       </p>
-      <p className="text-[13px] muted mt-2">Half of every tip becomes your VIP credit; the other half keeps Pal running for everyone. Paid from your spendable USDC (or USDT).</p>
+      <p className="text-[13px] muted mt-2">Half of every tip becomes your VIP credit; the other half keeps Pal running for everyone. Pay from any balance, on any chain.</p>
       {state.vip && <p className="text-[13px] mt-2 text-ink dark:text-cream-warm">You have ${state.credit.toFixed(2)} credit now — tips add to it.</p>}
       <div className="mt-4 space-y-2.5">
         {state.tips.map(t => (
@@ -422,7 +429,8 @@ function TipView({ state, onDone, onNavigate }: { state: PalState; onDone: () =>
           </button>
         ))}
       </div>
-      <p className="text-[12px] muted mt-3">Market signals are never guarantees. Kobocent covers the network fee.</p>
+      {pick && <div className="mt-4"><PayFromPicker pf={pf} /></div>}
+      <p className="text-[12px] muted mt-3">Market signals are never guarantees. {pf.isSolana ? 'Kobocent covers the network fee.' : 'Coins are priced live — the exact amount is set when you confirm.'}</p>
       {err && <p className="text-[13px] text-[#B84A40] mt-3">{err}</p>}
       <div className="mt-4">
         {pick
