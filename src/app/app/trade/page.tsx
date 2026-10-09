@@ -29,6 +29,8 @@ export default function TradePage() {
   const [tab, setTab] = useState<Tab>('holdings');
   const [picks, setPicks] = useState<Pick[] | null>(null);
   const [picksErr, setPicksErr] = useState('');
+  const [picksAt, setPicksAt] = useState<number | null>(null);
+  const [, setTick] = useState(0);
 
   const load = useCallback(() => kc<TradeHome>('trade').then(d => { setData(d); setError(''); writeCache('home', d); }).catch(e => {
     if (e instanceof KcError && e.status === 409) setNeedsLink(true); else setError(e instanceof Error ? e.message : 'Could not load your tokens');
@@ -36,17 +38,28 @@ export default function TradePage() {
   useEffect(() => {
     // Paint the last numbers seen at once, then refresh in place (2026-10-09). Picks too.
     const cached = readCache<TradeHome>('home'); if (cached) setData(cached);
-    const cachedPicks = readCache<Pick[]>('picks'); if (cachedPicks) setPicks(cachedPicks);
+    // Picks are only shown from this device's cache when under a minute old — older ones could mislead (2026-10-09)
+    const cachedPicks = readCache<{ picks: Pick[]; at: number }>('picks2');
+    if (cachedPicks && Date.now() - cachedPicks.at < 60_000) { setPicks(cachedPicks.picks); setPicksAt(cachedPicks.at); }
     load();
     try { const t = localStorage.getItem(TAB_KEY) as Tab | null; if (t === 'holdings' || t === 'picks' || t === 'closed') setTab(t); } catch { /* private mode */ }
   }, [load]);
   useLiveRefresh(load, 30_000);
 
-  // Smart Picks load in the background as soon as Trade opens, so the tab is ready when tapped (2026-10-09).
+  // Smart Picks load in the background as soon as Trade opens, so the tab is ready when tapped (2026-10-09), and
+  // refresh every 20 s while the tab is open (the server rebuilds them from live data at most every 20 s).
+  const loadPicks = useCallback(() => kc<{ picks: Pick[]; updatedAt?: number }>('trade/picks').then(r => {
+    const at = r.updatedAt || Date.now();
+    setPicks(r.picks); setPicksAt(at); setPicksErr(''); writeCache('picks2', { picks: r.picks, at });
+  }).catch(e => setPicksErr(e instanceof Error ? e.message : 'Smart Picks are resting — try again shortly')), []);
+  useEffect(() => { loadPicks(); }, [loadPicks]);
   useEffect(() => {
-    kc<{ picks: Pick[] }>('trade/picks').then(r => { setPicks(r.picks); writeCache('picks', r.picks); })
-      .catch(e => setPicksErr(e instanceof Error ? e.message : 'Smart Picks are resting — try again shortly'));
-  }, []);
+    if (tab !== 'picks') return;
+    const t = window.setInterval(() => { if (document.visibilityState === 'visible') loadPicks(); }, 20_000);
+    const tick = window.setInterval(() => setTick(n => n + 1), 5_000);   // keeps “updated … ago” current
+    return () => { window.clearInterval(t); window.clearInterval(tick); };
+  }, [tab, loadPicks]);
+  const picksAge = picksAt ? Math.max(0, Math.round((Date.now() - picksAt) / 1000)) : null;
   const pickTab = (t: Tab) => { setTab(t); try { localStorage.setItem(TAB_KEY, t); } catch { /* private mode */ } };
 
   if (needsLink) return <div className="space-y-6"><PageHeader title="Trade" /><div className="surface rounded-3xl p-6 text-center"><p className="muted text-[15px] mb-4">Connect your Telegram account to trade from the web app.</p><Link href="/app/settings" className="btn-primary">Open Settings</Link></div></div>;
@@ -149,6 +162,10 @@ export default function TradePage() {
         : picks.length === 0 ? <EmptyState title="Nothing stands out right now" body="Smart Picks only shows tokens with strong momentum. Check back soon." />
         : (
           <div className="space-y-2.5">
+            <div className="flex items-center justify-between gap-3 text-[12.5px] muted px-1">
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#58834C] animate-pulse" aria-hidden />Live · {picksAge == null || picksAge < 10 ? 'updated just now' : picksAge < 60 ? `updated ${picksAge} s ago` : `updated ${Math.round(picksAge / 60)} min ago`}</span>
+              <button onClick={() => loadPicks()} className="min-h-[44px] px-2 font-semibold text-terracotta">Refresh</button>
+            </div>
             {picks.map((p, i) => (
               <Link key={p.mint} href={`/app/trade/${p.mint}`} className="surface rounded-2xl p-4 block hover:border-terracotta transition-colors">
                 <div className="flex items-center gap-3">
@@ -164,12 +181,13 @@ export default function TradePage() {
                   </div>
                 </div>
                 <div className="mt-2.5 flex flex-wrap gap-1.5">
+                  {p.change5m != null && <span className="rounded-full px-2 py-0.5 text-[12px] font-mono" style={{ background: (pnlColor(p.change5m) || '#6B5D52') + '1A', color: pnlColor(p.change5m) }}>5m {pct(p.change5m)}</span>}
                   {p.change1h != null && <span className="rounded-full px-2 py-0.5 text-[12px] font-mono" style={{ background: (pnlColor(p.change1h) || '#6B5D52') + '1A', color: pnlColor(p.change1h) }}>1h {pct(p.change1h)}</span>}
                   {p.signals.map(s => <span key={s} className="rounded-full bg-cream-warm dark:bg-night px-2 py-0.5 text-[12px] text-ink dark:text-cream-warm">{s}</span>)}
                 </div>
               </Link>
             ))}
-            <p className="text-[12px] muted">Momentum signals from live market data — never a guarantee. New tokens are very risky; only trade what you can afford to lose.</p>
+            <p className="text-[12px] muted">Momentum signals from live market data, rug-checked (mint and freeze authority, holder concentration, locked liquidity) — never a guarantee. New tokens are very risky; only trade what you can afford to lose.</p>
           </div>
         ))}
 

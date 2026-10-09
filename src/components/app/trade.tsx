@@ -19,7 +19,7 @@ export interface TradeHome {
   totals: { tokensValueUsd: number | null; investedUsd: number | null; unrealizedUsd: number | null; unrealizedPct: number | null; realizedUsd: number | null;
             best: { mint: string; symbol: string; pnlPct: number } | null; worst: { mint: string; symbol: string; pnlPct: number } | null; protectedCount: number };
 }
-export interface Pick { mint: string; symbol: string; name: string; priceUsd: number | null; marketCapUsd: number | null; liquidityUsd: number | null; score: number; signals: string[]; change1h: number | null; change24h: number | null; volume1hUsd: number | null; buyRatioPct: number | null; ageHours: number | null; imageUrl: string | null }
+export interface Pick { mint: string; symbol: string; name: string; priceUsd: number | null; marketCapUsd: number | null; liquidityUsd: number | null; score: number; signals: string[]; change1h: number | null; change24h: number | null; volume1hUsd: number | null; buyRatioPct: number | null; ageHours: number | null; imageUrl: string | null; change5m?: number | null; rugChecked?: boolean; lpLockedPct?: number | null }
 export interface SearchResult { mint: string; symbol: string; name: string; priceUsd: number | null; liquidityUsd?: number | null; marketCapUsd?: number | null; change24h?: number | null; imageUrl?: string | null }
 
 /** Prices from $0.000000012 to $64,000 — significant digits for tiny memecoin prices, subscript-free. */

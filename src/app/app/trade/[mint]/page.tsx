@@ -7,7 +7,7 @@ import { Skeleton, CopyButton } from '@/components/app/ui';
 import { IconShield, IconChevron } from '@/components/app/Icons';
 import { useLiveRefresh } from '@/lib/useLiveRefresh';
 import { TradePanel } from '@/components/app/TradePanel';
-import { StrategyPanel } from '@/components/app/StrategyPanel';
+import { StrategyPanel, type Recommended } from '@/components/app/StrategyPanel';
 import { type Position, type TradeHome, type Pick, price, compact, signedUsd, pct, tokenAmount, PnlPill, pnlColor, TokenAvatar, ScoreGauge, readCache, writeCache } from '@/components/app/trade';
 
 /**
@@ -22,8 +22,9 @@ interface TokenView {
   marketCapUsd?: number; liquidityUsd?: number; ageHours?: number | null;
   txns24h?: number; buys24h?: number; sells24h?: number; buys1h?: number; sells1h?: number;
   holders?: { total: number | string; topHolderPct: number | null; risk: string | null; verified: boolean };
-  technicals?: { rsi: number | null; signal: string; momentumScore: number | null; buySellRatio: number | null; volumeTrend: string };
+  technicals?: { rsi: number | null; rsiReal?: boolean; trend?: 'up' | 'down' | 'sideways' | 'unknown'; signal: string; momentumScore: number | null; buySellRatio: number | null; volumeTrend: string };
   levels?: { entry: number | null; stopLoss: number | null; target: number | null };
+  recommended?: Recommended | null;
   verdict?: { action: string; score: number | null; confidence: string | number | null; signals: string[]; insight: string | null; validMinutes: number | null };
   chartUrl?: string | null; explorerUrl?: string; position: Position | null; disclaimer?: string; loading?: boolean;
 }
@@ -43,12 +44,12 @@ export default function TokenPage() {
     if (cached) setT(cached);
     else {
       const pos = readCache<TradeHome>('home')?.positions.find(p => p.mint === mint) || null;
-      const pk = readCache<Pick[]>('picks')?.find(p => p.mint === mint);
+      const pk = readCache<{ picks: Pick[] }>('picks2')?.picks.find(p => p.mint === mint);
       if (pos || pk) setT({ ok: true, chain: 'SOLANA', mint, analysed: false, symbol: pos?.symbol || pk?.symbol || '', name: pos?.name || pk?.name || '', priceUsd: pos?.priceUsd ?? pk?.priceUsd ?? null, position: pos, loading: true });
     }
     load();
   }, [load, mint]);
-  useLiveRefresh(load, 45_000);
+  useLiveRefresh(load, 20_000);   // fresh prices and verdict (server analysis is at most 20 s old)
 
   if (error) return <div className="space-y-6"><PageHeader title="Token" fallback="/app/trade" /><div className="surface rounded-2xl p-5 text-[15px]">{error} <button onClick={() => load()} className="underline font-semibold">Retry</button></div></div>;
   if (!t) return <div className="space-y-4"><PageHeader title="Token" fallback="/app/trade" /><Skeleton className="h-24" /><Skeleton className="h-[340px]" /><Skeleton className="h-40" /></div>;
@@ -153,6 +154,13 @@ export default function TokenPage() {
               ))}
             </div>
           )}
+          {t.recommended && (
+            <p className="text-[13px] muted mt-3">
+              {t.technicals?.trend && t.technicals.trend !== 'unknown' ? <>Trend: <b className="text-ink dark:text-cream-warm" style={{ color: t.technicals.trend === 'up' ? '#58834C' : t.technicals.trend === 'down' ? '#B84A40' : undefined }}>{t.technicals.trend === 'up' ? 'up' : t.technicals.trend === 'down' ? 'down' : 'sideways'}</b> · </> : null}
+              Suggested trailing <b className="text-ink dark:text-cream-warm">{t.recommended.trailingPct}%</b>{t.recommended.riskReward ? <> · reward {t.recommended.riskReward}× the risk</> : null}
+              {t.recommended.waitForPullback ? <span className="block mt-1" style={{ color: '#B68B2A' }}>Stretched above its recent average — a better entry may come on a pull-back near {price(t.recommended.entryPrice)}.</span> : null}
+            </p>
+          )}
           <p className="text-[12px] muted mt-4">{t.disclaimer}</p>
         </section>
       )}
@@ -182,7 +190,7 @@ export default function TokenPage() {
             </div>
           )}
           {t.technicals && (
-            <p className="text-[13px] muted mt-3">RSI {t.technicals.rsi != null ? Number(t.technicals.rsi).toFixed(0) : '—'}{t.technicals.momentumScore != null ? ` · momentum ${t.technicals.momentumScore}` : ''}{t.technicals.volumeTrend ? ` · volume ${t.technicals.volumeTrend.toLowerCase()}` : ''}</p>
+            <p className="text-[13px] muted mt-3">RSI {t.technicals.rsi != null ? Number(t.technicals.rsi).toFixed(0) : '—'}{t.technicals.rsiReal === false ? ' (estimate)' : ''}{t.technicals.momentumScore != null ? ` · momentum ${t.technicals.momentumScore}` : ''}{t.technicals.volumeTrend ? ` · volume ${t.technicals.volumeTrend.toLowerCase()}` : ''}</p>
           )}
         </section>
       )}
@@ -191,7 +199,7 @@ export default function TokenPage() {
       <TradePanel mint={t.mint} symbol={t.symbol} held={!!p} onDone={load} />
 
       {/* T3 — protect (take profit / stop loss / trailing) and DCA */}
-      {!t.loading && <StrategyPanel mint={t.mint} symbol={t.symbol} held={!!p} priceUsd={t.priceUsd} entryPriceUsd={p?.entryPriceUsd ?? null} onChange={load} />}
+      {!t.loading && <StrategyPanel mint={t.mint} symbol={t.symbol} held={!!p} priceUsd={t.priceUsd} entryPriceUsd={p?.entryPriceUsd ?? null} marketCapUsd={t.marketCapUsd ?? null} recommended={t.recommended ?? null} onChange={load} />}
 
       {/* Links */}
       <section className="surface rounded-3xl p-5">
