@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { kc } from '@/lib/kc';
-import { TOUR, tourKey, tipFor, tipKey, TIPS, type Tip, type TourStep } from '@/lib/guide';
+import { TOUR, tourKey, tipFor, tipKey, TIPS, ANNOUNCEMENTS, announcementKey, type Announcement, type Tip, type TourStep } from '@/lib/guide';
 import { Sheet } from './ui';
 
 /**
@@ -66,6 +66,27 @@ export function GuideProvider() {
     return () => clearTimeout(t);
   }, [seen, pathname, touring]);
 
+  // What's new: one announcement at a time, once per account — after the tour for new users, on the next visit for
+  // everyone else; never over another dialog, never during the tour (2026-10-09).
+  const [news, setNews] = useState<Announcement | null>(null);
+  useEffect(() => {
+    if (!seen || touring || news || !seen[tourKey()]) return;
+    const next = ANNOUNCEMENTS.find(a => !seen[announcementKey(a)]);
+    if (!next) return;
+    if (pathname.startsWith(next.cta.href)) { markSeen(announcementKey(next)); return; }   // already there
+    let t: ReturnType<typeof setTimeout>;
+    const tryShow = () => { if (dialogOpen()) { t = setTimeout(tryShow, 1500); return; } setNews(next); };
+    t = setTimeout(tryShow, 1500);
+    return () => clearTimeout(t);
+  }, [seen, touring, news, pathname, markSeen]);
+  const closeNews = (go: boolean) => {
+    if (!news) return;
+    markSeen(announcementKey(news));
+    const href = news.cta.href;
+    setNews(null);
+    if (go) router.push(href);
+  };
+
   // Settings controls.
   useEffect(() => {
     const replay = () => { router.push('/app?tour=1'); };
@@ -87,6 +108,7 @@ export function GuideProvider() {
   return (
     <>
       {touring && <Tour steps={TOUR} onDone={() => endTour(true)} onSkip={() => endTour(false)} />}
+      {news && <WhatsNew a={news} onGo={() => closeNews(true)} onLater={() => closeNews(false)} />}
       <Sheet open={!!tip} onClose={() => { if (tip) markSeen(tipKey(tip)); setTip(null); remind(); }} title={tip?.title || ''}>
         {tip && (
           <div className="space-y-4">
@@ -189,6 +211,46 @@ function Tour({ steps, onDone, onSkip }: { steps: TourStep[]; onDone: () => void
             {i > 0 && <button onClick={() => setI(x => x - 1)} className={`btn-ghost min-h-[44px] px-4 ${last ? 'mr-auto' : ''}`}>Back</button>}
             <button onClick={() => (last ? onDone() : setI(x => x + 1))} className="btn-primary min-h-[44px] px-5">{i === 0 ? 'Show me around' : last ? 'Start using Kobocent' : 'Next'}</button>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** What's new — a centred card over a dimmed screen (bottom sheet on phones), one primary action. */
+function WhatsNew({ a, onGo, onLater }: { a: Announcement; onGo: () => void; onLater: () => void }) {
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onLater(); };
+    window.addEventListener('keydown', esc);
+    return () => window.removeEventListener('keydown', esc);
+  }, [onLater]);
+  return (
+    <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-black/50 animate-fade-up" role="dialog" aria-modal="true" aria-labelledby="whats-new-title" onClick={onLater}>
+      <div className="w-full sm:max-w-md bg-white dark:bg-night-card rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-lift" onClick={e => e.stopPropagation()} style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <div className="relative bg-ink text-cream-warm px-6 pt-7 pb-8 overflow-hidden">
+          <div className="absolute -right-10 -top-12 h-44 w-44 rounded-full bg-terracotta/40 blur-2xl" aria-hidden />
+          <svg className="absolute right-6 bottom-4 opacity-90" width="150" height="70" viewBox="0 0 150 70" aria-hidden>
+            <defs><linearGradient id="wn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#58834C" stopOpacity="0.55" /><stop offset="1" stopColor="#58834C" stopOpacity="0" /></linearGradient></defs>
+            <path d="M2 60 C 30 58, 45 40, 62 44 S 95 20, 110 24 S 135 8, 148 6 L148 70 L2 70 Z" fill="url(#wn)" />
+            <path d="M2 60 C 30 58, 45 40, 62 44 S 95 20, 110 24 S 135 8, 148 6" fill="none" stroke="#9BD08A" strokeWidth="3.5" strokeLinecap="round" />
+            <circle cx="148" cy="6" r="4.5" fill="#9BD08A" />
+          </svg>
+          <span className="relative inline-block rounded-full bg-terracotta px-2.5 py-1 text-[11.5px] font-bold uppercase tracking-wide text-white">{a.eyebrow}</span>
+          <h2 id="whats-new-title" className="relative font-display font-bold text-[26px] leading-tight mt-3 pr-24">{a.title}</h2>
+          <p className="relative text-[14.5px] text-cream-warm/80 mt-2 pr-16 leading-relaxed">{a.body}</p>
+        </div>
+        <div className="px-6 py-5">
+          <ul className="space-y-3">
+            {a.bullets.map((b, i) => (
+              <li key={i} className="flex gap-3 text-[14.5px] leading-relaxed text-ink dark:text-cream-warm">
+                <span className="mt-1 grid place-items-center h-5 w-5 shrink-0 rounded-full bg-terracotta-soft text-terracotta">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 5 5 9-10" /></svg>
+                </span>{b}
+              </li>
+            ))}
+          </ul>
+          <button onClick={onGo} className="btn-primary w-full min-h-[52px] mt-6 text-[16px]" autoFocus>{a.cta.label}</button>
+          <button onClick={onLater} className="w-full min-h-[48px] mt-1 text-[14.5px] font-semibold muted">Maybe later</button>
         </div>
       </div>
     </div>

@@ -184,3 +184,22 @@ export function tipFor(pathname: string): (Tip & { route: string }) | null {
   const matches = TIPS.filter(t => pathname === t.route || pathname.startsWith(`${t.route}/`) || pathname.startsWith(`${t.route}?`));
   return matches.sort((a, b) => b.route.length - a.route.length)[0] || null;
 }
+
+// ── What's new (2026-10-09) ────────────────────────────────────────────────────────────────────────────
+// A one-time announcement per account for a feature that just shipped — existing users see it on their next
+// visit, new users right after the tour. Seen = `new:<key>@<version>` in the same per-account guide store.
+// Bump `version` to show an updated announcement again.
+export interface Announcement { key: string; version: number; eyebrow: string; title: string; body: string; bullets: string[]; cta: { label: string; href: string } }
+export const ANNOUNCEMENTS: Announcement[] = [
+  {
+    key: 'trade', version: 1, eyebrow: 'New', title: 'Trading is live on the web',
+    body: 'Buy and sell tokens right here — the same wallet and the same numbers as Telegram.',
+    bullets: [
+      'See every token you hold, with your profit or loss in dollars and percent.',
+      'Search any token or open Smart Picks, then buy in seconds — $5, $10, $25, $50 or any amount.',
+      'Normal or Ultra speed. Sell 25%, 50% or everything, then share your result card.',
+    ],
+    cta: { label: 'Open Trade', href: '/app/trade' },
+  },
+];
+export const announcementKey = (a: Announcement) => `new:${a.key}@${a.version}`;
