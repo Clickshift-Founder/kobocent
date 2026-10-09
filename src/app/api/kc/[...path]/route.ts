@@ -82,13 +82,15 @@ const ALLOWED: Record<string, Array<'GET' | 'POST'>> = {
   'trade': ['GET'],
   'trade/picks': ['GET'],
   'trade/search': ['GET'],
+  'trade/quote': ['POST'],
+  'trade/execute': ['POST'],
 };
 // Routes with an id in the path.
 const ALLOWED_PATTERNS: Array<{ re: RegExp; methods: Array<'GET' | 'POST'> }> = [
   { re: /^withdraw\/jobs\/[0-9a-f-]{36}$/, methods: ['GET'] },
   { re: /^receipts\/(withdrawal|utility|bill)\/[A-Za-z0-9_-]{4,100}$/, methods: ['GET'] },
   { re: /^bills\/jobs\/[0-9a-f-]{36}$/, methods: ['GET'] },
-  { re: /^(send|swap|earn|transfer|bridge|pal)\/jobs\/[0-9a-f-]{36}$/, methods: ['GET'] },
+  { re: /^(send|swap|earn|transfer|bridge|pal|trade)\/jobs\/[0-9a-f-]{36}$/, methods: ['GET'] },
   { re: /^bridge\/orders\/0x[0-9a-fA-F]{64}$/, methods: ['GET'] },
   { re: /^trade\/token\/[1-9A-HJ-NP-Za-km-z]{32,44}$/, methods: ['GET'] },
 ];

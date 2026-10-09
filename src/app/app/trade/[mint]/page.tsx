@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/app/PageHeader';
 import { Skeleton, CopyButton } from '@/components/app/ui';
 import { IconShield, IconChevron } from '@/components/app/Icons';
 import { useLiveRefresh } from '@/lib/useLiveRefresh';
+import { TradePanel } from '@/components/app/TradePanel';
 import { type Position, price, compact, signedUsd, pct, tokenAmount, PnlPill, pnlColor, TokenAvatar, ScoreGauge } from '@/components/app/trade';
 
 /**
@@ -173,14 +174,13 @@ export default function TokenPage() {
         </section>
       )}
 
-      {/* Trade (T2) + links */}
+      {/* Trade — T2a: buy with SOL / sell to SOL, Normal or Ultra */}
+      <TradePanel mint={t.mint} symbol={t.symbol} held={!!p} onDone={load} />
+
+      {/* Links */}
       <section className="surface rounded-3xl p-5">
-        <div className="grid grid-cols-2 gap-2">
-          <button disabled className="btn-primary min-h-[52px] opacity-50" title="Coming next">Buy</button>
-          <button disabled className="btn-ghost min-h-[52px] opacity-50" title="Coming next">Sell</button>
-        </div>
-        <p className="text-[13px] muted mt-2.5">Buying and selling here is coming next. Today, trade {t.symbol} on <a href={BOT_URL} target="_blank" rel="noopener noreferrer" className="font-semibold text-terracotta">Telegram</a> — same wallet, it shows here instantly.</p>
-        <div className="mt-4 flex items-center gap-2 rounded-xl bg-cream-warm dark:bg-night px-3 py-2">
+        <p className="text-[13px] muted">Same wallet as <a href={BOT_URL} target="_blank" rel="noopener noreferrer" className="font-semibold text-terracotta">Telegram</a> — trades on either show on both.</p>
+        <div className="mt-3 flex items-center gap-2 rounded-xl bg-cream-warm dark:bg-night px-3 py-2">
           <span className="font-mono text-[12px] muted truncate flex-1">{t.mint}</span>
           <CopyButton value={t.mint} />
         </div>

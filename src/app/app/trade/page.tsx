@@ -92,13 +92,13 @@ export default function TradePage() {
         </section>
       )}
 
-      {/* Buy / sell arrive next */}
+      {/* How to trade here (T2a) and what comes next */}
       <div className="rounded-2xl border border-dashed border-cream-border dark:border-night-border p-4 flex items-start gap-3">
         <span className="grid place-items-center h-10 w-10 shrink-0 rounded-xl bg-terracotta-soft text-terracotta"><IconShield size={20} /></span>
         <div className="min-w-0 flex-1 text-[14px]">
-          <div className="font-semibold text-ink dark:text-cream-warm">Buying and selling here is coming next</div>
-          <p className="muted mt-0.5 leading-relaxed">Any amount, paid with USDC or SOL, Ultra speed, take profit, stop loss and trailing. Until then, trade the same wallet on Telegram — it shows here instantly.</p>
-          <a href={BOT_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-2 font-semibold text-terracotta min-h-[40px]">Trade on Telegram <IconChevron size={14} /></a>
+          <div className="font-semibold text-ink dark:text-cream-warm">Buy and sell with SOL, Normal or Ultra</div>
+          <p className="muted mt-0.5 leading-relaxed">Open any token — from your holdings, Smart Picks or search — and trade it there. Paying with USDC (no SOL needed), take profit, stop loss and trailing come next; Telegram has them today.</p>
+          <a href={BOT_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-2 font-semibold text-terracotta min-h-[40px]">Protect a position on Telegram <IconChevron size={14} /></a>
         </div>
       </div>
 
