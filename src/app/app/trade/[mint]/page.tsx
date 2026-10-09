@@ -7,6 +7,7 @@ import { Skeleton, CopyButton } from '@/components/app/ui';
 import { IconShield, IconChevron } from '@/components/app/Icons';
 import { useLiveRefresh } from '@/lib/useLiveRefresh';
 import { TradePanel } from '@/components/app/TradePanel';
+import { StrategyPanel } from '@/components/app/StrategyPanel';
 import { type Position, type TradeHome, type Pick, price, compact, signedUsd, pct, tokenAmount, PnlPill, pnlColor, TokenAvatar, ScoreGauge, readCache, writeCache } from '@/components/app/trade';
 
 /**
@@ -120,7 +121,7 @@ export default function TokenPage() {
               </div>
             </div>
           ) : (
-            <p className="text-[13px] muted mt-4">No take profit or stop loss on this yet — you’ll be able to add them here very soon (Telegram has them now).</p>
+            <p className="text-[13px] muted mt-4">No take profit or stop loss on this yet — set one below in “Protect your token”.</p>
           )}
         </section>
       )}
@@ -188,6 +189,9 @@ export default function TokenPage() {
 
       {/* Trade — T2a: buy with SOL / sell to SOL, Normal or Ultra */}
       <TradePanel mint={t.mint} symbol={t.symbol} held={!!p} onDone={load} />
+
+      {/* T3 — protect (take profit / stop loss / trailing) and DCA */}
+      {!t.loading && <StrategyPanel mint={t.mint} symbol={t.symbol} held={!!p} priceUsd={t.priceUsd} entryPriceUsd={p?.entryPriceUsd ?? null} onChange={load} />}
 
       {/* Links */}
       <section className="surface rounded-3xl p-5">

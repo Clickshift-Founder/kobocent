@@ -84,6 +84,12 @@ const ALLOWED: Record<string, Array<'GET' | 'POST'>> = {
   'trade/search': ['GET'],
   'trade/quote': ['POST'],
   'trade/execute': ['POST'],
+  // Trade T3 (2026-10-09): protect + DCA
+  'trade/strategies': ['GET'],
+  'trade/protect': ['POST'],
+  'trade/protect/cancel': ['POST'],
+  'trade/dca': ['POST'],
+  'trade/dca/cancel': ['POST'],
 };
 // Routes with an id in the path.
 const ALLOWED_PATTERNS: Array<{ re: RegExp; methods: Array<'GET' | 'POST'> }> = [
