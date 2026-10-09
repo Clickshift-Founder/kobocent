@@ -6,22 +6,25 @@ import { Sheet } from './ui';
 import { ErrorNote } from './ErrorNote';
 import { newKey, store, read, HoldToConfirm, Outcome } from './money';
 import { IconBolt } from './Icons';
-import { price, compact, signedUsd, pct, tokenAmount, pnlColor } from './trade';
+import { price, compact, signedUsd, pct, tokenAmount, pnlColor, readCache } from './trade';
 
 /**
  * Buy / sell on a token page — Trade T2a (2026-10-09). Backend POST /trade/quote + /trade/execute
  * (src/services/trading.js → the same tradingEngine calls as Telegram: 1% fee, Ultra +3% unless subscribed).
- * Buy with SOL, sell to SOL. Paying with USDC (gasless) and selling to USDC come in T2b.
+ * T2a: buy with SOL / sell to SOL, Normal or Ultra. T2b (2026-10-09): pay with USDC or USDT and sell to USDC —
+ * no SOL needed (src/trading/stableTrade.js: the treasury pays gas and opens token accounts). Either rail works.
  */
 
 type Side = 'buy' | 'sell';
 type Mode = 'normal' | 'ultra';
+type Asset = 'SOL' | 'USDC' | 'USDT';
 interface Fees { platformPct: number; ultraPct: number; totalPct: number; totalSol: number; totalUsd: number | null }
 interface Ultra { subscribed: boolean; daysLeft: number; plan: string | null }
-interface BuyQuote { side: 'buy'; mode: Mode; symbol: string; sol: number; usd: number; tokensOut: number; priceUsd: number | null; priceImpactPct: number; slippagePct: number; fees: Fees; ultra: Ultra; maxSol: number; maxUsd: number; solPrice: number }
-interface SellQuote { side: 'sell'; mode: Mode; symbol: string; tokens: number; percent: number | null; heldTokens: number; all: boolean; solOut: number; netSol: number; usdOut: number | null; priceImpactPct: number; slippagePct: number; fees: Fees; pnl: { entryPriceUsd: number; usd: number | null; pct: number | null } | null; ultra: Ultra; solPrice: number | null }
+interface BuyQuote { side: 'buy'; rail?: 'stable'; payWith?: Asset; gasless?: boolean; needsAccount?: boolean; mode: Mode; symbol: string; sol: number | null; usd: number; tokensOut: number; priceUsd: number | null; priceImpactPct: number; slippagePct: number; fees: Fees; ultra: Ultra; maxSol?: number; maxUsd: number; solPrice?: number }
+interface SellQuote { side: 'sell'; rail?: 'stable'; receive?: Asset; gasless?: boolean; mode: Mode; symbol: string; tokens: number; percent: number | null; heldTokens: number; all: boolean; solOut: number | null; netSol: number | null; netUsd?: number; usdOut: number | null; priceImpactPct: number; slippagePct: number; fees: Fees; pnl: { entryPriceUsd: number; usd: number | null; pct: number | null } | null; ultra: Ultra; solPrice: number | null }
 type Quote = BuyQuote | SellQuote;
-interface TradeResult { ok: boolean; code?: string; error?: string; side?: Side; mode?: Mode; symbol?: string; signature?: string | null; spentSol?: number; spentUsd?: number | null; tokens?: number; priceUsd?: number | null; receivedSol?: number; receivedUsd?: number | null; pnlUsd?: number | null; pnlPct?: number | null; all?: boolean; maxUsd?: number; maxSol?: number }
+interface TradeResult { ok: boolean; code?: string; error?: string; side?: Side; mode?: Mode; symbol?: string; signature?: string | null; payWith?: Asset; receive?: Asset; spentSol?: number; spentUsd?: number | null; tokens?: number; priceUsd?: number | null; receivedSol?: number | null; receivedUsd?: number | null; pnlUsd?: number | null; pnlPct?: number | null; all?: boolean; maxUsd?: number; maxSol?: number }
+interface Cash { sol: { amount: number; usd: number | null }; usdc: { amount: number }; usdt: { amount: number } }
 interface Job { id: string; status: 'running' | 'done'; stage: string; meta: { side: Side; mint: string; mode: Mode }; result: TradeResult | null }
 
 const BUY_PICKS = [5, 10, 25, 50];
@@ -43,9 +46,25 @@ export function TradePanel({ mint, symbol, held, onDone }: { mint: string; symbo
   const [startErr, setStartErr] = useState('');
   const [jobId, setJobId] = useState<string | null>(null);
   const keyRef = useRef(newKey());
+  // What you pay with (buys) / receive (sells). Default: the stablecoin you hold, else SOL (2026-10-09).
+  const [cash, setCash] = useState<Cash | null>(null);
+  const [payWith, setPayWith] = useState<Asset>('USDC');
+  const [receive, setReceive] = useState<Asset>('USDC');
+  const [picked, setPicked] = useState(false);
 
   useEffect(() => { const s = read(jobKey(mint)); if (s) setJobId(s); }, [mint]);
   useEffect(() => { setAmt(''); setPercent(null); setQuote(null); setQErr(''); setQMax(null); }, [side]);
+  useEffect(() => {
+    const apply = (c: Cash) => {
+      setCash(c);
+      if (picked) return;
+      setPayWith(c.usdc.amount >= 5 ? 'USDC' : c.usdt.amount >= 5 ? 'USDT' : (c.sol.usd ?? 0) >= 1 ? 'SOL' : 'USDC');
+    };
+    const cached = readCache<{ cash: Cash }>('home'); if (cached?.cash) apply(cached.cash);
+    kc<{ cash: Cash }>('trade').then(r => { if (r?.cash) apply(r.cash); }).catch(() => {});
+  }, [picked]);
+  const stableRail = side === 'buy' ? payWith !== 'SOL' : receive !== 'SOL';
+  useEffect(() => { if (stableRail) { setMode('normal'); setUnit('USD'); } }, [stableRail]);
 
   const value = Number(amt) || 0;
   const hasInput = side === 'buy' ? value > 0 : (percent !== null || value > 0);
@@ -53,7 +72,7 @@ export function TradePanel({ mint, symbol, held, onDone }: { mint: string; symbo
     setQErr(''); setQMax(null);
     if (!hasInput) { setQuote(null); return; }
     let live = true; setBusy(true);
-    const body = side === 'buy' ? { side, mint, mode, amount: value, unit } : { side, mint, mode, ...(percent !== null ? { percent } : { tokens: value }) };
+    const body = side === 'buy' ? { side, mint, mode, amount: value, unit, payWith } : { side, mint, mode, receive, ...(percent !== null ? { percent } : { tokens: value }) };
     const t = setTimeout(() => {
       kc<Quote>('trade/quote', { method: 'POST', body })
         .then(q => { if (live) setQuote(q); })
@@ -67,14 +86,15 @@ export function TradePanel({ mint, symbol, held, onDone }: { mint: string; symbo
         .finally(() => { if (live) setBusy(false); });
     }, 450);
     return () => { live = false; clearTimeout(t); };
-  }, [side, mint, mode, unit, value, percent, hasInput]);
+  }, [side, mint, mode, unit, value, percent, hasInput, payWith, receive]);
 
   async function start() {
     if (!quote) return;
     setStarting(true); setStartErr('');
+    const sq = quote as SellQuote;
     const body = side === 'buy'
-      ? { side, mint, mode, amount: value, unit, expectTokens: (quote as BuyQuote).tokensOut, idempotencyKey: keyRef.current }
-      : { side, mint, mode, ...(percent !== null ? { percent } : { tokens: value }), expectSol: (quote as SellQuote).netSol, idempotencyKey: keyRef.current };
+      ? { side, mint, mode, amount: value, unit, payWith, expectTokens: (quote as BuyQuote).tokensOut, idempotencyKey: keyRef.current }
+      : { side, mint, mode, receive, ...(percent !== null ? { percent } : { tokens: value }), ...(sq.rail === 'stable' ? { expectUsd: sq.netUsd } : { expectSol: sq.netSol }), idempotencyKey: keyRef.current };
     try {
       const job = await kc<Job>('trade/execute', { method: 'POST', body });
       setReview(false); store(jobKey(mint), job.id); setJobId(job.id);
@@ -100,13 +120,32 @@ export function TradePanel({ mint, symbol, held, onDone }: { mint: string; symbo
         ))}
       </div>
 
+      {/* Pay with / Receive — SOL or stablecoins, both work */}
+      <div>
+        <div className="text-[13px] muted mb-1.5">{side === 'buy' ? 'Pay with' : 'Receive'}</div>
+        <div className={`grid gap-2 ${side === 'buy' ? 'grid-cols-3' : 'grid-cols-2'}`}>
+          {(side === 'buy' ? (['USDC', 'USDT', 'SOL'] as Asset[]) : (['USDC', 'SOL'] as Asset[])).map(a => {
+            const on = (side === 'buy' ? payWith : receive) === a;
+            const bal = !cash ? null : a === 'SOL' ? cash.sol.usd : a === 'USDC' ? cash.usdc.amount : cash.usdt.amount;
+            return (
+              <button key={a} aria-pressed={on} onClick={() => { setPicked(true); if (side === 'buy') setPayWith(a); else setReceive(a); }}
+                className={`rounded-2xl border px-3 py-2 text-left min-h-[56px] transition-colors ${on ? 'border-terracotta bg-terracotta-soft' : 'border-cream-border dark:border-night-border'}`}>
+                <div className="font-semibold text-[14.5px] text-ink dark:text-cream-warm">{a}</div>
+                <div className="text-[11.5px] muted truncate">{side === 'sell' ? (a === 'SOL' ? 'to your SOL' : 'digital dollars') : bal == null ? '—' : `${compact(bal)}`}</div>
+              </button>
+            );
+          })}
+        </div>
+        {stableRail && <p className="text-[12px] text-[#58834C] mt-1.5">No SOL needed — Kobocent covers the network fee.</p>}
+      </div>
+
       {/* Speed */}
       <div className="grid grid-cols-2 gap-2">
         {(['normal', 'ultra'] as Mode[]).map(m => (
-          <button key={m} onClick={() => setMode(m)} aria-pressed={mode === m}
-            className={`rounded-2xl border px-3.5 py-2.5 text-left min-h-[60px] transition-colors ${mode === m ? 'border-terracotta bg-terracotta-soft' : 'border-cream-border dark:border-night-border'}`}>
+          <button key={m} onClick={() => setMode(m)} aria-pressed={mode === m} disabled={m === 'ultra' && stableRail}
+            className={`rounded-2xl border px-3.5 py-2.5 text-left min-h-[60px] transition-colors disabled:opacity-50 ${mode === m ? 'border-terracotta bg-terracotta-soft' : 'border-cream-border dark:border-night-border'}`}>
             <div className="font-semibold text-[14.5px] text-ink dark:text-cream-warm flex items-center gap-1.5">{m === 'ultra' && <IconBolt size={15} className="text-terracotta" />}{m === 'normal' ? 'Normal' : 'Ultra'}</div>
-            <div className="text-[12px] muted">{m === 'normal' ? '1% fee' : ultra ? ultraLabel : 'MEV-protected, priority'}</div>
+            <div className="text-[12px] muted">{m === 'normal' ? '1% fee' : stableRail ? `Uses SOL — ${side === 'buy' ? 'pay' : 'receive'} SOL` : ultra ? ultraLabel : 'MEV-protected, priority'}</div>
           </button>
         ))}
       </div>
@@ -115,8 +154,8 @@ export function TradePanel({ mint, symbol, held, onDone }: { mint: string; symbo
       {side === 'buy' ? (
         <div>
           <div className="flex items-center justify-between text-[13px] muted">
-            <span>Pay with SOL <span className="ml-1 rounded-full bg-cream-warm dark:bg-night px-2 py-0.5 text-[11px]">USDC soon</span></span>
-            <button onClick={() => { setUnit(unit === 'USD' ? 'SOL' : 'USD'); setAmt(''); }} className="font-semibold text-terracotta min-h-[36px]">Enter in {unit === 'USD' ? 'SOL' : '$'}</button>
+            <span>Amount{payWith !== 'SOL' ? ` · from $5` : ''}</span>
+            {payWith === 'SOL' && <button onClick={() => { setUnit(unit === 'USD' ? 'SOL' : 'USD'); setAmt(''); }} className="font-semibold text-terracotta min-h-[36px]">Enter in {unit === 'USD' ? 'SOL' : '$'}</button>}
           </div>
           <div className="mt-1 flex items-center gap-2">
             {unit === 'USD' && <span className="font-display font-bold text-[34px] muted">$</span>}
@@ -174,17 +213,19 @@ function QuoteBox({ q, big = false }: { q: Quote; big?: boolean }) {
     <div className={`rounded-2xl bg-cream-warm dark:bg-night ${big ? 'p-4' : 'p-3.5'}`}>
       <div className="text-[12.5px] muted">{q.side === 'buy' ? 'You get about' : 'You receive about'}</div>
       <div className={`font-display font-bold text-ink dark:text-cream-warm ${big ? 'text-[30px]' : 'text-[24px]'}`}>
-        {q.side === 'buy' ? `${tokenAmount(q.tokensOut)} ${q.symbol}` : `${q.netSol.toFixed(4)} SOL`}
-        <span className="text-[14px] font-normal muted"> {q.side === 'buy' ? `for ${compact(q.usd)}` : q.usdOut != null ? `≈ ${compact(q.usdOut)}` : ''}</span>
+        {q.side === 'buy' ? `${tokenAmount(q.tokensOut)} ${q.symbol}` : q.rail === 'stable' ? `${compact(q.netUsd ?? 0)} ${q.receive}` : `${(q.netSol ?? 0).toFixed(4)} SOL`}
+        <span className="text-[14px] font-normal muted"> {q.side === 'buy' ? `for ${compact(q.usd)}` : q.rail !== 'stable' && q.usdOut != null ? `≈ ${compact(q.usdOut)}` : ''}</span>
       </div>
       <dl className="mt-2 grid grid-cols-2 gap-y-1 text-[13px]">
-        {q.side === 'buy' && row('You pay', `${q.sol.toFixed(4)} SOL`)}
+        {q.side === 'buy' && row('You pay', q.rail === 'stable' ? `${q.usd.toFixed(2)} ${q.payWith}` : `${(q.sol ?? 0).toFixed(4)} SOL`)}
         {q.side === 'sell' && row('Selling', `${tokenAmount(q.tokens)} ${q.symbol}${q.all ? ' (all)' : ''}`)}
         {q.side === 'buy' && q.priceUsd != null && row('Price', price(q.priceUsd))}
         {row(`Fee${q.fees.ultraPct ? ' (1% + 3% Ultra)' : q.mode === 'ultra' ? ' (1%, Ultra included)' : ''}`, `${q.fees.totalPct}% · ${q.fees.totalUsd != null ? compact(q.fees.totalUsd) : `${q.fees.totalSol.toFixed(5)} SOL`}`)}
         {q.priceImpactPct > 1 && row('Price impact', `${q.priceImpactPct.toFixed(2)}%`, '#B68B2A')}
         {q.side === 'sell' && q.pnl && row('Result', <>{signedUsd(q.pnl.usd)} ({pct(q.pnl.pct)})</>, pnlColor(q.pnl.usd))}
         {row('Network fee', 'Covered by Kobocent', '#58834C')}
+        {q.side === 'buy' && q.rail !== 'stable' && <p className="col-span-2 text-[11.5px] muted mt-1">A first buy of a token keeps about 0.002 SOL to open its account (returned if you close it).</p>}
+        {q.side === 'buy' && q.rail === 'stable' && q.needsAccount && <p className="col-span-2 text-[11.5px] muted mt-1">First time holding this token — we open its account for you, free.</p>}
       </dl>
     </div>
   );
@@ -206,7 +247,7 @@ function TradeProgress({ jobId, symbol, onFinish }: { jobId: string; symbol: str
   if (lost) return <Outcome tone="info" title="We lost track of this screen" body="Check your tokens on Trade — the trade itself is unaffected." actions={<><Link href="/app/trade" onClick={onFinish} className="btn-primary w-full">Open Trade</Link><button onClick={onFinish} className="btn-ghost w-full">Close</button></>} />;
   const r = job?.result;
   if (job?.status === 'done' && r) {
-    if (r.ok && r.side === 'buy') return <Outcome tone="success" title={`Bought ${r.symbol || symbol}`} body={`${tokenAmount(r.tokens || 0)} ${r.symbol || symbol} for ${(r.spentSol || 0).toFixed(4)} SOL${r.spentUsd ? ` (${compact(r.spentUsd)})` : ''}${r.mode === 'ultra' ? ' with Ultra' : ''}. Protect it with take profit or a stop loss on Telegram — coming here next.`} signature={r.signature} actions={<button onClick={onFinish} className="btn-primary w-full">Done</button>} />;
+    if (r.ok && r.side === 'buy') return <Outcome tone="success" title={`Bought ${r.symbol || symbol}`} body={`${tokenAmount(r.tokens || 0)} ${r.symbol || symbol} for ${r.payWith && r.payWith !== 'SOL' ? `${compact(r.spentUsd ?? 0)} ${r.payWith}` : `${(r.spentSol || 0).toFixed(4)} SOL${r.spentUsd ? ` (${compact(r.spentUsd)})` : ''}`}${r.mode === 'ultra' ? ' with Ultra' : ''}. Protect it with take profit or a stop loss on Telegram — coming here next.`} signature={r.signature} actions={<button onClick={onFinish} className="btn-primary w-full">Done</button>} />;
     if (r.ok) return <SoldResult jobId={jobId} r={r} symbol={symbol} onFinish={onFinish} />;
     if (r.code === 'OUTCOME_UNKNOWN') return <Outcome tone="warn" title="Sent — confirming" body={r.error || 'Your trade was sent and is still confirming. Check your tokens in a minute before trading again.'} signature={r.signature} actions={<button onClick={onFinish} className="btn-primary w-full">OK</button>} />;
     return <Outcome tone="error" title="The trade didn’t go through" body={r.error || 'Nothing was traded. Try again in a moment.'} actions={<button onClick={onFinish} className="btn-primary w-full">Try again</button>} />;
@@ -246,7 +287,7 @@ function SoldResult({ jobId, r, symbol, onFinish }: { jobId: string; r: TradeRes
     <section className="surface rounded-3xl p-5 text-center animate-fade-up" aria-live="polite">
       <h2 className="font-display text-[24px] font-bold text-ink dark:text-cream-warm">Sold {r.symbol || symbol}</h2>
       <p className="muted text-[14.5px] mt-1">
-        {tokenAmount(r.tokens || 0)} {r.symbol || symbol} → {(r.receivedSol || 0).toFixed(4)} SOL{r.receivedUsd ? ` (${compact(r.receivedUsd)})` : ''}
+        {tokenAmount(r.tokens || 0)} {r.symbol || symbol} → {r.receive && r.receive !== 'SOL' ? `${compact(r.receivedUsd ?? 0)} ${r.receive}` : `${(r.receivedSol || 0).toFixed(4)} SOL${r.receivedUsd ? ` (${compact(r.receivedUsd)})` : ''}`}
         {r.pnlUsd != null && <> · <span className="font-semibold" style={{ color: pnlColor(r.pnlUsd) }}>{signedUsd(r.pnlUsd)}{r.pnlPct != null ? ` (${pct(r.pnlPct)})` : ''}</span></>}
       </p>
       {!failed && (
