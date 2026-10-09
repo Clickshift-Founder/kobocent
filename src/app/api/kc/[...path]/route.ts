@@ -78,6 +78,10 @@ const ALLOWED: Record<string, Array<'GET' | 'POST'>> = {
   'push/key': ['GET'],
   'push/subscribe': ['POST'],
   'push/unsubscribe': ['POST'],
+  // Trade T1, read-only (2026-10-09)
+  'trade': ['GET'],
+  'trade/picks': ['GET'],
+  'trade/search': ['GET'],
 };
 // Routes with an id in the path.
 const ALLOWED_PATTERNS: Array<{ re: RegExp; methods: Array<'GET' | 'POST'> }> = [
@@ -86,6 +90,7 @@ const ALLOWED_PATTERNS: Array<{ re: RegExp; methods: Array<'GET' | 'POST'> }> = 
   { re: /^bills\/jobs\/[0-9a-f-]{36}$/, methods: ['GET'] },
   { re: /^(send|swap|earn|transfer|bridge|pal)\/jobs\/[0-9a-f-]{36}$/, methods: ['GET'] },
   { re: /^bridge\/orders\/0x[0-9a-fA-F]{64}$/, methods: ['GET'] },
+  { re: /^trade\/token\/[1-9A-HJ-NP-Za-km-z]{32,44}$/, methods: ['GET'] },
 ];
 function allowed(key: string, method: 'GET' | 'POST') {
   return !!ALLOWED[key]?.includes(method) || ALLOWED_PATTERNS.some(p => p.re.test(key) && p.methods.includes(method));

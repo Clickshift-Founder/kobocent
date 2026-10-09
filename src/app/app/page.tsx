@@ -25,7 +25,7 @@ const ACTIONS: Action[] = [
   { key: 'swap', label: 'Swap', Icon: IconSwap, title: 'Swap', body: 'Convert between SOL, USDC and USDT in seconds at the best route — gasless.', href: '/app/swap' },
   { key: 'earn', label: 'Earn', Icon: IconLeaf, title: 'Earn on your stablecoins', body: 'Put idle USDC to work — flexible or locked plans, earnings every hour. Rates can change.', href: '/app/earn' },
   { key: 'bridge', label: 'Bridge', Icon: IconBridge, title: 'Bridge between chains', body: 'Move money in or out — between Solana and Ethereum, BNB Chain, Polygon, Arbitrum or Robinhood Chain. You don’t need it to spend: Withdraw, Send and Bills pay from any chain.', href: '/app/bridge' },
-  { key: 'trade', label: 'Trade', Icon: IconChart, title: 'Trade tokens', body: 'Analyse any token with an AI risk score before you buy, then trade in seconds.' },
+  { key: 'trade', label: 'Trade', Icon: IconChart, title: 'Trade tokens', body: 'Every token you hold with its profit or loss, Smart Picks, and a full analysis of any token.', href: '/app/trade' },
 ];
 
 const HIDE_KEY = 'kc-hide-balance';
