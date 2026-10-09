@@ -74,8 +74,8 @@ export function SecuritySettings({ account, onAccount }: { account: Account | nu
                     <input type="checkbox" checked={sec.requireForPayments} onChange={e => apply({ requireForPayments: e.target.checked }, e.target.checked ? 'Ask before payments' : 'Stop asking before payments')} className="h-6 w-6 accent-[#C1502E]" />
                   </label>
                   <label className="flex items-center justify-between gap-3 min-h-[44px]">
-                    <span className="text-[14.5px]">Ask for the PIN when I sell a token<span className="block text-[12px] muted">Off by default so you can exit fast. Buys always ask.</span></span>
-                    <input type="checkbox" checked={!!sec.pinForSells} onChange={e => apply({ pinForSells: e.target.checked }, e.target.checked ? 'Ask before sells' : 'Stop asking before sells')} className="h-6 w-6 shrink-0 accent-[#C1502E]" />
+                    <span className="text-[14.5px]">Ask for the PIN when I buy or sell a token<span className="block text-[12px] muted">Off by default so you can move fast in a volatile market.</span></span>
+                    <input type="checkbox" checked={!!sec.pinForSells} onChange={e => apply({ pinForSells: e.target.checked }, e.target.checked ? 'Ask before trades' : 'Stop asking before trades')} className="h-6 w-6 shrink-0 accent-[#C1502E]" />
                   </label>
                 </>
               )}

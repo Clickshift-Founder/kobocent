@@ -64,6 +64,20 @@ export function TradePanel({ mint, symbol, held, onDone }: { mint: string; symbo
     kc<{ cash: Cash }>('trade').then(r => { if (r?.cash) apply(r.cash); }).catch(() => {});
   }, [picked]);
   const stableRail = side === 'buy' ? payWith !== 'SOL' : receive !== 'SOL';
+  // Max for a buy, from the balance you pay with — usable before any quote exists (2026-10-09: Max couldn't be
+  // tapped on an empty form because it waited for a quote, which needs an amount). The live quote's max wins.
+  function maxBuyUsd(): number {
+    const floor2 = (n: number) => Math.max(0, Math.floor(n * 100) / 100);
+    if (quote?.side === 'buy' && (quote as BuyQuote).maxUsd > 0) return floor2((quote as BuyQuote).maxUsd);
+    if (qMax?.usd) return floor2(qMax.usd);
+    if (!cash) return 0;
+    if (payWith === 'USDC') return floor2(cash.usdc.amount);
+    if (payWith === 'USDT') return floor2(cash.usdt.amount);
+    const solUsd = cash.sol.usd ?? 0, sol = cash.sol.amount;
+    if (!(sol > 0) || !(solUsd > 0)) return 0;
+    const keep = mode === 'ultra' ? 0.006 : 0.004;   // same SOL the server keeps for rent / Jito tip
+    return floor2(Math.max(0, sol - keep) * (solUsd / sol));
+  }
   useEffect(() => { if (stableRail) { setMode('normal'); setUnit('USD'); } }, [stableRail]);
 
   const value = Number(amt) || 0;
@@ -166,7 +180,7 @@ export function TradePanel({ mint, symbol, held, onDone }: { mint: string; symbo
           {unit === 'USD' && (
             <div className="mt-2 grid grid-cols-5 gap-2">
               {BUY_PICKS.map(v => <button key={v} onClick={() => setAmt(String(v))} className={`min-h-[44px] rounded-xl border text-[14px] font-semibold ${value === v ? 'border-terracotta text-terracotta' : 'border-cream-border dark:border-night-border'}`}>${v}</button>)}
-              <button onClick={() => quote && quote.side === 'buy' ? setAmt(String(Math.floor(quote.maxUsd * 100) / 100)) : qMax?.usd && setAmt(String(qMax.usd))} disabled={!(quote?.side === 'buy' || qMax?.usd)}
+              <button onClick={() => { const m = maxBuyUsd(); if (m > 0) setAmt(String(m)); }} disabled={!(maxBuyUsd() > 0)}
                 className="min-h-[44px] rounded-xl border border-cream-border dark:border-night-border text-[14px] font-semibold disabled:opacity-40">Max</button>
             </div>
           )}
