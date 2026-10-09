@@ -93,6 +93,7 @@ const ALLOWED_PATTERNS: Array<{ re: RegExp; methods: Array<'GET' | 'POST'> }> = 
   { re: /^(send|swap|earn|transfer|bridge|pal|trade)\/jobs\/[0-9a-f-]{36}$/, methods: ['GET'] },
   { re: /^bridge\/orders\/0x[0-9a-fA-F]{64}$/, methods: ['GET'] },
   { re: /^trade\/token\/[1-9A-HJ-NP-Za-km-z]{32,44}$/, methods: ['GET'] },
+  { re: /^trade\/jobs\/[0-9a-f-]{36}\/card$/, methods: ['GET'] },
 ];
 function allowed(key: string, method: 'GET' | 'POST') {
   return !!ALLOWED[key]?.includes(method) || ALLOWED_PATTERNS.some(p => p.re.test(key) && p.methods.includes(method));
@@ -125,7 +126,7 @@ async function handle(req: NextRequest, path: string[], method: 'GET' | 'POST') 
   if (res.ok) await maybeRefreshSession(token);
 
   // Files (statement PDF, receipt PNG) pass straight through.
-  const isFile = key === 'statement.pdf' || key.startsWith('receipts/');
+  const isFile = key === 'statement.pdf' || key.startsWith('receipts/') || /^trade\/jobs\/[0-9a-f-]{36}\/card$/.test(key);
   if (isFile && res.ok) {
     const buf = await res.arrayBuffer();
     return new NextResponse(buf, {

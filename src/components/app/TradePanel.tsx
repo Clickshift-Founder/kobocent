@@ -207,7 +207,7 @@ function TradeProgress({ jobId, symbol, onFinish }: { jobId: string; symbol: str
   const r = job?.result;
   if (job?.status === 'done' && r) {
     if (r.ok && r.side === 'buy') return <Outcome tone="success" title={`Bought ${r.symbol || symbol}`} body={`${tokenAmount(r.tokens || 0)} ${r.symbol || symbol} for ${(r.spentSol || 0).toFixed(4)} SOL${r.spentUsd ? ` (${compact(r.spentUsd)})` : ''}${r.mode === 'ultra' ? ' with Ultra' : ''}. Protect it with take profit or a stop loss on Telegram — coming here next.`} signature={r.signature} actions={<button onClick={onFinish} className="btn-primary w-full">Done</button>} />;
-    if (r.ok) return <Outcome tone="success" title={`Sold ${r.symbol || symbol}`} body={`${tokenAmount(r.tokens || 0)} ${r.symbol || symbol} → ${(r.receivedSol || 0).toFixed(4)} SOL${r.receivedUsd ? ` (${compact(r.receivedUsd)})` : ''}.${r.pnlUsd != null ? ` Result: ${signedUsd(r.pnlUsd)}${r.pnlPct != null ? ` (${pct(r.pnlPct)})` : ''}.` : ''}`} signature={r.signature} actions={<button onClick={onFinish} className="btn-primary w-full">Done</button>} />;
+    if (r.ok) return <SoldResult jobId={jobId} r={r} symbol={symbol} onFinish={onFinish} />;
     if (r.code === 'OUTCOME_UNKNOWN') return <Outcome tone="warn" title="Sent — confirming" body={r.error || 'Your trade was sent and is still confirming. Check your tokens in a minute before trading again.'} signature={r.signature} actions={<button onClick={onFinish} className="btn-primary w-full">OK</button>} />;
     return <Outcome tone="error" title="The trade didn’t go through" body={r.error || 'Nothing was traded. Try again in a moment.'} actions={<button onClick={onFinish} className="btn-primary w-full">Try again</button>} />;
   }
@@ -216,6 +216,55 @@ function TradeProgress({ jobId, symbol, onFinish }: { jobId: string; symbol: str
       <div className="relative mx-auto h-24 w-24"><span className="absolute inset-0 rounded-full border-4 border-cream-warm dark:border-night" /><span className="absolute inset-0 rounded-full border-4 border-terracotta border-t-transparent animate-spin" style={{ animationDuration: '1.1s' }} /><span className="absolute inset-0 grid place-items-center text-terracotta"><IconBolt size={30} /></span></div>
       <div className="font-display text-[22px] font-bold mt-5 text-ink dark:text-cream-warm">{job?.meta.side === 'sell' ? 'Selling' : 'Buying'} {symbol}{job?.meta.mode === 'ultra' ? ' with Ultra' : ''}</div>
       <p className="muted text-[14px] mt-1">Usually 5–20 seconds on Solana.</p>
+    </section>
+  );
+}
+
+/** After a sell: the branded result card (server-drawn from this sale), with Share and Save (2026-10-09). */
+function SoldResult({ jobId, r, symbol, onFinish }: { jobId: string; r: TradeResult; symbol: string; onFinish: () => void }) {
+  const src = `/api/kc/trade/jobs/${jobId}/card`;
+  const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [note, setNote] = useState('');
+  const name = `kobocent-${(r.symbol || symbol).replace(/[^A-Za-z0-9]/g, '')}-result.png`;
+  async function file() { const b = await (await fetch(src)).blob(); return new File([b], name, { type: 'image/png' }); }
+  async function share() {
+    setNote('');
+    try {
+      const f = await file();
+      const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
+      if (nav.share && nav.canShare?.({ files: [f] })) await nav.share({ files: [f], text: `My $${r.symbol || symbol} trade on Kobocent` });
+      else { save(f); setNote('Saved — share it from your photos or downloads.'); }
+    } catch (e) { if (!(e instanceof DOMException && e.name === 'AbortError')) setNote('Could not share — try Save.'); }
+  }
+  function save(f?: File) {
+    const go = (blob: Blob) => { const u = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); };
+    if (f) go(f); else file().then(go).catch(() => setNote('Could not save the card'));
+  }
+  const win = (r.pnlUsd ?? 0) >= 0;
+  return (
+    <section className="surface rounded-3xl p-5 text-center animate-fade-up" aria-live="polite">
+      <h2 className="font-display text-[24px] font-bold text-ink dark:text-cream-warm">Sold {r.symbol || symbol}</h2>
+      <p className="muted text-[14.5px] mt-1">
+        {tokenAmount(r.tokens || 0)} {r.symbol || symbol} → {(r.receivedSol || 0).toFixed(4)} SOL{r.receivedUsd ? ` (${compact(r.receivedUsd)})` : ''}
+        {r.pnlUsd != null && <> · <span className="font-semibold" style={{ color: pnlColor(r.pnlUsd) }}>{signedUsd(r.pnlUsd)}{r.pnlPct != null ? ` (${pct(r.pnlPct)})` : ''}</span></>}
+      </p>
+      {!failed && (
+        <div className="mt-4 mx-auto max-w-[360px] rounded-2xl overflow-hidden shadow-card bg-cream-warm dark:bg-night aspect-[4/5] relative">
+          {!loaded && <div className="absolute inset-0 animate-pulse" />}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={src} alt={`${r.symbol || symbol} trade result: ${r.pnlPct != null ? pct(r.pnlPct) : ''}`} className="w-full h-full object-cover" onLoad={() => setLoaded(true)} onError={() => setFailed(true)} />
+        </div>
+      )}
+      {!failed && (
+        <div className="mt-4 grid grid-cols-2 gap-2 max-w-[360px] mx-auto">
+          <button onClick={share} disabled={!loaded} className="btn-primary min-h-[48px] disabled:opacity-50">{win ? 'Share your win' : 'Share'}</button>
+          <button onClick={() => save()} disabled={!loaded} className="btn-ghost min-h-[48px] disabled:opacity-50">Save</button>
+        </div>
+      )}
+      {note && <p className="text-[13px] muted mt-2">{note}</p>}
+      {r.signature && <a href={`https://solscan.io/tx/${r.signature}`} target="_blank" rel="noopener noreferrer" className="block mt-3 text-[13px] text-terracotta font-semibold min-h-[40px] leading-[40px]">View the transaction</a>}
+      <button onClick={onFinish} className="btn-ghost w-full mt-2 min-h-[48px]">Done</button>
     </section>
   );
 }
