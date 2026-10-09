@@ -111,3 +111,26 @@ export function ScoreGauge({ score, label }: { score: number | null; label?: str
     </div>
   );
 }
+
+/**
+ * Instant paint (2026-10-09): the last Trade home / token page seen, per signed-in account, shown at once while the
+ * live data loads, then replaced in place. Memory for in-app navigation + sessionStorage for reloads; never shared
+ * between accounts (the key carries the Telegram ID from the local profile).
+ */
+const memo = new Map<string, unknown>();
+function cacheKey(name: string) {
+  let id = 'anon';
+  try { id = String(JSON.parse(localStorage.getItem('kc-profile') || 'null')?.telegramId ?? 'anon'); } catch { /* private mode */ }
+  return `kc-trade:${id}:${name}`;
+}
+export function readCache<T>(name: string): T | null {
+  const k = cacheKey(name);
+  if (memo.has(k)) return memo.get(k) as T;
+  try { const s = sessionStorage.getItem(k); if (s) { const v = JSON.parse(s) as T; memo.set(k, v); return v; } } catch { /* private mode */ }
+  return null;
+}
+export function writeCache(name: string, value: unknown) {
+  const k = cacheKey(name);
+  memo.set(k, value);
+  try { sessionStorage.setItem(k, JSON.stringify(value)); } catch { /* full or private */ }
+}

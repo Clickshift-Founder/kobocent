@@ -7,7 +7,7 @@ import { Skeleton, CopyButton } from '@/components/app/ui';
 import { IconShield, IconChevron } from '@/components/app/Icons';
 import { useLiveRefresh } from '@/lib/useLiveRefresh';
 import { TradePanel } from '@/components/app/TradePanel';
-import { type Position, price, compact, signedUsd, pct, tokenAmount, PnlPill, pnlColor, TokenAvatar, ScoreGauge } from '@/components/app/trade';
+import { type Position, type TradeHome, type Pick, price, compact, signedUsd, pct, tokenAmount, PnlPill, pnlColor, TokenAvatar, ScoreGauge, readCache, writeCache } from '@/components/app/trade';
 
 /**
  * Token page — T1 (read-only), 2026-10-09: live chart, your position, the analysis verdict (same engine as
@@ -24,7 +24,7 @@ interface TokenView {
   technicals?: { rsi: number | null; signal: string; momentumScore: number | null; buySellRatio: number | null; volumeTrend: string };
   levels?: { entry: number | null; stopLoss: number | null; target: number | null };
   verdict?: { action: string; score: number | null; confidence: string | number | null; signals: string[]; insight: string | null; validMinutes: number | null };
-  chartUrl?: string | null; explorerUrl?: string; position: Position | null; disclaimer?: string;
+  chartUrl?: string | null; explorerUrl?: string; position: Position | null; disclaimer?: string; loading?: boolean;
 }
 
 const RISK_TONE: Record<string, string> = { LOW: '#58834C', MEDIUM: '#B68B2A', HIGH: '#B84A40', CRITICAL: '#9E3B33' };
@@ -34,8 +34,19 @@ export default function TokenPage() {
   const { mint } = useParams<{ mint: string }>();
   const [t, setT] = useState<TokenView | null>(null);
   const [error, setError] = useState('');
-  const load = useCallback(() => kc<TokenView>(`trade/token/${mint}`).then(d => { setT(d); setError(''); }).catch(e => setError(e instanceof Error ? e.message : 'Could not load this token')), [mint]);
-  useEffect(() => { load(); }, [load]);
+  const load = useCallback(() => kc<TokenView>(`trade/token/${mint}`).then(d => { setT(d); setError(''); writeCache(`token:${mint}`, d); }).catch(e => setError(e instanceof Error ? e.message : 'Could not load this token')), [mint]);
+  useEffect(() => {
+    // Instant paint (2026-10-09): this token's last page, else a quick header from the Trade home / Smart Picks
+    // already on this device; the full analysis replaces it in place.
+    const cached = readCache<TokenView>(`token:${mint}`);
+    if (cached) setT(cached);
+    else {
+      const pos = readCache<TradeHome>('home')?.positions.find(p => p.mint === mint) || null;
+      const pk = readCache<Pick[]>('picks')?.find(p => p.mint === mint);
+      if (pos || pk) setT({ ok: true, chain: 'SOLANA', mint, analysed: false, symbol: pos?.symbol || pk?.symbol || '', name: pos?.name || pk?.name || '', priceUsd: pos?.priceUsd ?? pk?.priceUsd ?? null, position: pos, loading: true });
+    }
+    load();
+  }, [load, mint]);
   useLiveRefresh(load, 45_000);
 
   if (error) return <div className="space-y-6"><PageHeader title="Token" fallback="/app/trade" /><div className="surface rounded-2xl p-5 text-[15px]">{error} <button onClick={() => load()} className="underline font-semibold">Retry</button></div></div>;
@@ -77,7 +88,8 @@ export default function TokenPage() {
         <div className="surface rounded-2xl overflow-hidden">
           <iframe src={t.chartUrl} title={`${t.symbol} price chart`} className="w-full h-[340px] sm:h-[420px] border-0" loading="lazy" referrerPolicy="no-referrer" />
         </div>
-      ) : t.note ? <div className="surface rounded-2xl p-4 text-[14px] muted">{t.note}</div> : null}
+      ) : t.note ? <div className="surface rounded-2xl p-4 text-[14px] muted">{t.note}</div>
+        : t.loading ? <div className="space-y-3"><Skeleton className="h-[340px]" /><Skeleton className="h-40" /></div> : null}
 
       {/* Your position */}
       {p && (

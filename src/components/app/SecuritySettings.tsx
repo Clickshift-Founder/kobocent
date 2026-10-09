@@ -12,7 +12,7 @@ import { IconShield, IconTelegram } from './Icons';
  * Defaults: PIN on, auto-lock after 15 min, PIN before payments. People who like to move fast can
  * lengthen the timer or turn the PIN off — anything that loosens protection asks for the PIN first.
  */
-interface Security { hasPin: boolean; enabled: boolean; timeoutMin: number; requireForPayments: boolean; methods?: { telegram: boolean; google: boolean; email: string | null } }
+interface Security { hasPin: boolean; enabled: boolean; timeoutMin: number; requireForPayments: boolean; pinForSells?: boolean; methods?: { telegram: boolean; google: boolean; email: string | null } }
 const LABEL: Record<number, string> = { 5: '5 minutes', 15: '15 minutes (recommended)', 30: '30 minutes', 60: '1 hour', 240: '4 hours', 0: 'Never' };
 const changed = () => window.dispatchEvent(new Event('kc-security-changed'));
 
@@ -72,6 +72,10 @@ export function SecuritySettings({ account, onAccount }: { account: Account | nu
                   <label className="flex items-center justify-between gap-3 min-h-[44px]">
                     <span className="text-[14.5px]">Ask for the PIN before payments</span>
                     <input type="checkbox" checked={sec.requireForPayments} onChange={e => apply({ requireForPayments: e.target.checked }, e.target.checked ? 'Ask before payments' : 'Stop asking before payments')} className="h-6 w-6 accent-[#C1502E]" />
+                  </label>
+                  <label className="flex items-center justify-between gap-3 min-h-[44px]">
+                    <span className="text-[14.5px]">Ask for the PIN when I sell a token<span className="block text-[12px] muted">Off by default so you can exit fast. Buys always ask.</span></span>
+                    <input type="checkbox" checked={!!sec.pinForSells} onChange={e => apply({ pinForSells: e.target.checked }, e.target.checked ? 'Ask before sells' : 'Stop asking before sells')} className="h-6 w-6 shrink-0 accent-[#C1502E]" />
                   </label>
                 </>
               )}

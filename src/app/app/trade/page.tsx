@@ -9,7 +9,7 @@ import { IconShield, IconChevron, IconClose } from '@/components/app/Icons';
 import { useLiveRefresh } from '@/lib/useLiveRefresh';
 import {
   type TradeHome, type Pick, type SearchResult, price, compact, signedUsd, pct, tokenAmount,
-  PnlPill, pnlColor, TokenAvatar, ChainSwitch,
+  PnlPill, pnlColor, TokenAvatar, ChainSwitch, readCache, writeCache,
 } from '@/components/app/trade';
 
 /**
@@ -30,19 +30,23 @@ export default function TradePage() {
   const [picks, setPicks] = useState<Pick[] | null>(null);
   const [picksErr, setPicksErr] = useState('');
 
-  const load = useCallback(() => kc<TradeHome>('trade').then(d => { setData(d); setError(''); }).catch(e => {
+  const load = useCallback(() => kc<TradeHome>('trade').then(d => { setData(d); setError(''); writeCache('home', d); }).catch(e => {
     if (e instanceof KcError && e.status === 409) setNeedsLink(true); else setError(e instanceof Error ? e.message : 'Could not load your tokens');
   }), []);
   useEffect(() => {
+    // Paint the last numbers seen at once, then refresh in place (2026-10-09). Picks too.
+    const cached = readCache<TradeHome>('home'); if (cached) setData(cached);
+    const cachedPicks = readCache<Pick[]>('picks'); if (cachedPicks) setPicks(cachedPicks);
     load();
     try { const t = localStorage.getItem(TAB_KEY) as Tab | null; if (t === 'holdings' || t === 'picks' || t === 'closed') setTab(t); } catch { /* private mode */ }
   }, [load]);
   useLiveRefresh(load, 30_000);
 
+  // Smart Picks load in the background as soon as Trade opens, so the tab is ready when tapped (2026-10-09).
   useEffect(() => {
-    if (tab !== 'picks' || picks) return;
-    kc<{ picks: Pick[] }>('trade/picks').then(r => setPicks(r.picks)).catch(e => setPicksErr(e instanceof Error ? e.message : 'Smart Picks are resting — try again shortly'));
-  }, [tab, picks]);
+    kc<{ picks: Pick[] }>('trade/picks').then(r => { setPicks(r.picks); writeCache('picks', r.picks); })
+      .catch(e => setPicksErr(e instanceof Error ? e.message : 'Smart Picks are resting — try again shortly'));
+  }, []);
   const pickTab = (t: Tab) => { setTab(t); try { localStorage.setItem(TAB_KEY, t); } catch { /* private mode */ } };
 
   if (needsLink) return <div className="space-y-6"><PageHeader title="Trade" /><div className="surface rounded-3xl p-6 text-center"><p className="muted text-[15px] mb-4">Connect your Telegram account to trade from the web app.</p><Link href="/app/settings" className="btn-primary">Open Settings</Link></div></div>;
@@ -140,7 +144,7 @@ export default function TradePage() {
           </ul>
         ))}
 
-      {tab === 'picks' && (picksErr ? <div className="surface rounded-2xl p-5 text-[15px]">{picksErr}</div>
+      {tab === 'picks' && (picksErr && !picks ? <div className="surface rounded-2xl p-5 text-[15px]">{picksErr}</div>
         : !picks ? <div className="space-y-2"><Skeleton className="h-24" /><Skeleton className="h-24" /><Skeleton className="h-24" /></div>
         : picks.length === 0 ? <EmptyState title="Nothing stands out right now" body="Smart Picks only shows tokens with strong momentum. Check back soon." />
         : (
