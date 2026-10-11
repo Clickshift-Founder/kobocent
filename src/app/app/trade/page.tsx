@@ -109,6 +109,16 @@ export default function TradePage() {
         </section>
       )}
 
+      {/* Premium hub (T4, 2026-10-11) */}
+      <Link href="/app/trade/premium" className="surface rounded-2xl p-4 flex items-center gap-3 min-h-[72px] hover:border-terracotta transition-colors" data-tour="premium">
+        <span className="grid place-items-center h-11 w-11 shrink-0 rounded-xl bg-ink dark:bg-night text-white"><IconShield size={20} /></span>
+        <div className="min-w-0 flex-1">
+          <div className="font-semibold text-[15px] text-ink dark:text-cream-warm">Premium</div>
+          <div className="text-[13px] muted truncate">Copy top wallets · Snipe at your price · Smart Money alerts · Ultra</div>
+        </div>
+        <IconChevron size={18} className="muted shrink-0" />
+      </Link>
+
       {/* How to trade here (T2a) and what comes next */}
       <div className="rounded-2xl border border-dashed border-cream-border dark:border-night-border p-4 flex items-start gap-3">
         <span className="grid place-items-center h-10 w-10 shrink-0 rounded-xl bg-terracotta-soft text-terracotta"><IconShield size={20} /></span>

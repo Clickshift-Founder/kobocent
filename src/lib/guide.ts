@@ -153,6 +153,10 @@ export const TIPS: Array<{ route: string } & Tip> = [
     intro: 'Your tokens, how each is doing, what’s moving — and buying or selling any of them.',
     steps: ['The top card shows what your tokens are worth, your open profit or loss, and what you’ve already realised.', 'Search any token by name, or paste its address, to see a live chart, our read on it and how risky its holders are.', 'Smart Picks lists tokens with strong momentum right now, scored out of 100 and rug-checked. It refreshes live every 20 seconds while you watch. Tap one to see why.', 'On a token’s page, choose Buy or Sell and what you pay with or receive: USDC or USDT (no SOL needed, from $5) or SOL. Then Normal (1% fee) or, with SOL, Ultra (priority and MEV protection: +3%, or included with an Ultra subscription). Review the quote and hold to confirm.'],
     good: ['Numbers match Telegram exactly — it is the same wallet.', 'A shield means take profit, stop loss or trailing is protecting that token. On the token’s page, “Protect” suggests levels from recent price action — use them in one tap, or set your own in %, ×, price or market cap. Take profit, stop loss and trailing all run together, checked every few seconds, 24/7, and can sell into USDC so you never need SOL.', 'DCA buys over time: on a schedule or each time the price dips.', 'Signals are never guarantees — only trade what you can afford to lose.'] },
+  { route: '/app/trade/premium', key: 'premium', version: 1, title: 'Premium',
+    intro: 'Tools for active traders — on the same engine as Telegram.',
+    steps: ['Plans: each plan shows what it costs, what it removes, and your own numbers from the last 30 days, so you can see if it pays for itself.', 'Copy: Alpha wallets are re-ranked every 6 hours from their real trades. Pick one, choose how much SOL to spend each time it buys, and your wallet follows it — buys and sells. You can also copy any wallet you paste.', 'Sniper: paste a token, then snipe now or set a price — the dip or the breakout, checked every 5 seconds. Add take profit and stop loss for when it fills.', 'Alerts: when several of the best wallets buy the same token, you get an alert. Every past alert shows how it did since.'],
+    good: ['Pay with USDC or USDT (Kobocent pays the network fee) or any other balance. Renewing early never loses a day.', 'Every snipe and alert is rug-checked first; fees are only taken when a buy goes through.', 'Past results never promise future ones — only trade what you can afford to lose.'] },
   { route: '/app/earn', key: 'earn', version: 1, title: 'Earning',
     intro: 'Grow idle stablecoins.',
     steps: ['Pick a plan: flexible (withdraw anytime) or locked (higher rate, available after the unlock date).', 'Choose USDC, USDT or SOL and an amount — you see what it earns per day, month and year.', 'Hold to stake. Watch your earnings tick up in real time.'],
@@ -191,6 +195,16 @@ export function tipFor(pathname: string): (Tip & { route: string }) | null {
 // Bump `version` to show an updated announcement again.
 export interface Announcement { key: string; version: number; eyebrow: string; title: string; body: string; bullets: string[]; cta: { label: string; href: string } }
 export const ANNOUNCEMENTS: Announcement[] = [
+  {
+    key: 'premium', version: 1, eyebrow: 'New', title: 'Premium is on the web',
+    body: 'Copy the best wallets, snipe at your price and get Smart Money alerts — right here, on the same engine as Telegram.',
+    bullets: [
+      'Copy trading: Alpha wallets ranked from their real trades, or any wallet you paste.',
+      'Sniper: buy the dip or the breakout automatically, with take profit and stop loss set the moment it fills.',
+      'Smart Money alerts, rug-checked — and every past alert shows how it did since.',
+    ],
+    cta: { label: 'Open Premium', href: '/app/trade/premium' },
+  },
   {
     key: 'trade', version: 1, eyebrow: 'New', title: 'Trading is live on the web',
     body: 'Buy and sell tokens right here — the same wallet and the same numbers as Telegram.',

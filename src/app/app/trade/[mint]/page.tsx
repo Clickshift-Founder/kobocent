@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import { kc, BOT_URL, dayLabel } from '@/lib/kc';
 import { PageHeader } from '@/components/app/PageHeader';
 import { Skeleton, CopyButton } from '@/components/app/ui';
@@ -197,6 +198,16 @@ export default function TokenPage() {
 
       {/* Trade — T2a: buy with SOL / sell to SOL, Normal or Ultra */}
       <TradePanel mint={t.mint} symbol={t.symbol} held={!!p} onDone={load} />
+
+      {/* T4 — buy at a price (the dip or the breakout) with the sniper */}
+      <Link href={`/app/trade/premium?tab=sniper&mint=${t.mint}`} className="surface rounded-2xl p-4 flex items-center gap-3 min-h-[64px] hover:border-terracotta transition-colors">
+        <span className="grid place-items-center h-10 w-10 shrink-0 rounded-xl bg-terracotta-soft text-terracotta"><IconShield size={18} /></span>
+        <div className="min-w-0 flex-1">
+          <div className="font-semibold text-[15px] text-ink dark:text-cream-warm">Buy {t.symbol} at a price</div>
+          <div className="text-[13px] muted">Snipe the dip or the breakout — checked every 5 seconds</div>
+        </div>
+        <IconChevron size={18} className="muted shrink-0" />
+      </Link>
 
       {/* T3 — protect (take profit / stop loss / trailing) and DCA */}
       {!t.loading && <StrategyPanel mint={t.mint} symbol={t.symbol} held={!!p} priceUsd={t.priceUsd} entryPriceUsd={p?.entryPriceUsd ?? null} marketCapUsd={t.marketCapUsd ?? null} recommended={t.recommended ?? null} onChange={load} />}

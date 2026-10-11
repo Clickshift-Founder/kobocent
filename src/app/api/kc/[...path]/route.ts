@@ -90,13 +90,27 @@ const ALLOWED: Record<string, Array<'GET' | 'POST'>> = {
   'trade/protect/cancel': ['POST'],
   'trade/dca': ['POST'],
   'trade/dca/cancel': ['POST'],
+  // Trade T4, the premium hub (2026-10-11)
+  'premium': ['GET'],
+  'premium/payments': ['GET'],
+  'premium/subscribe': ['POST'],
+  'premium/autorenew': ['POST'],
+  'premium/copy/wallets': ['GET'],
+  'premium/copy/mine': ['GET'],
+  'premium/copy/start': ['POST'],
+  'premium/copy/stop': ['POST'],
+  'premium/snipe/preview': ['GET'],
+  'premium/snipes': ['GET'],
+  'premium/snipe': ['POST'],
+  'premium/snipe/cancel': ['POST'],
+  'premium/alerts': ['GET', 'POST'],
 };
 // Routes with an id in the path.
 const ALLOWED_PATTERNS: Array<{ re: RegExp; methods: Array<'GET' | 'POST'> }> = [
   { re: /^withdraw\/jobs\/[0-9a-f-]{36}$/, methods: ['GET'] },
   { re: /^receipts\/(withdrawal|utility|bill)\/[A-Za-z0-9_-]{4,100}$/, methods: ['GET'] },
   { re: /^bills\/jobs\/[0-9a-f-]{36}$/, methods: ['GET'] },
-  { re: /^(send|swap|earn|transfer|bridge|pal|trade)\/jobs\/[0-9a-f-]{36}$/, methods: ['GET'] },
+  { re: /^(send|swap|earn|transfer|bridge|pal|trade|premium)\/jobs\/[0-9a-f-]{36}$/, methods: ['GET'] },
   { re: /^bridge\/orders\/0x[0-9a-fA-F]{64}$/, methods: ['GET'] },
   { re: /^trade\/token\/[1-9A-HJ-NP-Za-km-z]{32,44}$/, methods: ['GET'] },
   { re: /^trade\/jobs\/[0-9a-f-]{36}\/card$/, methods: ['GET'] },
