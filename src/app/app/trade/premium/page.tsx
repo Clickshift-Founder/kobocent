@@ -107,12 +107,12 @@ export default function PremiumPage() {
               : p.id === 'copy'
                 ? <>Smart Money alerts, last {hub.alertsSummary.days} days: <TrackLine s={hub.alertsSummary} />.{n.copy.feesUsd ? <> You paid <b>{usd(n.copy.feesUsd)}</b> in copy fees in 30 days.</> : null} </>
                 : (n.sniper.snipes ? <>You made <b>{n.sniper.snipes} snipe{n.sniper.snipes === 1 ? '' : 's'}</b> in 30 days and paid <b>{usd(n.sniper.feesUsd)}</b> in snipe fees. </> : null);
-            const rule = isPro ? 'Bought one by one: Ultra 0 + Copy Pro 0 + Sniper Pro 0 + Alpha Alerts 5 = 5. Pro is 0.'
+            const rule = isPro ? `Bought one by one: Ultra $20 + Copy Pro $20 + Sniper Pro $20 + Alpha Alerts $25 = $85. Pro is $${monthly?.usd ?? 35}.`
               : p.id === 'ultra' ? `Pays for itself once you trade over ${usd(n.ultra.breakEvenUsd)} a month with Ultra.`
               : p.id === 'sniper' ? 'Pays for itself once you snipe over $667 a month (3% saved) — or $333 if you snipe with Ultra (another 3% saved).' : 'One plan: Alpha wallets, no per-trade fees on them, and every alert.';
             return (
               <section key={p.id} className={`surface rounded-3xl p-5 relative ${isPro ? 'border-2 border-terracotta' : s.active ? 'border-[#58834C]/40' : ''}`}>
-                {isPro && <span className="absolute -top-3 left-5 rounded-full bg-terracotta text-white text-[12px] font-semibold px-3 py-1">Best value · save 5</span>}
+                {isPro && <span className="absolute -top-3 left-5 rounded-full bg-terracotta text-white text-[12px] font-semibold px-3 py-1">Best value · save ${85 - (monthly?.usd ?? 35)}</span>}
                 <div className="flex items-start gap-3">
                   <span className="grid place-items-center h-12 w-12 shrink-0 rounded-2xl bg-terracotta-soft text-terracotta">{ICON[p.id]}</span>
                   <div className="min-w-0 flex-1">
@@ -184,7 +184,7 @@ function AutoRenew({ product, on, onChange }: { product: ProductId; on: boolean;
   }
   return (
     <button onClick={flip} disabled={busy} className="mt-3 w-full flex items-center justify-between min-h-[48px] text-[14px] text-ink dark:text-cream-warm">
-      <span>Auto-renew from your USDC on Solana <span className="muted">(a day before it ends)</span></span>
+      <span>Auto-renew from your Kobocent wallet <span className="muted">(when it ends — USDC/USDT, else SOL)</span></span>
       <span className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${on ? 'bg-[#58834C]' : 'bg-cream-border dark:bg-night-border'}`} aria-hidden><span className={`absolute top-1 h-5 w-5 rounded-full bg-white transition-all ${on ? 'left-6' : 'left-1'}`} /></span>
     </button>
   );

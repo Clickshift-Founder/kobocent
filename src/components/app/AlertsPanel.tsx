@@ -67,7 +67,7 @@ export function AlertsPanel({ hub, onSubscribe }: { hub: Hub | null; onSubscribe
       </section>
       <ErrorNote msg={err} />
 
-      {!a.access && <ProLock title="Get every alert the moment it fires" body="Copy Pro opens fresh alerts and live smart-money buys, and sends them to your phone. The track record below stays open to everyone." cta="Get Copy Pro — $20 (or Pro: everything, $30)" onClick={onSubscribe} />}
+      {!a.access && <ProLock title="Get every alert the moment it fires" body="Copy Pro opens fresh alerts and live smart-money buys, and sends them to your phone. The track record below stays open to everyone." cta="Get Copy Pro — $20 (or Pro: everything, $35)" onClick={onSubscribe} />}
 
       <section>
         <h2 className="font-semibold text-[16px] text-ink dark:text-cream-warm mb-1">Buying now</h2>
