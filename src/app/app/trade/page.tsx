@@ -37,13 +37,15 @@ export default function TradePage() {
   }), []);
   useEffect(() => {
     // Paint the last numbers seen at once, then refresh in place (2026-10-09). Picks too.
+    // Open on the chain used last (BNB Chain lives at /app/trade/bnb — 2026-10-11)
+    try { if (localStorage.getItem('kc-trade-chain') === 'BNB') { router.replace('/app/trade/bnb'); return; } } catch { /* private mode */ }
     const cached = readCache<TradeHome>('home'); if (cached) setData(cached);
     // Picks are only shown from this device's cache when under a minute old — older ones could mislead (2026-10-09)
     const cachedPicks = readCache<{ picks: Pick[]; at: number }>('picks2');
     if (cachedPicks && Date.now() - cachedPicks.at < 60_000) { setPicks(cachedPicks.picks); setPicksAt(cachedPicks.at); }
     load();
     try { const t = localStorage.getItem(TAB_KEY) as Tab | null; if (t === 'holdings' || t === 'picks' || t === 'closed') setTab(t); } catch { /* private mode */ }
-  }, [load]);
+  }, [load, router]);
   useLiveRefresh(load, 30_000);
 
   // Smart Picks load in the background as soon as Trade opens, so the tab is ready when tapped (2026-10-09), and

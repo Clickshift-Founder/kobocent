@@ -1,4 +1,5 @@
 'use client';
+import { useRouter } from 'next/navigation';
 /**
  * Trade — shared pieces (T1, 2026-10-09). Backend: GET /api/v1/trade* (src/services/trading.js — the same
  * balances, prices, cost basis and analysis as Telegram's /portfolio, /analyze and /picks).
@@ -80,11 +81,16 @@ export function TokenAvatar({ symbol, imageUrl, size = 44 }: { symbol: string; i
 }
 
 /** Solana live; the next chain shows as coming soon (chain decision 2026-10-08 — BNB Chain). */
+/** Solana ↔ BNB Chain (2026-10-11: BNB live). Each chain has its own Trade home: /app/trade and /app/trade/bnb. */
+export const CHAIN_HOME: Record<string, string> = { SOLANA: '/app/trade', BNB: '/app/trade/bnb' };
+export function rememberChain(id: string) { try { localStorage.setItem('kc-trade-chain', id); } catch { /* private mode */ } }
 export function ChainSwitch({ chains, value }: { chains: ChainOption[]; value: string }) {
+  const router = useRouter();
   return (
     <div className="inline-flex rounded-2xl p-1 bg-cream-warm dark:bg-night-card" role="tablist" aria-label="Chain">
       {chains.map(c => (
         <button key={c.id} role="tab" aria-selected={c.id === value} disabled={!c.live}
+          onClick={() => { if (c.id !== value && CHAIN_HOME[c.id]) { rememberChain(c.id); router.push(CHAIN_HOME[c.id]); } }}
           className={`min-h-[40px] px-3.5 rounded-xl text-[13.5px] font-semibold transition-colors ${c.id === value ? 'bg-white dark:bg-night text-ink dark:text-cream-warm shadow-sm' : 'muted'} disabled:cursor-not-allowed`}>
           {c.label}{!c.live && <span className="ml-1.5 rounded-full bg-terracotta-soft text-terracotta text-[10.5px] px-1.5 py-0.5 align-middle">Soon</span>}
         </button>

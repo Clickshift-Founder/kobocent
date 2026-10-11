@@ -90,6 +90,12 @@ const ALLOWED: Record<string, Array<'GET' | 'POST'>> = {
   'trade/protect/cancel': ['POST'],
   'trade/dca': ['POST'],
   'trade/dca/cancel': ['POST'],
+  // BNB Chain trading (2026-10-11)
+  'trade/bnb': ['GET'],
+  'trade/bnb/search': ['GET'],
+  'trade/bnb/trending': ['GET'],
+  'trade/bnb/quote': ['POST'],
+  'trade/bnb/execute': ['POST'],
   // Trade T4, the premium hub (2026-10-11)
   'premium': ['GET'],
   'premium/payments': ['GET'],
@@ -113,6 +119,7 @@ const ALLOWED_PATTERNS: Array<{ re: RegExp; methods: Array<'GET' | 'POST'> }> = 
   { re: /^(send|swap|earn|transfer|bridge|pal|trade|premium)\/jobs\/[0-9a-f-]{36}$/, methods: ['GET'] },
   { re: /^bridge\/orders\/0x[0-9a-fA-F]{64}$/, methods: ['GET'] },
   { re: /^trade\/token\/[1-9A-HJ-NP-Za-km-z]{32,44}$/, methods: ['GET'] },
+  { re: /^trade\/bnb\/token\/0x[0-9a-fA-F]{40}$/, methods: ['GET'] },
   { re: /^trade\/jobs\/[0-9a-f-]{36}\/card$/, methods: ['GET'] },
 ];
 function allowed(key: string, method: 'GET' | 'POST') {
