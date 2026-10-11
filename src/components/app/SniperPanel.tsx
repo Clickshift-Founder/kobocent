@@ -116,7 +116,10 @@ export function SniperPanel({ hub, initialMint, onSubscribe }: { hub: Hub | null
           className="flex-1 min-w-0 bg-transparent outline-none text-[16px] font-mono text-ink dark:text-cream-warm py-3" autoComplete="off" spellCheck={false} />
         {loading && <span className="h-4 w-4 rounded-full border-2 border-terracotta border-t-transparent animate-spin" aria-label="Loading" />}
       </div>
-      <ErrorNote msg={pvErr} />
+      {/^0x[0-9a-fA-F]{40}$/.test(mint.trim()) && (
+        <Link href={`/app/trade/bnb/${mint.trim()}`} className="block rounded-2xl p-4 text-[14px] font-semibold text-terracotta" style={{ background: '#D9A4001A' }}>That’s a BNB Chain token — open it to snipe at a price on BNB Chain →</Link>
+      )}
+      <ErrorNote msg={/^0x/.test(mint.trim()) ? '' : pvErr} />
 
       {pv && !result && (
         <section className="space-y-4 animate-fade-up">

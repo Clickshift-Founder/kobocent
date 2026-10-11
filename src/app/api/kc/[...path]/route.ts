@@ -96,6 +96,12 @@ const ALLOWED: Record<string, Array<'GET' | 'POST'>> = {
   'trade/bnb/trending': ['GET'],
   'trade/bnb/quote': ['POST'],
   'trade/bnb/execute': ['POST'],
+  'trade/bnb/strategies': ['GET'],
+  'trade/bnb/protect': ['POST'],
+  'trade/bnb/limit': ['POST'],
+  'trade/bnb/dca': ['POST'],
+  'trade/bnb/copy': ['POST'],
+  'trade/bnb/strategy/cancel': ['POST'],
   // Trade T4, the premium hub (2026-10-11)
   'premium': ['GET'],
   'premium/payments': ['GET'],

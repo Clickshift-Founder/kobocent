@@ -7,6 +7,7 @@ import { Skeleton, CopyButton } from '@/components/app/ui';
 import { IconChevron } from '@/components/app/Icons';
 import { useLiveRefresh } from '@/lib/useLiveRefresh';
 import { BnbTradePanel, type Security } from '@/components/app/BnbTradePanel';
+import { BnbAutomationPanel } from '@/components/app/BnbAutomation';
 import { price, compact, signedUsd, pct, tokenAmount, PnlPill, pnlColor, TokenAvatar, readCache, writeCache } from '@/components/app/trade';
 
 /**
@@ -86,6 +87,9 @@ export default function BnbTokenPage() {
       </section>
 
       <BnbTradePanel token={t.address} symbol={t.symbol} held={!!p && p.amount > 0} onDone={load} />
+
+      {/* Protect, buy at a price, DCA — 24/7 on the server */}
+      <BnbAutomationPanel token={t.address} symbol={t.symbol} held={!!p && p.amount > 0} priceUsd={t.priceUsd} onChange={load} />
 
       {t.analysed && (
         <section className="surface rounded-3xl p-5 grid grid-cols-2 gap-3 text-[14px]">
