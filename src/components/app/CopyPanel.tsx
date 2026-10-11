@@ -92,7 +92,7 @@ export function CopyPanel({ hub, onSubscribe }: { hub: Hub | null; onSubscribe: 
             <p className="text-[12.5px] muted">Ranked every 6 hours from their real trades over the last 7 days.</p>
           </div>
         </div>
-        {!pro && <div className="mb-3"><ProLock title="Copy the best wallets, no per-trade fee" body="Copy Pro shows each Alpha wallet’s address and lets you copy it with no copy fee and no Ultra fee — plus Smart Money alerts." cta="Get Copy Pro — $20 / 30 days" onClick={onSubscribe} /></div>}
+        {!pro && <div className="mb-3"><ProLock title="Copy the best wallets, no per-trade fee" body="Copy Pro shows each Alpha wallet’s address and lets you copy it with no copy fee and no Ultra fee — plus Smart Money alerts." cta="Get Copy Pro — $20 (or Pro: everything, $30)" onClick={onSubscribe} /></div>}
         {err ? <ErrorNote msg={err} /> : !w ? <div className="space-y-2"><Skeleton className="h-28" /><Skeleton className="h-28" /></div>
           : w.wallets.length === 0 ? <div className="surface rounded-2xl p-4 text-[14px] muted">The scanner is ranking wallets right now — check back in a few minutes.</div>
           : (

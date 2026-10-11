@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { kc, KcError, usd } from '@/lib/kc';
 import { PageHeader } from '@/components/app/PageHeader';
 import { Skeleton } from '@/components/app/ui';
-import { IconCheck, IconBolt, IconChart, IconShield } from '@/components/app/Icons';
+import { IconCheck, IconBolt, IconChart, IconShield, IconTrophy } from '@/components/app/Icons';
 import { SubscribeSheet, StatusPill, dateLabel, type Hub, type Product, type ProductId } from '@/components/app/premium';
 import { CopyPanel } from '@/components/app/CopyPanel';
 import { SniperPanel } from '@/components/app/SniperPanel';
@@ -17,7 +17,7 @@ import { AlertsPanel, TrackLine } from '@/components/app/AlertsPanel';
 
 type Tab = 'plans' | 'copy' | 'sniper' | 'alerts';
 const TABS: Array<[Tab, string]> = [['plans', 'Plans'], ['copy', 'Copy'], ['sniper', 'Sniper'], ['alerts', 'Alerts']];
-const ICON: Record<ProductId, React.ReactNode> = { ultra: <IconBolt size={22} />, copy: <IconChart size={22} />, sniper: <IconShield size={22} /> };
+const ICON: Record<ProductId, React.ReactNode> = { pro: <IconTrophy size={22} />, ultra: <IconBolt size={22} />, copy: <IconChart size={22} />, sniper: <IconShield size={22} /> };
 
 interface Payment { name: string; plan: string; amountUsd: number; paidFrom: string | null; explorerUrl: string | null; status: string; expiresAt: number | null; at: number }
 
@@ -54,7 +54,9 @@ export default function PremiumPage() {
   if (needsLink) return <div className="space-y-6"><PageHeader title="Premium" fallback="/app/trade" /><div className="surface rounded-3xl p-6 text-center muted">Connect your Telegram account in Settings to use Premium on the web.</div></div>;
 
   const st = hub?.status;
-  const activeCount = st ? [st.ultra, st.copy, st.sniper].filter(s => s.active).length : 0;
+  const activeCount = st ? (st.pro?.active ? 1 : [st.ultra, st.copy, st.sniper].filter(s => s.active).length) : 0;
+  // Kobocent Pro first — the bundle is the headline; single plans follow for one-feature traders.
+  const ordered = hub ? [...hub.products].sort((a, b) => (a.id === 'pro' ? -1 : b.id === 'pro' ? 1 : 0)) : [];
 
   return (
     <div className="space-y-5">
@@ -76,7 +78,7 @@ export default function PremiumPage() {
             <div className="relative">
               <div className="text-[13px] text-white/70">{activeCount ? `${activeCount} plan${activeCount === 1 ? '' : 's'} active` : 'Your plans'}</div>
               <div className="mt-3 space-y-2">
-                {hub.products.map(p => {
+                {ordered.map(p => {
                   const s = hub.status[p.id];
                   return (
                     <div key={p.id} className="flex items-center justify-between gap-3 rounded-2xl bg-white/10 px-3.5 py-2.5">
@@ -90,20 +92,27 @@ export default function PremiumPage() {
             </div>
           </section>
 
-          {hub.products.map(p => {
+          {ordered.map(p => {
             const s = hub.status[p.id];
+            const inPro = p.id !== 'pro' && !!hub.status.pro?.active;
+            const isPro = p.id === 'pro';
+            const paid30 = (n0: Hub['numbers']) => (n0.ultra.perTradeFeesUsd || 0) + (n0.copy.feesUsd || 0) + (n0.sniper.feesUsd || 0);
             const n = hub.numbers;
             const monthly = p.plans.find(x => x.id === 'monthly');
             const quarterly = p.plans.find(x => x.id === 'quarterly');
-            const proof = p.id === 'ultra'
+            const proof = isPro
+              ? (paid30(n) > 0 ? <>In the last 30 days you paid about <b>{usd(paid30(n))}</b> in Ultra, copy and snipe fees that Pro removes. </> : null)
+              : p.id === 'ultra'
               ? (n.ultra.trades ? <>In the last 30 days you made <b>{n.ultra.trades} Ultra trade{n.ultra.trades === 1 ? '' : 's'}</b> worth <b>{usd(n.ultra.volumeUsd)}</b> — about <b>{usd(n.ultra.perTradeFeesUsd)}</b> in the 3% Ultra fee. </> : null)
               : p.id === 'copy'
                 ? <>Smart Money alerts, last {hub.alertsSummary.days} days: <TrackLine s={hub.alertsSummary} />.{n.copy.feesUsd ? <> You paid <b>{usd(n.copy.feesUsd)}</b> in copy fees in 30 days.</> : null} </>
                 : (n.sniper.snipes ? <>You made <b>{n.sniper.snipes} snipe{n.sniper.snipes === 1 ? '' : 's'}</b> in 30 days and paid <b>{usd(n.sniper.feesUsd)}</b> in snipe fees. </> : null);
-            const rule = p.id === 'ultra' ? `Pays for itself once you trade over ${usd(n.ultra.breakEvenUsd)} a month with Ultra.`
+            const rule = isPro ? 'Bought one by one: Ultra 0 + Copy Pro 0 + Sniper Pro 0 + Alpha Alerts 5 = 5. Pro is 0.'
+              : p.id === 'ultra' ? `Pays for itself once you trade over ${usd(n.ultra.breakEvenUsd)} a month with Ultra.`
               : p.id === 'sniper' ? 'Pays for itself once you snipe over $667 a month (3% saved) — or $333 if you snipe with Ultra (another 3% saved).' : 'One plan: Alpha wallets, no per-trade fees on them, and every alert.';
             return (
-              <section key={p.id} className={`surface rounded-3xl p-5 ${s.active ? 'border-[#58834C]/40' : ''}`}>
+              <section key={p.id} className={`surface rounded-3xl p-5 relative ${isPro ? 'border-2 border-terracotta' : s.active ? 'border-[#58834C]/40' : ''}`}>
+                {isPro && <span className="absolute -top-3 left-5 rounded-full bg-terracotta text-white text-[12px] font-semibold px-3 py-1">Best value · save 5</span>}
                 <div className="flex items-start gap-3">
                   <span className="grid place-items-center h-12 w-12 shrink-0 rounded-2xl bg-terracotta-soft text-terracotta">{ICON[p.id]}</span>
                   <div className="min-w-0 flex-1">
@@ -123,13 +132,14 @@ export default function PremiumPage() {
                   {proof}{rule}
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-2">
-                  <button onClick={() => setSub(p)} className="btn-primary">{s.active ? 'Renew' : `Get ${p.name}`}</button>
-                  <button onClick={() => pickTab(p.id === 'ultra' ? 'plans' : p.id === 'copy' ? 'copy' : 'sniper')} className="btn-ghost" disabled={p.id === 'ultra'}>
-                    {p.id === 'ultra' ? 'Use on any trade' : p.id === 'copy' ? 'See wallets' : 'Open Sniper'}
+                  {inPro ? <span className="grid place-items-center rounded-2xl bg-cream-warm dark:bg-night text-[14px] font-semibold text-[#58834C] min-h-[48px]">Included in Pro</span>
+                    : <button onClick={() => setSub(p)} className="btn-primary">{s.active ? 'Renew' : `Get ${p.name}`}</button>}
+                  <button onClick={() => pickTab(p.id === 'copy' || isPro ? 'copy' : p.id === 'sniper' ? 'sniper' : 'plans')} className="btn-ghost" disabled={p.id === 'ultra'}>
+                    {p.id === 'ultra' ? 'Use on any trade' : p.id === 'copy' || isPro ? 'See wallets' : 'Open Sniper'}
                   </button>
                 </div>
-                {p.id === 'copy' && s.active && (
-                  <AutoRenew on={!!s.autoRenew} onChange={load} />
+                {(isPro || p.id === 'sniper' || p.id === 'copy') && s.active && !inPro && (
+                  <AutoRenew product={p.id} on={!!s.autoRenew} onChange={load} />
                 )}
               </section>
             );
@@ -165,11 +175,11 @@ export default function PremiumPage() {
   );
 }
 
-function AutoRenew({ on, onChange }: { on: boolean; onChange: () => void }) {
+function AutoRenew({ product, on, onChange }: { product: ProductId; on: boolean; onChange: () => void }) {
   const [busy, setBusy] = useState(false);
   async function flip() {
     setBusy(true);
-    try { await kc('premium/autorenew', { method: 'POST', body: { product: 'copy', on: !on } }); onChange(); } catch { /* shown on next load */ }
+    try { await kc('premium/autorenew', { method: 'POST', body: { product, on: !on } }); onChange(); } catch { /* shown on next load */ }
     finally { setBusy(false); }
   }
   return (

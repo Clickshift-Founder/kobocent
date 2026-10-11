@@ -13,13 +13,13 @@ import { IconCheck } from './Icons';
  * network fee) or any other balance via the shared Pay-from picker. A renewal adds its days to the time left.
  */
 
-export type ProductId = 'ultra' | 'copy' | 'sniper';
+export type ProductId = 'pro' | 'ultra' | 'copy' | 'sniper';
 export interface Plan { id: 'monthly' | 'quarterly'; usd: number; days: number }
-export interface Product { id: ProductId; name: string; tagline: string; plans: Plan[]; perks: string[] }
+export interface Product { id: ProductId; name: string; tagline: string; plans: Plan[]; perks: string[]; includes?: ProductId[] }
 export interface SubStatus { active: boolean; expiresAt: number | null; daysLeft: number; plan?: string | null; autoRenew?: boolean }
 export interface Hub {
   ok: true;
-  status: { ultra: SubStatus; copy: SubStatus; sniper: SubStatus; alerts: { included: boolean; on: boolean } };
+  status: { pro: SubStatus; ultra: SubStatus; copy: SubStatus; sniper: SubStatus; alerts: { included: boolean; on: boolean } };
   numbers: {
     ultra: { trades: number; volumeUsd: number | null; perTradeFeesUsd: number | null; breakEvenUsd: number | null };
     sniper: { snipes: number; feesUsd: number | null; feesSol: number };
