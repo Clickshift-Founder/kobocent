@@ -20,6 +20,7 @@ export function isIOS(): boolean {
 export function registerServiceWorker() {
   if (typeof window === 'undefined') return;
   if (!('serviceWorker' in navigator)) return;
+  if ((window as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.()) return;   // the iOS / Android app needs no offline cache
   const register = () => navigator.serviceWorker.register('/sw.js').catch(() => {
     /* non-fatal: the site works fine without offline caching */
   });

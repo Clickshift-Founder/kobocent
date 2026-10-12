@@ -1,4 +1,5 @@
 'use client';
+import { nativePlatform } from '@/lib/platform';
 import { useEffect, useState } from 'react';
 import { LogoMark } from '@/components/ui/Logo';
 import { isIOS, isStandalone, getInstallPrompt, onInstallChange, clearInstallPrompt } from '@/lib/pwa';
@@ -18,7 +19,7 @@ export function InstallCard() {
   const [help, setHelp] = useState(false);
 
   useEffect(() => {
-    if (isStandalone()) return;
+    if (isStandalone() || nativePlatform()) return;   // already installed, or inside the iOS / Android app
     try {
       const at = Number(window.localStorage.getItem(DISMISS_KEY) || 0);
       if (at && Date.now() - at < SHOW_AGAIN_MS) return;

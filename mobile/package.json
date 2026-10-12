@@ -1,0 +1,31 @@
+{
+  "name": "kobocent-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Kobocent iOS and Android apps (Capacitor shell around kobocent.com/app). See README.md.",
+  "scripts": {
+    "add:android": "cap add android",
+    "add:ios": "cap add ios",
+    "assets": "capacitor-assets generate --iconBackgroundColor '#F7F3EE' --splashBackgroundColor '#F7F3EE' --splashBackgroundColorDark '#1C1815'",
+    "sync": "cap sync",
+    "android": "cap open android",
+    "ios": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/app": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/haptics": "^7.0.0",
+    "@capacitor/ios": "^7.0.0",
+    "@capacitor/push-notifications": "^7.0.0",
+    "@capacitor/share": "^7.0.0",
+    "@capacitor/splash-screen": "^7.0.0",
+    "@capacitor/status-bar": "^7.0.0",
+    "@capgo/capacitor-social-login": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^7.0.0",
+    "typescript": "^5.4.0"
+  }
+}

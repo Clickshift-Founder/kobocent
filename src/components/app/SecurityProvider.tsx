@@ -110,7 +110,7 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     if (!sec.hasPin && get(sessionStorage, 'kc-pin-later') !== '1') { setAsk({ mode: 'setup', reason: 'first' }); return; }
     if (get(sessionStorage, NUDGED) === '1') return;
     if (!account.telegramLinked) setNudge('telegram');
-    else if (!account.googleLinked && googleEnabled()) setNudge('google');
+    else if (!account.googleLinked && googleEnabled() && !(window as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.()) setNudge('google');   // web Google button can't run inside the apps
   }, [sec, account, locked, ask]);
   const closeNudge = () => { set(sessionStorage, NUDGED, '1'); setNudge(null); };
 

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kobocent</title>
+<style>
+  :root { --bg: #F7F3EE; --ink: #20211F; --muted: #6B5D52; --accent: #C1502E; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #1C1815; --ink: #F0E6D8; --muted: #B9AC9F; --accent: #D9693F; } }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+         display: flex; align-items: center; justify-content: center; padding: env(safe-area-inset-top) 24px env(safe-area-inset-bottom); text-align: center; }
+  .box { max-width: 320px; display: flex; flex-direction: column; gap: 14px; align-items: center; }
+  h1 { font-size: 22px; margin: 6px 0 0; }
+  p { color: var(--muted); font-size: 15px; line-height: 1.5; margin: 0; }
+  button { margin-top: 8px; min-height: 48px; padding: 0 28px; border: 0; border-radius: 999px; background: var(--accent); color: #fff; font-size: 16px; font-weight: 600; }
+</style>
+</head>
+<body>
+  <div class="box">
+    <svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true"><circle cx="24" cy="30" r="16" fill="none" stroke="#C1502E" stroke-width="6"/><circle cx="43" cy="14" r="7" fill="none" stroke="#C1502E" stroke-width="5"/></svg>
+    <h1>You’re offline</h1>
+    <p>Kobocent needs an internet connection. Your money is safe — check your connection and try again.</p>
+    <button onclick="location.href='https://kobocent.com/app'">Try again</button>
+  </div>
+</body>
+</html>
