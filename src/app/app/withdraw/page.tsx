@@ -37,7 +37,7 @@ interface Job {
 type Screen = 'loading' | 'bank' | 'amount' | 'progress';
 
 const JOB_KEY = 'kc-withdraw-job';
-const SUPPORT_URL = 'https://t.me/kobocentbot';   // support = Kobo Pal → Talk to a person
+const SUPPORT_URL = 'mailto:support@kobocent.com';
 
 export default function WithdrawPage() {
   const [screen, setScreen] = useState<Screen>('loading');
@@ -360,7 +360,7 @@ function AmountStep({ ov, onChangeBank, onStarted }: { ov: Overview; onChangeBan
             <Link href="/app" className="inline-flex items-center gap-1.5 mt-3 text-terracotta font-semibold text-[14px]"><IconPlus size={16} />Add money</Link>
           </div>
         ) : qErr ? (
-          <div className="text-[14.5px] text-[#B84A40]">{qErr}{value > ov.limits.maxUsd && <> <a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer" className="underline font-semibold">Message support</a></>}</div>
+          <div className="text-[14.5px] text-[#B84A40]">{qErr}{value > ov.limits.maxUsd && <> <a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer" className="underline font-semibold">Email support</a></>}</div>
         ) : !value ? (
           <div className="flex items-center gap-3 muted text-[14.5px]"><IconBank size={20} className="text-terracotta" />Type an amount to see exactly how much naira lands in your account.</div>
         ) : (
@@ -493,7 +493,7 @@ function Progress({ jobId, bankName, onFinish }: { jobId: string; bankName: stri
     if (r.code === 'PAYOUT_FAILED' || r.code === 'NEEDS_REVIEW' || r.code === 'SPLIT_USDT_FAILED') {
       return (
         <Outcome tone="warn" title="Your money is safe" body="It’s in the Kobocent vault, and our team has already been alerted to finish your payout. No need to try again."
-          reference={r.signature} actions={<><a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer" className="btn-primary w-full">Message support</a><button onClick={() => onFinish(false)} className="btn-ghost w-full">Close</button></>} />
+          reference={r.signature} actions={<><a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer" className="btn-primary w-full">Email support</a><button onClick={() => onFinish(false)} className="btn-ghost w-full">Close</button></>} />
       );
     }
     const msg = r.code === 'INSUFFICIENT' ? (r.error || 'Your balance changed before we could send it.') : r.code === 'IN_PROGRESS' ? 'Another withdrawal was still being processed.' : (r.error || 'Something went wrong.');

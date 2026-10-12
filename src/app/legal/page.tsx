@@ -19,7 +19,7 @@ export default function LegalPage() {
     <LegalShell>
       <p className="eyebrow">Legal</p>
       <h1 className="h-display text-[34px] sm:text-[44px] mt-2">Privacy, Terms &amp; Risk</h1>
-      <p className="mt-3">Last updated {UPDATED}. These documents apply to Kobocent on the web, on mobile and on Telegram (@kobocentbot and @clicksolbot).</p>
+      <p className="mt-3">Last updated {UPDATED}. These documents apply to Kobocent on the web, on mobile and on Telegram (@kobocentbot).</p>
       <nav className="mt-6 flex flex-wrap gap-2 [&_a]:rounded-full [&_a]:border [&_a]:border-cream-border dark:[&_a]:border-night-border [&_a]:px-4 [&_a]:py-2 [&_a]:min-h-[44px] [&_a]:inline-flex [&_a]:items-center">
         <a href="#privacy">Privacy Policy</a><a href="#terms">Terms of Service</a><a href="#risk">Risk Disclosure</a><a href="/delete-account">Delete your account</a>
       </nav>

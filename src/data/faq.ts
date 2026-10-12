@@ -57,9 +57,8 @@ export const FAQ: FaqGroup[] = [
     group: 'Telegram, the web app, and your account',
     items: [
       { q: 'Do Telegram and the web app share one account?', a: 'Yes, that is the whole point. One account, one balance, one history. Start something in one and finish it in the other.' },
-      { q: 'I already use the Telegram bot. Do I need a new account for the web?', a: 'No. You link the two with a one-time code, and they become the same account. Your balance and history carry over — there is nothing to migrate manually.' },
-      { q: 'I signed up on the web first. Do I need to do anything for Telegram?', a: 'Only if you want to use Telegram too. If you do, generate a link code in the web app and send it to the bot once. Otherwise the web app works on its own.' },
-      { q: 'I use @clicksolbot — is that the same account?', a: 'Yes. @clicksolbot is an older Kobocent bot handle. It runs on the same backend as @kobocentbot, so your wallet, balance, history and referral link work identically on either one. We recommend @kobocentbot.' },
+      { q: 'I already use the Telegram bot. Do I need a new account for the web?', a: 'No. Sign in on the web, then connect your Telegram with a one-time code — your balance and history are the same in both.' },
+      { q: 'I signed up on the web first. Do I need to do anything for Telegram?', a: 'We recommend connecting it — it takes a minute, and it gives you your referral link (20% of your friends’ fees) and $SHIFT points. Kobocent shows you how right after you sign up.' },
       { q: 'Can I install this like a normal app?', a: 'Yes. Tap Download app and it installs to your home screen straight from the browser — no app store needed. Native iOS and Android apps are coming.' },
       { q: 'Is a debit card coming?', a: 'It is on the roadmap. The intent is that you hold stablecoins and spend in local currency wherever cards are accepted. We will announce it properly when it is real rather than promise a date now.' },
     ],
@@ -67,9 +66,9 @@ export const FAQ: FaqGroup[] = [
   {
     group: 'Safety and support',
     items: [
-      { q: 'How do I know someone contacting me is really from Kobocent?', a: 'We are building a verified associates page so you can always check. Until then: we will never DM you first asking for money, your recovery phrase, or remote access to your device. If someone does, they are not us. Verify in the community group before acting.' },
-      { q: 'What if a transaction fails or gets stuck?', a: 'Contact support in the community group. Failed transactions generally return funds to your balance automatically. Bring the reference or transaction ID and it can be traced.' },
-      { q: 'How do I get help from a real person?', a: 'The community group is monitored and the team responds there. For anything involving your funds specifically, that is the fastest route.' },
+      { q: 'How do I know someone contacting me is really from Kobocent?', a: 'We are building a verified associates page so you can always check. Until then: we will never DM you first asking for money, your recovery phrase, or remote access to your device. If someone does, they are not us. Check with support@kobocent.com before acting.' },
+      { q: 'What if a transaction fails or gets stuck?', a: 'Email support@kobocent.com. Failed transactions generally return funds to your balance automatically. Bring the reference or transaction ID and it can be traced.' },
+      { q: 'How do I get help from a real person?', a: 'Email support@kobocent.com, or open Kobo Pal in the app and tap Talk to a person. For anything involving your funds, include the reference or transaction ID.' },
     ],
   },
 ];

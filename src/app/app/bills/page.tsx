@@ -57,7 +57,7 @@ function RecentRow({ items, onPick, label }: { items: RecentItem[]; onPick: (r: 
 const PayFromCtx = createContext<{ pf: PayFromState; setNeedUsd: (n: number) => void } | null>(null);
 
 const JOB_KEY = 'kc-bills-job';
-const SUPPORT_URL = 'https://t.me/kobocentbot';   // support = Kobo Pal → Talk to a person
+const SUPPORT_URL = 'mailto:support@kobocent.com';
 // Telco colours only identify the network at a glance.
 const NETWORK: Record<string, { label: string; bg: string; fg: string }> = {
   mtn: { label: 'MTN', bg: '#FFCB05', fg: '#1A1A1A' },
@@ -777,7 +777,7 @@ function Progress({ jobId, onFinish }: { jobId: string; onFinish: () => void }) 
         actions={<button onClick={onFinish} className="btn-primary w-full">OK</button>} />;
     }
     return <Outcome tone="error" title="The payment didn’t go through" body={`${r.error ? `${r.error}. ` : ''}If any money left your wallet, our team has already been alerted and will refund it.`}
-      reference={r.reference} actions={<><button onClick={onFinish} className="btn-primary w-full">Try again</button><a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer" className="btn-ghost w-full">Message support</a></>} />;
+      reference={r.reference} actions={<><button onClick={onFinish} className="btn-primary w-full">Try again</button><a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer" className="btn-ghost w-full">Email support</a></>} />;
   }
 
   return (

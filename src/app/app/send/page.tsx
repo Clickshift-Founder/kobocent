@@ -23,7 +23,7 @@ interface Quote { amountNgn: number; totalUsd: number; feeUsd: number; rate: num
 interface Job { id: string; status: 'running' | 'done'; stage: string; meta: { amountNgn: number }; result: null | { ok: boolean; code: string | null; error: string | null; reference: string | null; amountNgn: number; recipientName: string | null; recipientBank: string | null; funding?: JobFunding | null } }
 
 const JOB_KEY = 'kc-send-job';
-const SUPPORT_URL = 'https://t.me/kobocentbot';   // support = Kobo Pal → Talk to a person
+const SUPPORT_URL = 'mailto:support@kobocent.com';
 
 export default function SendPage() {
   const [recipients, setRecipients] = useState<Recipient[] | null>(null);
@@ -228,7 +228,7 @@ function Amount({ to, onBack, onStarted }: { to: Recipient; onBack: () => void; 
         : quote && !quote.canPay ? (
           <div className="surface rounded-3xl p-5"><div className="font-semibold text-ink dark:text-cream-warm">{pf.isSolana ? 'Not enough USDC/USDT' : `Can’t pay this from ${pf.sel.title} on ${pf.sel.sub}`}</div><p className="muted text-[14px] mt-1">{pf.isSolana ? <>This needs {usd(quote.totalUsd)} and you have {usd(quote.balanceUsd)}.</> : (quote.fundingError || `This needs ${usd(quote.totalUsd)}.`)} {!pf.isSolana && <button onClick={() => pf.setPicking(true)} className="text-terracotta font-semibold">Pay from another balance</button>}</p><Link href="/app/add-money" className="inline-flex items-center gap-1.5 mt-3 text-terracotta font-semibold text-[14px]"><IconPlus size={16} />Add money</Link></div>
         ) : quote?.aboveLimit ? (
-          <div className="surface rounded-3xl p-5 text-[14.5px]">Above {usd(quote.limitUsd)} we send payments by hand. <a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer" className="text-terracotta font-semibold underline">Message support</a></div>
+          <div className="surface rounded-3xl p-5 text-[14.5px]">Above {usd(quote.limitUsd)} we send payments by hand. <a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer" className="text-terracotta font-semibold underline">Email support</a></div>
         ) : value ? (
           <div className="rounded-3xl p-5 bg-ink dark:bg-night-card text-cream shadow-card">
             <div className="text-[13.5px] text-cream/70">You pay</div>
@@ -286,7 +286,7 @@ function Progress({ jobId, onFinish }: { jobId: string; onFinish: () => void }) 
     if (r.ok) return <Outcome tone="success" title={`${naira(r.amountNgn)} is on its way`} body={`To ${r.recipientName || 'your recipient'}${r.recipientBank ? ` at ${r.recipientBank}` : ''}${r.funding ? `, paid from ${r.funding.label}` : ''}. Usually arrives within minutes. Get the receipt below to share as proof — it’s ready the moment the bank confirms.`} reference={r.reference} actions={<>{r.reference && <ReceiptButton reference={r.reference} kind="bill" wait className="btn-primary w-full" />}<Link href="/app" onClick={onFinish} className="btn-ghost w-full">Done</Link><button onClick={onFinish} className="block w-full text-center text-[14px] font-semibold text-terracotta min-h-[44px]">Send another</button></>} />;
     if (r.code === 'OUTCOME_UNKNOWN') return <Outcome tone="warn" title="Being confirmed" body="Please don’t send again. We’re confirming the payment and will complete it or refund you — you’ll hear from us on Telegram." reference={r.reference} actions={<button onClick={onFinish} className="btn-primary w-full">Got it</button>} />;
     const nothingMoved = ['INSUFFICIENT', 'BAD_ACCOUNT', 'IN_PROGRESS', 'BELOW_MIN', 'ABOVE_LIMIT'].includes(r.code || '');
-    return <Outcome tone="error" title={nothingMoved ? 'Nothing was sent' : 'The payment didn’t go through'} body={`${r.error ? `${r.error}. ` : ''}${nothingMoved ? 'No money left your wallet.' : 'If any money left your wallet, our team has already been alerted and will refund it.'}`} reference={r.reference} actions={<><button onClick={onFinish} className="btn-primary w-full">Try again</button>{!nothingMoved && <a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer" className="btn-ghost w-full">Message support</a>}</>} />;
+    return <Outcome tone="error" title={nothingMoved ? 'Nothing was sent' : 'The payment didn’t go through'} body={`${r.error ? `${r.error}. ` : ''}${nothingMoved ? 'No money left your wallet.' : 'If any money left your wallet, our team has already been alerted and will refund it.'}`} reference={r.reference} actions={<><button onClick={onFinish} className="btn-primary w-full">Try again</button>{!nothingMoved && <a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer" className="btn-ghost w-full">Email support</a>}</>} />;
   }
   return (
     <section className="surface rounded-3xl p-8 text-center animate-fade-up" aria-live="polite">
