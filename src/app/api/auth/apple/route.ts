@@ -8,13 +8,13 @@ export const dynamic = 'force-dynamic';
  * Apple's identity token is forwarded untouched; the backend verifies its signature against Apple's keys and our client IDs.
  */
 export async function POST(req: Request) {
-  let body: { idToken?: string; name?: string | null };
+  let body: { idToken?: string; name?: string | null; mode?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid sign-in data' }, { status: 400 }); }
   if (!body?.idToken) return NextResponse.json({ error: 'Missing Apple credential' }, { status: 400 });
   try {
-    const res = await backend('/auth/apple', { method: 'POST', body: { idToken: body.idToken, name: body.name || null } });
+    const res = await backend('/auth/apple', { method: 'POST', body: { idToken: body.idToken, name: body.name || null, mode: body.mode === 'signin' ? 'signin' : 'signup' } });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.token) return NextResponse.json({ error: data.error || 'Sign-in failed — please try again' }, { status: res.status || 401 });
+    if (!res.ok || !data.token) return NextResponse.json({ error: data.error || 'Sign-in failed — please try again', code: data.code }, { status: res.status || 401 });
     setSessionToken(data.token);
     return NextResponse.json({ account: data.account, profile: data.profile, created: !!data.created });
   } catch {

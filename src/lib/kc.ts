@@ -5,6 +5,9 @@
 
 export const BOT = process.env.NEXT_PUBLIC_TELEGRAM_BOT || 'kobocentbot';
 export const BOT_URL = `https://t.me/${BOT}`;
+/** Earn paused until after the app-store launch (founder, 2026-10-12). Mirrors the backend's src/features/yield/earnStatus.js —
+ *  flip both together. The Earn page itself reads `open` from the server. */
+export const EARN_OPEN = false;
 
 export interface Account {
   id: string;

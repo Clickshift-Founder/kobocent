@@ -1,13 +1,13 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { kc, KcError, clearProfile, type Account } from '@/lib/kc';
 import { setPinHandler, type PinCode } from '@/lib/pin';
 import { Sheet } from './ui';
 import { PinPad } from './PinPad';
 import { GoogleButton, googleEnabled } from './GoogleButton';
-import { IconCheck, IconShield, IconTelegram } from './Icons';
+import { IconCheck, IconShield } from './Icons';
+import { ConnectTelegram } from './ConnectTelegram';
 
 /**
  * App PIN + account-safety prompts (sign-in v2, founder 2026-10-05).
@@ -125,16 +125,9 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
               onLater={ask.reason === 'first' ? () => { set(sessionStorage, 'kc-pin-later', '1'); setAsk(null); } : undefined} />
           : <VerifyPin onDone={finishAsk} />}
       </Sheet>
-      <Sheet open={!!nudge} onClose={closeNudge} title={nudge === 'telegram' ? 'Connect Telegram' : 'Add a backup sign-in'}>
+      <Sheet open={!!nudge} onClose={closeNudge} title={nudge === 'telegram' ? 'Complete your registration' : 'Add a backup sign-in'}>
         {nudge === 'telegram' ? (
-          <div className="space-y-4">
-            <div className="flex gap-3 rounded-2xl bg-cream-warm dark:bg-night p-4 text-[14px] leading-relaxed">
-              <IconTelegram />
-              <span>Connect your Telegram so you <b>never lose access to your wallet</b> — and unlock <b>referral bonuses</b> and <b>$SHIFT points</b>, plus the Kobocent bot on the go.</span>
-            </div>
-            <Link href="/app/settings#telegram" onClick={closeNudge} className="btn-primary w-full">Connect Telegram</Link>
-            <button onClick={closeNudge} className="block w-full text-center text-[14px] muted min-h-[44px]">Not now</button>
-          </div>
+          <ConnectTelegram onLinked={() => { closeNudge(); load(); window.dispatchEvent(new Event('kc-security-changed')); }} onLater={closeNudge} />
         ) : (
           <div className="space-y-4">
             <div className="flex gap-3 rounded-2xl bg-cream-warm dark:bg-night p-4 text-[14px] leading-relaxed">

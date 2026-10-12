@@ -9,13 +9,13 @@ export const dynamic = 'force-dynamic';
  * The JWT never reaches the browser.
  */
 export async function POST(req: Request) {
-  let body: { credential?: string };
+  let body: { credential?: string; mode?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid sign-in data' }, { status: 400 }); }
   if (!body?.credential) return NextResponse.json({ error: 'Missing Google credential' }, { status: 400 });
   try {
-    const res = await backend('/auth/google', { method: 'POST', body: { credential: body.credential } });
+    const res = await backend('/auth/google', { method: 'POST', body: { credential: body.credential, mode: body.mode === 'signin' ? 'signin' : 'signup' } });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.token) return NextResponse.json({ error: data.error || 'Sign-in failed — please try again' }, { status: res.status || 401 });
+    if (!res.ok || !data.token) return NextResponse.json({ error: data.error || 'Sign-in failed — please try again', code: data.code }, { status: res.status || 401 });
     setSessionToken(data.token);
     return NextResponse.json({ account: data.account, profile: data.profile, created: !!data.created });
   } catch {

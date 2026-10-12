@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LogoLockup } from '@/components/ui/Logo';
@@ -8,84 +8,69 @@ import { TelegramLogin, type TelegramUser } from './TelegramLogin';
 import { GoogleButton, googleEnabled } from './GoogleButton';
 import { AppleButton, appleEnabled } from './AppleButton';
 import { IconShield, IconBolt, IconGift, IconCheck } from './Icons';
-import { saveProfile, BOT_URL, type Account } from '@/lib/kc';
+import { saveProfile, type Account } from '@/lib/kc';
 
 /**
- * Sign in / create account. One tap with Telegram: existing users land on their own wallet
- * and history (same account as the bot); new users get an account and Kobocent creates their wallets (import removed 2026-10-05).
- * Google sign-in (2026-10-05): the same account if Google was added, or a new account whose wallets work
- * at once (internal user number); connect Telegram later for referrals and $SHIFT. No phone number.
- *
- * First question (founder, 2026-10-06): "Have you used Kobocent on Telegram?"
- * Yes → Telegram only, so a bot user never makes a second, empty wallet with Google. No → Google first.
- * The answer is remembered on this device. (Backstop on the server: an empty Google account that later
- * connects an existing Telegram user is folded into it — identityV2.adoptIntoTelegram.)
+ * Sign in / Create account (founder, 2026-10-12): Google or Apple only.
+ *  - Create account (/signup): Google or Apple makes the account and its wallets.
+ *  - Sign in (/signin): Google or Apple finds the account. No account → nothing is created; the person is sent to
+ *    /signup?from=signin with a note, so a typo'd Google account never quietly makes a second, empty wallet.
+ * After either, the app asks the person to connect Telegram to complete registration (ConnectTelegram in
+ * SecurityProvider) — that is also how someone who used the bot before gets their old wallet: connecting the same
+ * Telegram folds the new, empty account into it (identityV2.adoptIntoTelegram).
+ * Telegram sign-in stays only as a fallback when neither Google nor Apple is configured.
  */
-const PATH_KEY = 'kc-signin-path';
+type AuthResult = { account?: Account; profile?: { firstName: string | null; photoUrl?: string | null }; error?: string; code?: string };
+
 export function AuthPanel({ mode }: { mode: 'signin' | 'signup' }) {
   const router = useRouter();
   const params = useSearchParams();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [path, setPath] = useState<null | 'telegram' | 'new'>(null);
-  useEffect(() => { try { const v = localStorage.getItem(PATH_KEY); if (v === 'telegram' || v === 'new') setPath(v); } catch { /* ignore */ } }, []);
-  const choose = (v: null | 'telegram' | 'new') => { setPath(v); try { if (v) localStorage.setItem(PATH_KEY, v); else localStorage.removeItem(PATH_KEY); } catch { /* ignore */ } };
-  const google = googleEnabled() || appleEnabled();
+  const google = googleEnabled(), apple = appleEnabled();
+  const fromSignin = mode === 'signup' && params.get('from') === 'signin';
+  const nextPath = () => { const n = params.get('next'); return n && n.startsWith('/app') ? n : '/app'; };
 
-  async function onAuth(user: TelegramUser) {
+  async function finish(url: string, body: Record<string, unknown>, photo: boolean) {
     setBusy(true);
     setError('');
     try {
-      const res = await fetch('/api/auth/telegram', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(user),
-      });
-      const data = (await res.json().catch(() => ({}))) as { account?: Account; error?: string };
+      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body, mode }) });
+      const data = (await res.json().catch(() => ({}))) as AuthResult;
+      if (res.status === 404 && data.code === 'NO_ACCOUNT') {
+        const n = params.get('next');
+        router.replace(`/signup?from=signin${n ? `&next=${encodeURIComponent(n)}` : ''}`);
+        return;
+      }
+      if (!res.ok || !data.account) throw new Error(data.error || 'Sign-in failed — please try again');
+      saveProfile({ firstName: data.profile?.firstName || data.account.displayName || null, username: null, photoUrl: photo ? data.profile?.photoUrl || null : null, telegramId: null });
+      router.replace(data.account.hasWallet === false ? '/app/setup' : nextPath());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Sign-in failed — please try again');
+      setBusy(false);
+    }
+  }
+  const onGoogle = (credential: string) => finish('/api/auth/google', { credential }, true);
+  const onApple = (idToken: string, name: string | null) => finish('/api/auth/apple', { idToken, name }, false);
+
+  // Fallback only: no Google or Apple configured on this deployment.
+  async function onTelegram(user: TelegramUser) {
+    setBusy(true);
+    setError('');
+    try {
+      const res = await fetch('/api/auth/telegram', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(user) });
+      const data = (await res.json().catch(() => ({}))) as AuthResult;
       if (!res.ok || !data.account) throw new Error(data.error || 'Sign-in failed — please try again');
       saveProfile({ firstName: user.first_name || null, username: user.username || null, photoUrl: user.photo_url || null, telegramId: user.id });
-      const next = params.get('next');
-      router.replace(data.account.hasWallet === false ? '/app/setup' : next && next.startsWith('/app') ? next : '/app');
+      router.replace(data.account.hasWallet === false ? '/app/setup' : nextPath());
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Sign-in failed — please try again');
       setBusy(false);
     }
   }
 
-  async function onGoogle(credential: string) {
-    setBusy(true);
-    setError('');
-    try {
-      const res = await fetch('/api/auth/google', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ credential }) });
-      const data = (await res.json().catch(() => ({}))) as { account?: Account; profile?: { firstName: string | null; photoUrl: string | null }; error?: string };
-      if (!res.ok || !data.account) throw new Error(data.error || 'Sign-in failed — please try again');
-      saveProfile({ firstName: data.profile?.firstName || data.account.displayName || null, username: null, photoUrl: data.profile?.photoUrl || null, telegramId: null });
-      const next = params.get('next');
-      router.replace(data.account.hasWallet === false ? '/app/setup' : next && next.startsWith('/app') ? next : '/app');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Sign-in failed — please try again');
-      setBusy(false);
-    }
-  }
-
-  // Sign in with Apple (App Store 4.8): same flow as Google, server-verified.
-  async function onApple(idToken: string, name: string | null) {
-    setBusy(true);
-    setError('');
-    try {
-      const res = await fetch('/api/auth/apple', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, name }) });
-      const data = (await res.json().catch(() => ({}))) as { account?: Account; profile?: { firstName: string | null }; error?: string };
-      if (!res.ok || !data.account) throw new Error(data.error || 'Sign-in failed — please try again');
-      saveProfile({ firstName: data.profile?.firstName || data.account.displayName || null, username: null, photoUrl: null, telegramId: null });
-      const next = params.get('next');
-      router.replace(data.account.hasWallet === false ? '/app/setup' : next && next.startsWith('/app') ? next : '/app');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Sign-in failed — please try again');
-      setBusy(false);
-    }
-  }
-
-  const heading = mode === 'signup' ? <>Your money, <span className="text-terracotta italic">both worlds</span></> : <>Welcome <span className="text-terracotta italic">back</span></>;
+  const signup = mode === 'signup';
+  const heading = signup ? <>Create your <span className="text-terracotta italic">account</span></> : <>Welcome <span className="text-terracotta italic">back</span></>;
 
   return (
     <div className="min-h-[100dvh] flex flex-col">
@@ -102,61 +87,31 @@ export function AuthPanel({ mode }: { mode: 'signin' | 'signup' }) {
 
       <main className="flex-1 container-page grid lg:grid-cols-2 gap-10 lg:gap-16 items-center pb-12">
         <section className="surface rounded-3xl p-6 sm:p-9 shadow-card w-full max-w-md mx-auto lg:order-2">
-          <div className="eyebrow mb-3">{mode === 'signup' ? 'Create your account' : 'Sign in'}</div>
+          <div className="eyebrow mb-3">{signup ? 'Create account' : 'Sign in'}</div>
           <h1 className="h-display text-[30px] sm:text-[36px] mb-3">{heading}</h1>
+
+          {fromSignin && (
+            <p role="status" className="mb-5 rounded-2xl bg-cream-warm dark:bg-night px-4 py-3 text-[14px] leading-relaxed">
+              There’s no Kobocent account for that sign-in yet. Create one below — it takes a few seconds.
+            </p>
+          )}
           <p className="muted text-[15px] leading-[1.7] mb-7">
-            {mode === 'signup'
-              ? 'One tap with Telegram or Google. Already use Kobocent in Telegram? You will see the same wallet, balance and history here.'
-              : 'Continue with Telegram or Google — the same account, wallet and history everywhere.'}
+            {signup ? 'One tap with Google or Apple. Your wallets are ready the moment you’re in.' : 'Continue with the Google or Apple account you signed up with.'}
           </p>
 
-          {google && path === null ? (
-            <div>
-              <p className="font-semibold text-ink dark:text-cream-warm text-[16px] mb-3">Have you used Kobocent on Telegram?</p>
-              <div className="grid gap-3">
-                <button onClick={() => choose('telegram')} className="surface rounded-2xl p-4 text-left min-h-[72px] flex items-center gap-3 hover:border-terracotta transition-colors">
-                  <span className="grid place-items-center h-11 w-11 shrink-0 rounded-2xl bg-[#229ED9]/12 text-[#229ED9]"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9.8 15.3 9.6 19c.4 0 .6-.2.8-.4l1.9-1.8 4 2.9c.7.4 1.3.2 1.5-.7l2.7-12.6c.3-1.1-.4-1.6-1.1-1.3L3.6 10.9c-1.1.4-1.1 1-.2 1.3l4.1 1.3 9.5-6c.4-.3.9-.1.6.2z" /></svg></span>
-                  <span><span className="block font-semibold text-ink dark:text-cream-warm">Yes, I use the bot</span><span className="block muted text-[13.5px]">Sign in with Telegram to see the same wallet and history</span></span>
-                </button>
-                <button onClick={() => choose('new')} className="surface rounded-2xl p-4 text-left min-h-[72px] flex items-center gap-3 hover:border-terracotta transition-colors">
-                  <span className="grid place-items-center h-11 w-11 shrink-0 rounded-2xl bg-terracotta-soft text-terracotta"><IconGift /></span>
-                  <span><span className="block font-semibold text-ink dark:text-cream-warm">No, I&apos;m new to Kobocent</span><span className="block muted text-[13.5px]">Start with Google or Telegram — it takes a few seconds</span></span>
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className={busy ? 'opacity-50 pointer-events-none' : ''}>
-              {google && path === 'telegram' && (
-                <div className="mb-4 rounded-2xl bg-cream-warm dark:bg-night p-4 text-[13.5px] leading-relaxed">
-                  Sign in with the <b>same Telegram account</b> you use with the bot — your wallet, balance and history are waiting. Please don&apos;t start with Google: that would create a new, empty wallet.
-                </div>
-              )}
-              {google && path === 'new' ? (
-                <>
-                  <GoogleButton onCredential={onGoogle} text={mode === 'signup' ? 'signup_with' : 'continue_with'} />
-                  {appleEnabled() && <div className="mt-3"><AppleButton onToken={onApple} /></div>}
-                  <div className="flex items-center gap-3 my-4 text-[12px] muted"><span className="h-px flex-1 bg-cream-border dark:bg-night-border" />or<span className="h-px flex-1 bg-cream-border dark:bg-night-border" /></div>
-                  <TelegramLogin onAuth={onAuth} />
-                </>
-              ) : (
-                <TelegramLogin onAuth={onAuth} />
-              )}
-              {google && (
-                <button onClick={() => choose(null)} className="mt-4 text-[13.5px] text-terracotta font-medium min-h-[44px]">
-                  {path === 'telegram' ? 'Not a bot user? Go back' : 'Already use the Telegram bot? Go back'}
-                </button>
-              )}
-            </div>
-          )}
-          {busy && <p className="text-center text-[14px] muted mt-4">Signing you in…</p>}
+          <div className={`grid gap-3 ${busy ? 'opacity-50 pointer-events-none' : ''}`}>
+            {google && <GoogleButton onCredential={onGoogle} text={signup ? 'signup_with' : 'signin_with'} />}
+            {apple && <AppleButton onToken={onApple} />}
+            {!google && !apple && <TelegramLogin onAuth={onTelegram} />}
+          </div>
+          {busy && <p className="text-center text-[14px] muted mt-4">{signup ? 'Creating your account…' : 'Signing you in…'}</p>}
           {error && <p role="alert" className="mt-4 rounded-xl bg-terracotta-soft text-terracotta-dark dark:text-terracotta-light px-4 py-3 text-[14px]">{error}</p>}
 
-          <div className="mt-7 pt-6 border-t border-cream-border dark:border-night-border space-y-3">
-            <p className="text-[13.5px] muted">
-              {googleEnabled() ? <>No Telegram? Continue with Google — you can connect Telegram later for referral bonuses and $SHIFT points.</> : <>No Telegram yet? <a href="https://telegram.org/apps" target="_blank" rel="noopener noreferrer" className="text-terracotta font-medium">Get it free</a> — it takes a minute.</>}
-            </p>
-            <p className="text-[13.5px] muted">
-              Prefer the bot? <a href={BOT_URL} target="_blank" rel="noopener noreferrer" className="text-terracotta font-medium">Open @kobocentbot</a>
+          <div className="mt-7 pt-6 border-t border-cream-border dark:border-night-border">
+            <p className="text-[14px] muted">
+              {signup
+                ? <>Already have an account? <Link href="/signin" className="text-terracotta font-semibold">Sign in</Link></>
+                : <>New to Kobocent? <Link href="/signup" className="text-terracotta font-semibold">Create an account</Link></>}
             </p>
           </div>
           <p className="mt-6 text-[12px] muted">

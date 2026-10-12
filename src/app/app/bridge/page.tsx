@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { kc, KcError, amount as fmt } from '@/lib/kc';
 import { PageHeader } from '@/components/app/PageHeader';
 import { Sheet, Skeleton } from '@/components/app/ui';
-import { IconBridge, IconChevron, IconCheck, IconBank, IconLeaf, IconSend, IconSwap } from '@/components/app/Icons';
+import { IconBridge, IconChevron, IconCheck, IconBank, IconSend, IconSwap, IconWallet } from '@/components/app/Icons';
 import { newKey, store, read, HoldToConfirm, Outcome } from '@/components/app/money';
 
 /**
@@ -397,8 +397,8 @@ function Tracker({ orderId, onFinish }: { orderId: string; onFinish: () => void 
         <div className="mt-6">
           <div className="text-[13px] muted mb-2 text-center">What next?</div>
           <div className="grid grid-cols-2 gap-2">
-            {[{ href: '/app/withdraw', label: 'Withdraw to bank', Icon: IconBank }, { href: '/app/earn', label: 'Earn on it', Icon: IconLeaf },
-              { href: '/app/send', label: 'Send to bank', Icon: IconSend }, { href: '/app/swap', label: 'Swap', Icon: IconSwap }].map(a => (
+            {[{ href: '/app/withdraw', label: 'Withdraw to bank', Icon: IconBank }, { href: '/app/swap', label: 'Swap', Icon: IconSwap },
+              { href: '/app/send', label: 'Send to bank', Icon: IconSend }, { href: '/app/send-wallet', label: 'Send to wallet', Icon: IconWallet }].map(a => (
               <Link key={a.href} href={a.href} onClick={onFinish} className="surface rounded-2xl min-h-[56px] flex items-center justify-center gap-2 text-[14px] font-semibold text-ink dark:text-cream-warm border border-cream-border dark:border-night-border"><a.Icon size={18} />{a.label}</Link>
             ))}
           </div>

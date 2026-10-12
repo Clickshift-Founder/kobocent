@@ -17,7 +17,7 @@ import { newKey, store, read, HoldToConfirm, Outcome } from '@/components/app/mo
 type Asset = 'USDC' | 'USDT' | 'SOL';
 interface Plan { id: string; name: string; apy: number; lockDays: number; minAmount: number }
 interface Position { id: number; ref: string; asset: Asset; amount: number; apy: number; planName: string; lockDays: number; depositedAt: number | null; unlockAt: number | null; earned: number; perSecond: number; withdrawable: boolean }
-interface Overview { plans: Plan[]; positions: Position[]; totals: Partial<Record<Asset, { staked: number; earned: number; perSecond: number }>>; asOf: number; balances: { USDC: number; USDT: number; SOL: number | null } }
+interface Overview { open?: boolean; plans: Plan[]; positions: Position[]; totals: Partial<Record<Asset, { staked: number; earned: number; perSecond: number }>>; asOf: number; balances: { USDC: number; USDT: number; SOL: number | null } }
 interface JobResult { ok: boolean; code?: string; error?: string; signature?: string | null; ref?: string; unlockAt?: number | null; asset?: Asset; amount?: number; returned?: number | null; earned?: number; principal?: number | null }
 interface Job { id: string; status: 'running' | 'done'; stage: string; meta: { kind: 'deposit' | 'withdraw'; asset?: Asset; amount?: number; depositId?: number }; result: JobResult | null }
 
@@ -65,15 +65,20 @@ export default function EarnPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Earn" subtitle="Put idle stablecoins to work. Earnings build every hour." />
+      <PageHeader title="Earn" subtitle={data?.open === false ? 'Paused for now' : 'Put idle stablecoins to work. Earnings build every hour.'} />
       {jobId ? (
         <EarnProgress jobId={jobId} onFinish={() => { store(JOB_KEY, null); setJobId(null); load(); }} />
       ) : error ? <div className="surface rounded-2xl p-5 text-[15px]">{error}</div>
         : !data ? <div className="space-y-3"><Skeleton className="h-44" /><Skeleton className="h-24" /><Skeleton className="h-24" /></div> : (
         <div className="space-y-6 animate-fade-up">
-          <Hero data={data} />
+          {data.open === false ? (
+            <div className="surface rounded-3xl p-6">
+              <div className="font-display text-[20px] font-bold text-ink dark:text-cream-warm">Earn is paused for now</div>
+              <p className="muted text-[15px] mt-2 leading-relaxed">We’re not taking new deposits at the moment — Earn will be back soon. {data.positions.length > 0 ? 'Your positions below keep earning, and you can withdraw them as usual.' : 'Meanwhile, your stablecoins stay safe in your wallet.'}</p>
+            </div>
+          ) : <Hero data={data} />}
 
-          <section>
+          {data.open !== false && <section>
             <h2 className="font-display text-[18px] font-bold text-ink dark:text-cream-warm mb-3">Plans</h2>
             <div className="grid gap-3 sm:grid-cols-2">
               {data.plans.map(p => (
@@ -96,7 +101,7 @@ export default function EarnPage() {
               ))}
             </div>
             <p className="muted text-[12.5px] mt-3">Rates are what each plan pays today and can change. Earnings are added every hour; you get your stake plus earnings back when you withdraw.</p>
-          </section>
+          </section>}
 
           {data.positions.length > 0 && (
             <section>
