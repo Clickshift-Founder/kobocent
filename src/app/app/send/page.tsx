@@ -23,7 +23,7 @@ interface Quote { amountNgn: number; totalUsd: number; feeUsd: number; rate: num
 interface Job { id: string; status: 'running' | 'done'; stage: string; meta: { amountNgn: number }; result: null | { ok: boolean; code: string | null; error: string | null; reference: string | null; amountNgn: number; recipientName: string | null; recipientBank: string | null; funding?: JobFunding | null } }
 
 const JOB_KEY = 'kc-send-job';
-const SUPPORT_URL = 'https://t.me/ClickShiftAlerts';
+const SUPPORT_URL = 'https://t.me/kobocentbot';   // support = Kobo Pal → Talk to a person
 
 export default function SendPage() {
   const [recipients, setRecipients] = useState<Recipient[] | null>(null);

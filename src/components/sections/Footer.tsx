@@ -18,10 +18,10 @@ const COLS = [
   {
     title: 'Company',
     links: [
-      { label: 'ClickShift', href: 'https://clickshift.io' },
-      { label: 'Community', href: 'https://t.me/ClickShiftAlerts' },
-      { label: 'Privacy & Terms', href: 'https://api.clickshift.io/legal' },
-      { label: 'support@clickshift.io', href: 'mailto:support@clickshift.io' },
+      { label: 'Support', href: `https://t.me/${BOT}` },
+      { label: 'Privacy & Terms', href: '/legal' },
+      { label: 'Delete my account', href: '/delete-account' },
+      { label: 'support@kobocent.com', href: 'mailto:support@kobocent.com' },
     ],
   },
   {
@@ -45,11 +45,7 @@ export function Footer() {
               Your local kobo, working globally. Buy stablecoins with local currency, send across
               borders, pay bills, withdraw to any bank, trade and earn — in one account.
             </p>
-            <p className="mt-3 text-[12.5px] muted max-w-[300px]">
-              Formerly <strong className="font-semibold">ClickBot</strong> — same team, same wallets,
-              same balances. Built by{' '}
-              <a href="https://clickshift.io" className="text-terracotta hover:underline">ClickShift</a>.
-            </p>
+            <p className="mt-3 text-[12.5px] muted max-w-[300px]">Multichain, powered by stablecoins.</p>
             <div className="mt-5"><ThemeToggle /></div>
           </div>
 

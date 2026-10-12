@@ -90,6 +90,7 @@ const ALLOWED: Record<string, Array<'GET' | 'POST'>> = {
   'trade/protect/cancel': ['POST'],
   'trade/dca': ['POST'],
   'trade/dca/cancel': ['POST'],
+  'account/delete': ['GET', 'POST'],   // App Store / Google Play: delete from inside the app (2026-10-12)
   // BNB Chain trading (2026-10-11)
   'trade/bnb': ['GET'],
   'trade/bnb/search': ['GET'],

@@ -6,7 +6,6 @@ export const FAQ: FaqGroup[] = [
     group: 'Getting started',
     items: [
       { q: 'What exactly is Kobocent?', a: 'A financial account that runs on stablecoin rails. You can buy stablecoins with your local currency, send money to another country, pay bills at home, withdraw to a bank account, trade, and earn on what you are not using. It works on Telegram today and on the web as we roll the web app out.' },
-      { q: 'Is this the same thing as ClickBot?', a: 'Yes. Kobocent is ClickBot, renamed. Same team, same wallets, same balances, same company (ClickShift Inc.). The old name described a trading bot, and the product outgrew that — it now handles payments, transfers, bills and savings as well as trading. Nothing was reset and nothing was lost in the rename.' },
       { q: 'Do I need to already own crypto?', a: 'No. Most people start by transferring their local currency from a normal bank account, which becomes a stablecoin balance you can use immediately. If you already hold crypto, you can bring that in instead.' },
       { q: 'Do I need to understand blockchains to use this?', a: 'No. The stablecoin and the network underneath are plumbing. You see a balance, you send it somewhere, it arrives. Everything technical is handled for you, including the network fees.' },
       { q: 'Is there a way to try it without risking money?', a: 'Yes. Practice mode gives you virtual funds — $100, 1 SOL and ₦50,000 — so you can walk through every feature with nothing at stake before you fund anything real.' },
@@ -60,7 +59,7 @@ export const FAQ: FaqGroup[] = [
       { q: 'Do Telegram and the web app share one account?', a: 'Yes, that is the whole point. One account, one balance, one history. Start something in one and finish it in the other.' },
       { q: 'I already use the Telegram bot. Do I need a new account for the web?', a: 'No. You link the two with a one-time code, and they become the same account. Your balance and history carry over — there is nothing to migrate manually.' },
       { q: 'I signed up on the web first. Do I need to do anything for Telegram?', a: 'Only if you want to use Telegram too. If you do, generate a link code in the web app and send it to the bot once. Otherwise the web app works on its own.' },
-      { q: 'Why is the bot handle changing?', a: 'The rename from ClickBot to Kobocent means a new bot, @kobocentbot, because Telegram does not allow a bot username to be changed once taken. Both bots run against the same backend during the transition, so your account works identically on either one while you move across.' },
+      { q: 'I use @clicksolbot — is that the same account?', a: 'Yes. @clicksolbot is an older Kobocent bot handle. It runs on the same backend as @kobocentbot, so your wallet, balance, history and referral link work identically on either one. We recommend @kobocentbot.' },
       { q: 'Can I install this like a normal app?', a: 'Yes. Tap Download app and it installs to your home screen straight from the browser — no app store needed. Native iOS and Android apps are coming.' },
       { q: 'Is a debit card coming?', a: 'It is on the roadmap. The intent is that you hold stablecoins and spend in local currency wherever cards are accepted. We will announce it properly when it is real rather than promise a date now.' },
     ],

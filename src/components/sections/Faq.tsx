@@ -63,10 +63,10 @@ export function Faq() {
 
       <p className="mt-9 text-center text-[13.5px] muted">
         Still stuck?{' '}
-        <a href="https://t.me/ClickShiftAlerts" target="_blank" rel="noopener noreferrer" className="text-terracotta font-semibold hover:underline">
-          Ask in the community
+        <a href="https://t.me/kobocentbot" target="_blank" rel="noopener noreferrer" className="text-terracotta font-semibold hover:underline">
+          Ask Kobo Pal — or tap “Talk to a person”
         </a>{' '}
-        — a real person will answer.
+        — a real person from our team will answer.
       </p>
     </Section>
   );

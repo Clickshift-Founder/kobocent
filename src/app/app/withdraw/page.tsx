@@ -37,7 +37,7 @@ interface Job {
 type Screen = 'loading' | 'bank' | 'amount' | 'progress';
 
 const JOB_KEY = 'kc-withdraw-job';
-const SUPPORT_URL = 'https://t.me/ClickShiftAlerts';
+const SUPPORT_URL = 'https://t.me/kobocentbot';   // support = Kobo Pal → Talk to a person
 
 export default function WithdrawPage() {
   const [screen, setScreen] = useState<Screen>('loading');

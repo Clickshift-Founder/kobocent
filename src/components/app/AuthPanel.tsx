@@ -15,7 +15,7 @@ import { saveProfile, BOT_URL, type Account } from '@/lib/kc';
  * Google sign-in (2026-10-05): the same account if Google was added, or a new account whose wallets work
  * at once (internal user number); connect Telegram later for referrals and $SHIFT. No phone number.
  *
- * First question (founder, 2026-10-06): "Have you used Kobocent (formerly ClickBot) on Telegram?"
+ * First question (founder, 2026-10-06): "Have you used Kobocent on Telegram?"
  * Yes → Telegram only, so a bot user never makes a second, empty wallet with Google. No → Google first.
  * The answer is remembered on this device. (Backstop on the server: an empty Google account that later
  * connects an existing Telegram user is folded into it — identityV2.adoptIntoTelegram.)
@@ -94,7 +94,7 @@ export function AuthPanel({ mode }: { mode: 'signin' | 'signup' }) {
 
           {google && path === null ? (
             <div>
-              <p className="font-semibold text-ink dark:text-cream-warm text-[16px] mb-3">Have you used Kobocent (formerly ClickBot) on Telegram?</p>
+              <p className="font-semibold text-ink dark:text-cream-warm text-[16px] mb-3">Have you used Kobocent on Telegram?</p>
               <div className="grid gap-3">
                 <button onClick={() => choose('telegram')} className="surface rounded-2xl p-4 text-left min-h-[72px] flex items-center gap-3 hover:border-terracotta transition-colors">
                   <span className="grid place-items-center h-11 w-11 shrink-0 rounded-2xl bg-[#229ED9]/12 text-[#229ED9]"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9.8 15.3 9.6 19c.4 0 .6-.2.8-.4l1.9-1.8 4 2.9c.7.4 1.3.2 1.5-.7l2.7-12.6c.3-1.1-.4-1.6-1.1-1.3L3.6 10.9c-1.1.4-1.1 1-.2 1.3l4.1 1.3 9.5-6c.4-.3.9-.1.6.2z" /></svg></span>
@@ -141,7 +141,7 @@ export function AuthPanel({ mode }: { mode: 'signin' | 'signup' }) {
             </p>
           </div>
           <p className="mt-6 text-[12px] muted">
-            By continuing you agree to our <a href="https://api.clickshift.io/legal" target="_blank" rel="noopener noreferrer" className="underline">terms and privacy policy</a>.
+            By continuing you agree to our <a href="https://kobocent.com/legal" target="_blank" rel="noopener noreferrer" className="underline">terms and privacy policy</a>.
           </p>
         </section>
 

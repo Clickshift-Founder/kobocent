@@ -57,7 +57,7 @@ function RecentRow({ items, onPick, label }: { items: RecentItem[]; onPick: (r: 
 const PayFromCtx = createContext<{ pf: PayFromState; setNeedUsd: (n: number) => void } | null>(null);
 
 const JOB_KEY = 'kc-bills-job';
-const SUPPORT_URL = 'https://t.me/ClickShiftAlerts';
+const SUPPORT_URL = 'https://t.me/kobocentbot';   // support = Kobo Pal → Talk to a person
 // Telco colours only identify the network at a glance.
 const NETWORK: Record<string, { label: string; bg: string; fg: string }> = {
   mtn: { label: 'MTN', bg: '#FFCB05', fg: '#1A1A1A' },
