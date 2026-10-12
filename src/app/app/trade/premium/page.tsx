@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/app/ui';
 import { IconCheck, IconBolt, IconChart, IconShield, IconTrophy } from '@/components/app/Icons';
 import { SubscribeSheet, StatusPill, dateLabel, type Hub, type Product, type ProductId } from '@/components/app/premium';
 import { CopyPanel } from '@/components/app/CopyPanel';
+import { isIOSApp } from '@/lib/platform';
 import { SniperPanel } from '@/components/app/SniperPanel';
 import { AlertsPanel, TrackLine } from '@/components/app/AlertsPanel';
 
@@ -133,6 +134,7 @@ export default function PremiumPage() {
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-2">
                   {inPro ? <span className="grid place-items-center rounded-2xl bg-cream-warm dark:bg-night text-[14px] font-semibold text-[#58834C] min-h-[48px]">Included in Pro</span>
+                    : isIOSApp() ? <span className="grid place-items-center rounded-2xl bg-cream-warm dark:bg-night text-[13px] muted min-h-[48px] px-2 text-center">{s.active ? 'Active' : 'Coming soon in the app'}</span>
                     : <button onClick={() => setSub(p)} className="btn-primary">{s.active ? 'Renew' : `Get ${p.name}`}</button>}
                   <button onClick={() => pickTab(p.id === 'copy' || isPro ? 'copy' : p.id === 'sniper' ? 'sniper' : 'plans')} className="btn-ghost" disabled={p.id === 'ultra'}>
                     {p.id === 'ultra' ? 'Use on any trade' : p.id === 'copy' || isPro ? 'See wallets' : 'Open Sniper'}

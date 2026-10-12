@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import { kc, loadProfile, referralLink, BOT_URL, amount, usd, dayLabel } from '@/lib/kc';
+import { isIOSApp } from '@/lib/platform';
 import { PageHeader } from '@/components/app/PageHeader';
 import { Skeleton, EmptyState, CopyButton } from '@/components/app/ui';
 import { IconTrophy, IconBolt, IconBank, IconChart, IconGift, IconTelegram, IconLeaf } from '@/components/app/Icons';
@@ -179,7 +180,7 @@ export default function RewardsPage() {
           )}
 
           {/* Referrals: points unlock when each friend trades */}
-          {data.referrals && (
+          {data.referrals && !isIOSApp() && (
             <section className="surface rounded-3xl p-5 sm:p-6">
               <div className="flex items-center gap-2 text-terracotta"><IconGift size={18} /><span className="text-[13px] font-semibold uppercase tracking-wide">Your referrals</span></div>
               {data.referrals.invited === 0 ? (
@@ -287,7 +288,7 @@ export default function RewardsPage() {
 
           <section className="flex flex-col sm:flex-row gap-3">
             <a href={BOT_URL} target="_blank" rel="noopener noreferrer" className="btn-primary flex-1"><IconTelegram />Earn now on Telegram</a>
-            {ref && <CopyButton value={ref} label="Copy invite link" />}
+            {ref && !isIOSApp() && <CopyButton value={ref} label="Copy invite link" />}
           </section>
 
           <p className="text-[12.5px] muted leading-relaxed">

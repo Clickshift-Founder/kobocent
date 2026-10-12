@@ -6,6 +6,7 @@ import { LogoLockup } from '@/components/ui/Logo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { TelegramLogin, type TelegramUser } from './TelegramLogin';
 import { GoogleButton, googleEnabled } from './GoogleButton';
+import { AppleButton, appleEnabled } from './AppleButton';
 import { IconShield, IconBolt, IconGift, IconCheck } from './Icons';
 import { saveProfile, BOT_URL, type Account } from '@/lib/kc';
 
@@ -29,7 +30,7 @@ export function AuthPanel({ mode }: { mode: 'signin' | 'signup' }) {
   const [path, setPath] = useState<null | 'telegram' | 'new'>(null);
   useEffect(() => { try { const v = localStorage.getItem(PATH_KEY); if (v === 'telegram' || v === 'new') setPath(v); } catch { /* ignore */ } }, []);
   const choose = (v: null | 'telegram' | 'new') => { setPath(v); try { if (v) localStorage.setItem(PATH_KEY, v); else localStorage.removeItem(PATH_KEY); } catch { /* ignore */ } };
-  const google = googleEnabled();
+  const google = googleEnabled() || appleEnabled();
 
   async function onAuth(user: TelegramUser) {
     setBusy(true);
@@ -59,6 +60,23 @@ export function AuthPanel({ mode }: { mode: 'signin' | 'signup' }) {
       const data = (await res.json().catch(() => ({}))) as { account?: Account; profile?: { firstName: string | null; photoUrl: string | null }; error?: string };
       if (!res.ok || !data.account) throw new Error(data.error || 'Sign-in failed — please try again');
       saveProfile({ firstName: data.profile?.firstName || data.account.displayName || null, username: null, photoUrl: data.profile?.photoUrl || null, telegramId: null });
+      const next = params.get('next');
+      router.replace(data.account.hasWallet === false ? '/app/setup' : next && next.startsWith('/app') ? next : '/app');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Sign-in failed — please try again');
+      setBusy(false);
+    }
+  }
+
+  // Sign in with Apple (App Store 4.8): same flow as Google, server-verified.
+  async function onApple(idToken: string, name: string | null) {
+    setBusy(true);
+    setError('');
+    try {
+      const res = await fetch('/api/auth/apple', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, name }) });
+      const data = (await res.json().catch(() => ({}))) as { account?: Account; profile?: { firstName: string | null }; error?: string };
+      if (!res.ok || !data.account) throw new Error(data.error || 'Sign-in failed — please try again');
+      saveProfile({ firstName: data.profile?.firstName || data.account.displayName || null, username: null, photoUrl: null, telegramId: null });
       const next = params.get('next');
       router.replace(data.account.hasWallet === false ? '/app/setup' : next && next.startsWith('/app') ? next : '/app');
     } catch (e) {
@@ -116,6 +134,7 @@ export function AuthPanel({ mode }: { mode: 'signin' | 'signup' }) {
               {google && path === 'new' ? (
                 <>
                   <GoogleButton onCredential={onGoogle} text={mode === 'signup' ? 'signup_with' : 'continue_with'} />
+                  {appleEnabled() && <div className="mt-3"><AppleButton onToken={onApple} /></div>}
                   <div className="flex items-center gap-3 my-4 text-[12px] muted"><span className="h-px flex-1 bg-cream-border dark:bg-night-border" />or<span className="h-px flex-1 bg-cream-border dark:bg-night-border" /></div>
                   <TelegramLogin onAuth={onAuth} />
                 </>
