@@ -24,9 +24,12 @@ export function TrackLine({ s }: { s: TrackSummary }) {
 
 export function AlertsPanel({ hub, onSubscribe }: { hub: Hub | null; onSubscribe: () => void }) {
   const [a, setA] = useState<Alerts | null>(null);
+  // Solana or BNB Chain (2026-10-12): the same feed shape from /premium/alerts and /trade/bnb/alerts
+  const [chain, setChain] = useState<'SOLANA' | 'BNB'>('SOLANA');
+  const tokenHref = (mint: string) => (chain === 'BNB' ? `/app/trade/bnb/${mint}` : `/app/trade/${mint}`);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
-  const load = useCallback(() => kc<Alerts>('premium/alerts').then(r => { setA(r); setErr(''); }).catch(e => setErr(e instanceof Error ? e.message : 'Could not load alerts')), []);
+  const load = useCallback(() => kc<Alerts>(chain === 'BNB' ? 'trade/bnb/alerts' : 'premium/alerts').then(r => { setA(r); setErr(''); }).catch(e => setErr(e instanceof Error ? e.message : 'Could not load alerts')), [chain]);
   useEffect(() => { load(); const t = window.setInterval(() => { if (document.visibilityState === 'visible') load(); }, 30_000); return () => window.clearInterval(t); }, [load]);
 
   async function toggle() {
@@ -42,6 +45,12 @@ export function AlertsPanel({ hub, onSubscribe }: { hub: Hub | null; onSubscribe
 
   return (
     <div className="space-y-5">
+      <div className="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-cream-warm dark:bg-night-card" role="tablist">
+        {([['SOLANA', 'Solana'], ['BNB', 'BNB Chain']] as const).map(([k, l]) => (
+          <button key={k} role="tab" aria-selected={chain === k} onClick={() => { setA(null); setChain(k); }}
+            className={`min-h-[44px] rounded-xl text-[14px] font-semibold ${chain === k ? 'bg-white dark:bg-night text-ink dark:text-cream-warm shadow-sm' : 'muted'}`}>{l}</button>
+        ))}
+      </div>
       <section className="rounded-3xl p-5 text-white bg-ink dark:bg-night-card relative overflow-hidden">
         <div className="absolute -right-16 -top-16 h-44 w-44 rounded-full bg-terracotta/30 blur-3xl" aria-hidden />
         <div className="relative">
@@ -76,7 +85,7 @@ export function AlertsPanel({ hub, onSubscribe }: { hub: Hub | null; onSubscribe
           <ul className="surface rounded-2xl divide-y divide-cream-border dark:divide-night-border px-4">
             {a.buyingNow.map(b => (
               <li key={b.mint}>
-                <Link href={`/app/trade/${b.mint}`} className="flex items-center gap-3 py-3 min-h-[60px]">
+                <Link href={tokenHref(b.mint)} className="flex items-center gap-3 py-3 min-h-[60px]">
                   <div className="min-w-0 flex-1">
                     <div className="font-semibold text-[15px] text-ink dark:text-cream-warm">{b.symbol}</div>
                     <div className="text-[12.5px] muted">{b.wallets} wallets · {compact(b.volumeUsd)} · {ago(b.lastAt)}</div>
@@ -104,7 +113,7 @@ export function AlertsPanel({ hub, onSubscribe }: { hub: Hub | null; onSubscribe
               </li>
             ) : (
               <li key={x.id}>
-                <Link href={`/app/trade/${x.mint}`} className="surface rounded-2xl p-3.5 flex items-center gap-3 hover:border-terracotta transition-colors min-h-[68px]">
+                <Link href={tokenHref(x.mint as string)} className="surface rounded-2xl p-3.5 flex items-center gap-3 hover:border-terracotta transition-colors min-h-[68px]">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-[15px] text-ink dark:text-cream-warm truncate">{x.symbol}</span>

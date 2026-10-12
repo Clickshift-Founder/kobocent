@@ -95,6 +95,8 @@ const ALLOWED: Record<string, Array<'GET' | 'POST'>> = {
   'trade/bnb': ['GET'],
   'trade/bnb/search': ['GET'],
   'trade/bnb/trending': ['GET'],
+  'trade/bnb/alpha': ['GET'],
+  'trade/bnb/alerts': ['GET'],
   'trade/bnb/quote': ['POST'],
   'trade/bnb/execute': ['POST'],
   'trade/bnb/strategies': ['GET'],

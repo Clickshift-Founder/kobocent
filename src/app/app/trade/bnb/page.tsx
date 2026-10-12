@@ -8,6 +8,7 @@ import { Skeleton, EmptyState } from '@/components/app/ui';
 import { IconClose } from '@/components/app/Icons';
 import { useLiveRefresh } from '@/lib/useLiveRefresh';
 import { useStrategies, StrategyRow, BnbCopySheet } from '@/components/app/BnbAutomation';
+import { BnbAlpha } from '@/components/app/BnbAlpha';
 import { price, compact, signedUsd, pct, tokenAmount, PnlPill, pnlColor, TokenAvatar, ChainSwitch, rememberChain, readCache, writeCache, type ChainOption } from '@/components/app/trade';
 
 /**
@@ -34,6 +35,7 @@ export default function BnbTradePage() {
   const [trend, setTrend] = useState<Trend[] | null>(null);
   const strat = useStrategies();
   const [copyOpen, setCopyOpen] = useState(false);
+  const [copyPick, setCopyPick] = useState<{ wallet: string; alias: string } | null>(null);
   const load = useCallback(() => kc<Home>('trade/bnb').then(d => { setData(d); setError(''); writeCache('bnb-home', d); })
     .catch(e => setError(e instanceof KcError && e.status === 409 ? 'Your account has no 0x wallet yet — open Receive to create it.' : e instanceof Error ? e.message : 'Could not load BNB Chain')), []);
   useEffect(() => {
@@ -134,13 +136,14 @@ export default function BnbTradePage() {
             <div className="font-semibold text-[15px] text-ink dark:text-cream-warm">Copy a BNB Chain wallet</div>
             <div className="text-[13px] muted">Paste any 0x wallet — when it buys or sells, you do too.</div>
           </button>
+          <BnbAlpha onCopy={(wallet, alias) => { setCopyPick({ wallet, alias }); setCopyOpen(true); }} />
           {!strat.list ? <Skeleton className="h-20" /> : strat.list.length === 0 ? (
             <EmptyState title="Nothing automated yet" body="Open any token to protect it (take profit, stop loss, trailing), buy it at a price, or DCA into it — or copy a wallet above." />
           ) : <ul className="space-y-2">{strat.list.map(s => <StrategyRow key={s.id} s={s} onChange={strat.load} />)}</ul>}
           <p className="text-[12px] muted">Everything here runs 24/7 on our servers and notifies you when it trades.</p>
         </div>
       )}
-      <BnbCopySheet open={copyOpen} onClose={() => setCopyOpen(false)} onDone={strat.load} />
+      <BnbCopySheet open={copyOpen} onClose={() => { setCopyOpen(false); setCopyPick(null); }} onDone={strat.load} initialWallet={copyPick?.wallet} initialAlias={copyPick?.alias} />
 
       {tab === 'closed' && (!data ? <Skeleton className="h-20" /> : data.closed.length === 0 ? <EmptyState title="No closed trades yet" body="Tokens you’ve fully sold on BNB Chain show here with what you made or lost." /> : (
         <ul className="surface rounded-2xl divide-y divide-cream-border dark:divide-night-border px-4">

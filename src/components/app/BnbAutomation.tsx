@@ -174,7 +174,7 @@ export function BnbAutomationPanel({ token, symbol, held, priceUsd, onChange }: 
 }
 
 /** Copy any BNB Chain wallet (sheet). */
-export function BnbCopySheet({ open, onClose, onDone }: { open: boolean; onClose: () => void; onDone: () => void }) {
+export function BnbCopySheet({ open, onClose, onDone, initialWallet = '', initialAlias = '' }: { open: boolean; onClose: () => void; onDone: () => void; initialWallet?: string; initialAlias?: string }) {
   const [wallet, setWallet] = useState('');
   const [alias, setAlias] = useState('');
   const [amt, setAmt] = useState(10);
@@ -182,7 +182,7 @@ export function BnbCopySheet({ open, onClose, onDone }: { open: boolean; onClose
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [msg, setMsg] = useState('');
-  useEffect(() => { if (open) { setErr(''); setMsg(''); setBusy(false); } }, [open]);
+  useEffect(() => { if (open) { setErr(''); setMsg(''); setBusy(false); if (initialWallet) { setWallet(initialWallet); setAlias(initialAlias); } } }, [open, initialWallet, initialAlias]);
   const valid = /^0x[0-9a-fA-F]{40}$/.test(wallet.trim());
   async function go() {
     setBusy(true); setErr('');
