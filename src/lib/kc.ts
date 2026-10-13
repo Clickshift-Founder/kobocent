@@ -2,12 +2,16 @@
  * Client helpers for the signed-in app. Every call goes to our own /api/kc proxy
  * (src/app/api/kc), never to the backend directly. Shapes mirror ../clickbot/API.md.
  */
+import { nativePlatform } from './platform';
 
 export const BOT = process.env.NEXT_PUBLIC_TELEGRAM_BOT || 'kobocentbot';
 export const BOT_URL = `https://t.me/${BOT}`;
-/** Earn paused until after the app-store launch (founder, 2026-10-12). Mirrors the backend's src/features/yield/earnStatus.js —
- *  flip both together. The Earn page itself reads `open` from the server. */
-export const EARN_OPEN = false;
+/** Earn: on for the web, off inside the iOS / Android apps until after launch (founder, 2026-10-13). Mirrors the backend's
+ *  src/features/yield/earnStatus.js — change both together. The Earn page itself reads `open` from the server. */
+export const EARN_OPEN = true;
+export const EARN_IN_APPS = false;
+/** Whether to show Earn entry points here (call in an effect or event — it reads window). */
+export const earnShown = () => EARN_OPEN && (EARN_IN_APPS || !nativePlatform());
 
 export interface Account {
   id: string;
@@ -91,9 +95,10 @@ export class KcError extends Error {
 
 export async function kc<T>(path: string, init: { method?: 'GET' | 'POST'; body?: unknown; headers?: Record<string, string> } = {}): Promise<T> {
   const { requestPinToken } = await import('./pin');
+  const app = nativePlatform();   // the iOS / Android shell tells the server where it runs (store-rule differences, e.g. Earn)
   const res = await fetch(`/api/kc/${path.replace(/^\//, '')}`, {
     method: init.method || 'GET',
-    headers: { ...(init.body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...(init.headers || {}) },
+    headers: { ...(init.body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...(app ? { 'X-Kc-App': app } : {}), ...(init.headers || {}) },
     body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
     cache: 'no-store',
   });

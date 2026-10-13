@@ -1,0 +1,97 @@
+# Kobocent iOS + Android builds on Codemagic (2026-10-13). The apps live in mobile/ (Capacitor, loads kobocent.com/app).
+# The native projects are generated fresh on every build and configured by mobile/scripts/*, so nothing here needs a Mac.
+# Set-up steps (accounts, keys, the groups below): mobile/README.md → "Codemagic".
+workflows:
+  ios-testflight:
+    name: iOS → TestFlight
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    working_directory: mobile
+    integrations:
+      app_store_connect: Kobocent App Store Connect      # the API key's name in Codemagic → Team integrations
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.kobocent.app
+      groups:
+        - kobocent_ios            # GOOGLE_IOS_URL_SCHEME, APP_STORE_APPLE_ID
+      vars:
+        APP_VERSION: "1.0.0"
+      node: 20
+      xcode: latest
+      cocoapods: default
+    triggering:
+      events: [tag]
+      tag_patterns:
+        - pattern: 'ios-*'
+    scripts:
+      - name: Install
+        script: npm install
+      - name: Generate the iOS project
+        script: |
+          rm -rf ios
+          npx cap add ios
+      - name: Icons and splash
+        script: npx capacitor-assets generate --ios --iconBackgroundColor '#F7F3EE' --splashBackgroundColor '#F7F3EE' --splashBackgroundColorDark '#1C1815'
+      - name: Build number
+        script: |
+          LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" || echo 0)
+          echo "IOS_BUILD=$((LATEST + 1))" >> $CM_ENV
+      - name: Configure (entitlements, Info.plist, version)
+        script: |
+          gem list -i xcodeproj >/dev/null || gem install xcodeproj --no-document
+          ruby scripts/ios-setup.rb
+      - name: Sync
+        script: npx cap sync ios
+      - name: Signing
+        script: xcode-project use-profiles
+      - name: Build
+        script: xcode-project build-ipa --workspace ios/App/App.xcworkspace --scheme App
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+
+  android-play:
+    name: Android → Play (internal testing)
+    max_build_duration: 45
+    instance_type: linux_x2
+    working_directory: mobile
+    environment:
+      android_signing:
+        - kobocent_upload_key     # the upload keystore's reference name in Codemagic
+      groups:
+        - kobocent_android        # GCLOUD_SERVICE_ACCOUNT_CREDENTIALS (Play publishing)
+      vars:
+        APP_VERSION: "1.0.0"
+      node: 20
+      java: 21
+    triggering:
+      events: [tag]
+      tag_patterns:
+        - pattern: 'android-*'
+    scripts:
+      - name: Install
+        script: npm install
+      - name: Generate the Android project
+        script: |
+          rm -rf android
+          npx cap add android
+      - name: Icons and splash
+        script: npx capacitor-assets generate --android --iconBackgroundColor '#F7F3EE' --splashBackgroundColor '#F7F3EE' --splashBackgroundColorDark '#1C1815'
+      - name: Configure (signing, version)
+        script: bash scripts/android-setup.sh
+      - name: Sync
+        script: npx cap sync android
+      - name: Build the app bundle
+        script: cd android && ./gradlew bundleRelease
+    artifacts:
+      - android/app/build/outputs/**/*.aab
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal
+        submit_as_draft: true

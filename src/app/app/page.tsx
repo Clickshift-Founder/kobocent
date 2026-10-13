@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  kc, KcError, usd, amount, greeting, loadProfile, referralLink, BOT_URL, EARN_OPEN,
+  kc, KcError, usd, amount, greeting, loadProfile, referralLink, BOT_URL, earnShown,
   type Balances, type History, type LocalProfile,
 } from '@/lib/kc';
 import { SectionTitle, Skeleton, Sheet, ActivityRow, EmptyState, CopyButton } from '@/components/app/ui';
@@ -23,7 +23,7 @@ const ACTIONS: Action[] = [
   { key: 'bills', label: 'Pay bills', Icon: IconBolt, title: 'Pay bills', body: 'Electricity, airtime, data and cable TV — paid from any balance on any chain. Type it, send a screenshot of the bill, or use a voice note.', href: '/app/bills' },
   { key: 'withdraw', label: 'Withdraw', Icon: IconBank, title: 'Withdraw to bank', body: 'Turn what you hold — USDC, USDT, SOL, ETH, BNB or POL on any chain — into naira in any Nigerian bank account, usually in minutes.', href: '/app/withdraw' },
   { key: 'swap', label: 'Swap', Icon: IconSwap, title: 'Swap', body: 'Convert between SOL, USDC and USDT in seconds at the best route — gasless.', href: '/app/swap' },
-  ...(!EARN_OPEN ? [] : [{ key: 'earn', label: 'Earn', Icon: IconLeaf, title: 'Earn on your stablecoins', body: 'Put idle USDC to work — flexible or locked plans, earnings every hour. Rates can change.', href: '/app/earn' } as Action]),
+  { key: 'earn', label: 'Earn', Icon: IconLeaf, title: 'Earn on your stablecoins', body: 'Put idle USDC to work — flexible or locked plans, earnings every hour. Rates can change.', href: '/app/earn' },
   { key: 'bridge', label: 'Bridge', Icon: IconBridge, title: 'Bridge between chains', body: 'Move money in or out — between Solana and Ethereum, BNB Chain, Polygon, Arbitrum or Robinhood Chain. You don’t need it to spend: Withdraw, Send and Bills pay from any chain.', href: '/app/bridge' },
   { key: 'trade', label: 'Trade', Icon: IconChart, title: 'Trade tokens', body: 'Every token you hold with its profit or loss, Smart Picks, and a full analysis of any token.', href: '/app/trade' },
 ];
@@ -33,6 +33,8 @@ const HIDE_KEY = 'kc-hide-balance';
 export default function HomePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<LocalProfile | null>(null);
+  const [showEarn, setShowEarn] = useState(true);   // hidden inside the iOS / Android apps (earnShown)
+  useEffect(() => { setShowEarn(earnShown()); }, []);
   const [bal, setBal] = useState<Balances | null>(null);
   const [hist, setHist] = useState<History | null>(null);
   const [error, setError] = useState('');
@@ -136,7 +138,7 @@ export default function HomePage() {
       <section>
         <SectionTitle>Move money</SectionTitle>
         <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 sm:gap-3">
-          {ACTIONS.slice(1).map(a => (
+          {ACTIONS.slice(1).filter(a => a.key !== 'earn' || showEarn).map(a => (
             <button key={a.key} data-tour={`action-${a.key}`} onClick={() => (a.href ? router.push(a.href) : setSheet(a))}
               className="group flex flex-col items-center gap-2 rounded-2xl p-2.5 min-h-[88px] hover:bg-white dark:hover:bg-night-card transition-colors">
               <span className="grid place-items-center h-12 w-12 rounded-2xl surface text-terracotta group-hover:border-terracotta transition-colors"><a.Icon size={22} /></span>

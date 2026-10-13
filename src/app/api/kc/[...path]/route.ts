@@ -148,6 +148,8 @@ async function handle(req: NextRequest, path: string[], method: 'GET' | 'POST') 
   if (reauth) headers['X-Reauth-Token'] = reauth;
   const pin = req.headers.get('x-kc-pin');   // app PIN token for payments (sign-in v2)
   if (pin) headers['X-Kc-Pin'] = pin;
+  const app = req.headers.get('x-kc-app');   // 'ios' | 'android' from the app shell (src/lib/kc.ts)
+  if (app === 'ios' || app === 'android') headers['X-Kc-App'] = app;
 
   let body: unknown;
   if (method === 'POST') body = await req.json().catch(() => ({}));
