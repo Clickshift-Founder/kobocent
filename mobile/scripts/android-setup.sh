@@ -3,6 +3,7 @@
 #  - Release signing from the upload keystore Codemagic holds (CM_KEYSTORE_PATH, CM_KEYSTORE_PASSWORD, CM_KEY_ALIAS,
 #    CM_KEY_PASSWORD — set by `android_signing` in codemagic.yaml)
 #  - versionCode = Codemagic build number (Play needs a higher number on every upload)
+#  - permissions, minSdk 26, notification icon, google-services.json (push, fingerprint unlock, QR scanner)
 # Run from mobile/:  bash scripts/android-setup.sh
 set -euo pipefail
 GRADLE=android/app/build.gradle
@@ -34,4 +35,29 @@ android {
 }
 GRADLE
 fi
-echo "Android project configured: versionCode ${VC}, release signing"
+# ── Native features (2026-10-13): push (Firebase), fingerprint unlock, QR scanner ──
+MANIFEST=android/app/src/main/AndroidManifest.xml
+add_perm() { grep -q "android.permission.$1\"" "$MANIFEST" || sed -i.bak "s#<application#<uses-permission android:name=\"android.permission.$1\" />\n    <application#" "$MANIFEST"; }
+add_perm USE_BIOMETRIC
+add_perm CAMERA
+add_perm POST_NOTIFICATIONS
+# The QR scanner library needs Android 8.0+ (API 26).
+sed -i.bak -E "s/minSdkVersion = [0-9]+/minSdkVersion = 26/" android/variables.gradle
+# Small notification icon: the transparent mark (Android draws it as a silhouette) + the brand colour.
+mkdir -p android/app/src/main/res/drawable-nodpi
+cp assets/notification-icon.png android/app/src/main/res/drawable-nodpi/ic_stat_kobocent.png
+if ! grep -q "default_notification_icon" "$MANIFEST"; then
+  META='<meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_stat_kobocent" /><meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="kobocent" />'
+  sed -i.bak "s#</application>#${META}</application>#" "$MANIFEST"
+fi
+# Firebase config for push (Codemagic group kobocent_android: GOOGLE_SERVICES_JSON = the file's contents, or base64 of it).
+# Capacitor's app/build.gradle applies the google-services plugin only when this file exists.
+if [ -n "${GOOGLE_SERVICES_JSON:-}" ]; then
+  if echo "$GOOGLE_SERVICES_JSON" | head -c 1 | grep -q "{"; then printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+  else echo "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json; fi
+  echo "google-services.json written (push on)"
+else
+  echo "GOOGLE_SERVICES_JSON not set — the app builds, but notifications stay off on Android"
+fi
+
+echo "Android project configured: versionCode ${VC}, release signing, permissions, push"

@@ -45,6 +45,33 @@ pb('Delete :UISupportedInterfaceOrientations', plist_path)
 pb('Add :UISupportedInterfaceOrientations array', plist_path)
 pb('Add :UISupportedInterfaceOrientations:0 string UIInterfaceOrientationPortrait', plist_path)
 
+# Why the app asks (Apple rejects a build that uses Face ID or the camera without these).
+pb('Delete :NSFaceIDUsageDescription', plist_path)
+pb('Add :NSFaceIDUsageDescription string Unlock Kobocent and confirm payments with Face ID instead of typing your PIN.', plist_path)
+pb('Delete :NSCameraUsageDescription', plist_path)
+pb('Add :NSCameraUsageDescription string Scan a wallet address QR code instead of typing it.', plist_path)
+
+# Push: hand the APNs device token to Capacitor's push plugin (Capacitor's AppDelegate doesn't do it by itself).
+app_delegate = 'ios/App/App/AppDelegate.swift'
+src = File.read(app_delegate)
+unless src.include?('capacitorDidRegisterForRemoteNotifications')
+  hook = <<~SWIFT
+
+      // Kobocent: native push (mobile/scripts/ios-setup.rb)
+      func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+          NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)
+      }
+
+      func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+          NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)
+      }
+  SWIFT
+  hook = hook.gsub(/^/, '    ').gsub(/^    $/, '')
+  last = src.rindex('}') or abort('AppDelegate.swift: closing brace not found')
+  src = src[0...last].rstrip + "\n" + hook + "}\n"
+  File.write(app_delegate, src)
+end
+
 scheme = ENV['GOOGLE_IOS_URL_SCHEME'].to_s.strip
 if scheme.empty?
   warn 'GOOGLE_IOS_URL_SCHEME not set — Google sign-in will not return to the app'

@@ -6,6 +6,7 @@ import { kc, KcError, amount as fmt } from '@/lib/kc';
 import { PageHeader } from '@/components/app/PageHeader';
 import { Sheet, Skeleton, CopyButton } from '@/components/app/ui';
 import { IconWallet, IconChevron, IconShield } from '@/components/app/Icons';
+import { ScanButton } from '@/components/app/ScanButton';
 import { newKey, store, read, HoldToConfirm, Outcome } from '@/components/app/money';
 
 /**
@@ -174,7 +175,8 @@ export default function SendWalletPage() {
           {/* Recipient */}
           <section className="surface rounded-3xl p-4">
             <div className="flex items-center justify-between"><label htmlFor="dest" className="text-[13px] muted">To ({chain.kind === 'solana' ? 'Solana address' : '0x address'})</label>
-              <button onClick={paste} className="text-[13px] font-semibold text-terracotta min-h-[44px] px-2">Paste</button></div>
+              <span className="flex items-center"><ScanButton kind={chain.kind === 'solana' ? 'solana' : 'evm'} onAddress={setAddr} />
+              <button onClick={paste} className="text-[13px] font-semibold text-terracotta min-h-[44px] px-2">Paste</button></span></div>
             <textarea id="dest" value={addr} onChange={e => setAddr(e.target.value.replace(/\s+/g, ''))} rows={2} spellCheck={false} autoCapitalize="off" autoCorrect="off"
               placeholder={chain.kind === 'solana' ? 'e.g. 7xKX…' : '0x…'} className="mt-1 w-full resize-none bg-transparent outline-none font-mono text-[15px] break-all text-ink dark:text-cream-warm" />
             {checking && <div className="text-[13px] muted">Checking…</div>}

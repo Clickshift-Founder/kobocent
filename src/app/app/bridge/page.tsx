@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { kc, KcError, amount as fmt } from '@/lib/kc';
 import { PageHeader } from '@/components/app/PageHeader';
 import { Sheet, Skeleton } from '@/components/app/ui';
+import { ScanButton } from '@/components/app/ScanButton';
 import { IconBridge, IconChevron, IconCheck, IconBank, IconSend, IconSwap, IconWallet } from '@/components/app/Icons';
 import { newKey, store, read, HoldToConfirm, Outcome } from '@/components/app/money';
 
@@ -212,8 +213,11 @@ export default function BridgePage() {
                 </div>
                 {toOther ? (
                   <>
-                    <input value={recipient} onChange={e => setRecipient(e.target.value.trim())} placeholder="0x…" spellCheck={false} autoCapitalize="off" aria-label="Recipient address"
-                      className="w-full rounded-xl border border-cream-border dark:border-night-border bg-transparent px-3 min-h-[48px] font-mono text-[14px]" />
+                    <div className="flex items-center gap-1">
+                      <input value={recipient} onChange={e => setRecipient(e.target.value.trim())} placeholder="0x…" spellCheck={false} autoCapitalize="off" aria-label="Recipient address"
+                        className="flex-1 min-w-0 rounded-xl border border-cream-border dark:border-night-border bg-transparent px-3 min-h-[48px] font-mono text-[14px]" />
+                      <ScanButton kind="evm" onAddress={setRecipient} />
+                    </div>
                     {recipient && !recipientOk && <div className="text-[13px] text-[#B84A40]">0x addresses are 42 characters long</div>}
                     <p className="text-[12.5px] muted">Make sure this wallet or exchange supports {outA?.symbol} on {outC?.label}.</p>
                   </>

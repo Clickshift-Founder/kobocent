@@ -3,8 +3,9 @@ import { ErrorNote } from './ErrorNote';
 import { useEffect, useState } from 'react';
 import { pushState, enablePush, disablePush, type PushState } from '@/lib/push';
 import { IconBell } from './Icons';
+import { nativePlatform } from '@/lib/platform';
 
-/** Settings → Phone notifications (2026-10-06). */
+/** Settings → Phone notifications (2026-10-06; inside the iOS / Android apps: native push, 2026-10-13). */
 export function PushSettings() {
   const [state, setState] = useState<PushState | null>(null);
   const [busy, setBusy] = useState(false);
@@ -20,7 +21,7 @@ export function PushSettings() {
   }
 
   const note = state === 'on' ? 'On for this device — money in, payments done, bridges landed, replies from support.'
-    : state === 'denied' ? 'Blocked in your browser settings. Allow notifications for kobocent.com, then come back.'
+    : state === 'denied' ? (nativePlatform() ? 'Blocked for Kobocent. Open your phone’s Settings → Kobocent → Notifications, allow them, then come back.' : 'Blocked in your browser settings. Allow notifications for kobocent.com, then come back.')
     : state === 'ios-install' ? 'On iPhone: tap Share → “Add to Home Screen”, open Kobocent from there, then turn this on.'
     : state === 'unsupported' ? 'This browser can’t show notifications. Try Chrome, or add Kobocent to your home screen.'
     : 'Get a notification when money arrives, a payment finishes, or support replies.';

@@ -64,7 +64,7 @@ workflows:
       android_signing:
         - kobocent_upload_key     # the upload keystore's reference name in Codemagic
       groups:
-        - kobocent_android        # GCLOUD_SERVICE_ACCOUNT_CREDENTIALS (Play publishing)
+        - kobocent_android        # GCLOUD_SERVICE_ACCOUNT_CREDENTIALS (Play publishing), GOOGLE_SERVICES_JSON (push)
       vars:
         APP_VERSION: "1.0.0"
       node: 20
@@ -107,6 +107,8 @@ workflows:
     environment:
       android_signing:
         - kobocent_upload_key
+      groups:
+        - kobocent_android        # GOOGLE_SERVICES_JSON (push)
       vars:
         APP_VERSION: "1.0.0"
       node: 20

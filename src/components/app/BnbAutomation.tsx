@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { kc, KcError } from '@/lib/kc';
 import { Sheet } from './ui';
+import { ScanButton } from './ScanButton';
 import { ErrorNote } from './ErrorNote';
 import { HoldToConfirm, newKey } from './money';
 import { price, pct } from './trade';
@@ -197,7 +198,10 @@ export function BnbCopySheet({ open, onClose, onDone, initialWallet = '', initia
     <Sheet open={open} onClose={() => { if (!busy) onClose(); }} title="Copy a BNB Chain wallet">
       {msg ? <div className="space-y-4"><p className="text-[15px] text-ink dark:text-cream-warm leading-relaxed">{msg}</p><button onClick={onClose} className="btn-primary w-full">Done</button></div> : (
         <div className="space-y-4">
-          <input value={wallet} onChange={e => setWallet(e.target.value)} placeholder="0x… wallet to copy" spellCheck={false} autoComplete="off" className="w-full surface rounded-2xl px-4 min-h-[52px] text-[16px] font-mono outline-none focus:border-terracotta" />
+          <div className="flex items-center gap-1">
+            <input value={wallet} onChange={e => setWallet(e.target.value)} placeholder="0x… wallet to copy" spellCheck={false} autoComplete="off" className="flex-1 min-w-0 surface rounded-2xl px-4 min-h-[52px] text-[16px] font-mono outline-none focus:border-terracotta" />
+            <ScanButton kind="evm" onAddress={setWallet} />
+          </div>
           <input value={alias} onChange={e => setAlias(e.target.value)} maxLength={24} placeholder="Nickname (optional)" className="w-full surface rounded-2xl px-4 min-h-[52px] text-[16px] outline-none focus:border-terracotta" />
           <div><div className="text-[13px] muted mb-1.5">Spend each time it buys</div><div className="grid grid-cols-5 gap-1.5">{[5, 10, 25, 50, 100].map(v => <Chip key={v} on={amt === v} onClick={() => setAmt(v)}>${v}</Chip>)}</div></div>
           <div><div className="text-[13px] muted mb-1.5">Pay with</div><div className="grid grid-cols-3 gap-1.5">{(['USDT', 'USDC', 'BNB'] as const).map(a => <Chip key={a} on={pay === a} onClick={() => setPay(a)}>{a}</Chip>)}</div></div>

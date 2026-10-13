@@ -5,12 +5,15 @@ import { kc, KcError, BOT, type Account } from '@/lib/kc';
 import { Sheet } from './ui';
 import { PinPad } from './PinPad';
 import { GoogleButton, googleEnabled } from './GoogleButton';
-import { IconShield, IconTelegram } from './Icons';
+import { IconFace, IconShield, IconTelegram } from './Icons';
+import { biometricKind, biometricLabel, biometricOn, biometricEnable, biometricDisable, biometricUpdatePin, type BiometricKind } from '@/lib/native';
 
 /**
  * Settings → App lock & sign-in (sign-in v2, founder 2026-10-05).
  * Defaults: PIN on, auto-lock after 15 min, PIN before payments. People who like to move fast can
  * lengthen the timer or turn the PIN off — anything that loosens protection asks for the PIN first.
+ * Apps (2026-10-13): "Unlock with Face ID / fingerprint" — per phone; the PIN is confirmed once, then kept in the
+ * phone's secure storage (src/lib/native.ts).
  */
 interface Security { hasPin: boolean; enabled: boolean; timeoutMin: number; requireForPayments: boolean; pinForSells?: boolean; methods?: { telegram: boolean; google: boolean; email: string | null } }
 const LABEL: Record<number, string> = { 5: '5 minutes', 15: '15 minutes (recommended)', 30: '30 minutes', 60: '1 hour', 240: '4 hours', 0: 'Never' };
@@ -25,6 +28,12 @@ export function SecuritySettings({ account, onAccount }: { account: Account | nu
   const [pending, setPending] = useState<null | { label: string; body: Record<string, unknown> }>(null);
   const [changePin, setChangePin] = useState(false);
   const [moveCode, setMoveCode] = useState<{ code: string } | null>(null);
+  const [bioKind, setBioKind] = useState<BiometricKind | null>(null);
+  const [bioOn, setBioOn] = useState(false);
+  const [bioAsk, setBioAsk] = useState(false);
+  useEffect(() => { biometricKind().then(setBioKind); }, []);
+  useEffect(() => { setBioOn(biometricOn(account?.id)); }, [account?.id]);
+  const bioName = biometricLabel(bioKind);
 
   const load = useCallback(() => kc<Security>('security').then(setSec).catch(e => { if (e instanceof KcError && e.status === 404) setUnsupported(true); }), []);
   useEffect(() => { load(); }, [load]);
@@ -69,6 +78,16 @@ export function SecuritySettings({ account, onAccount }: { account: Account | nu
                       {[5, 15, 30, 60, 240, 0].map(m => <option key={m} value={m}>{LABEL[m]}</option>)}
                     </select>
                   </label>
+                  {bioKind && account?.id && (
+                    <label className="flex items-center justify-between gap-3 min-h-[44px]">
+                      <span className="flex items-center gap-2 text-[14.5px]"><IconFace size={20} className="text-terracotta" />Use {bioName} instead of typing the PIN</span>
+                      <input type="checkbox" checked={bioOn} onChange={async e => {
+                        setErr(''); setNote('');
+                        if (e.target.checked) setBioAsk(true);
+                        else { await biometricDisable(); setBioOn(false); setNote(`${bioName} turned off`); }
+                      }} className="h-6 w-6 shrink-0 accent-[#C1502E]" />
+                    </label>
+                  )}
                   <label className="flex items-center justify-between gap-3 min-h-[44px]">
                     <span className="text-[14.5px]">Ask for the PIN before payments</span>
                     <input type="checkbox" checked={sec.requireForPayments} onChange={e => apply({ requireForPayments: e.target.checked }, e.target.checked ? 'Ask before payments' : 'Stop asking before payments')} className="h-6 w-6 accent-[#C1502E]" />
@@ -125,7 +144,14 @@ export function SecuritySettings({ account, onAccount }: { account: Account | nu
         {pending && <ConfirmWithPin label={pending.label} onPin={async (pin) => { const body = { ...pending.body, pin }; setPending(null); await apply(body, pending.label); }} />}
       </Sheet>
       <Sheet open={changePin} onClose={() => setChangePin(false)} title="Change your PIN">
-        {changePin && <ChangePin onDone={() => { setChangePin(false); setNote('PIN changed'); load(); changed(); }} />}
+        {changePin && <ChangePin onDone={(pin) => { void biometricUpdatePin(pin, account?.id); setChangePin(false); setNote('PIN changed'); load(); changed(); }} />}
+      </Sheet>
+      <Sheet open={bioAsk} onClose={() => setBioAsk(false)} title={`Turn on ${bioName}`}>
+        {bioAsk && account?.id && <EnableBiometric name={bioName} onPin={async (pin) => {
+          await kc('security/pin/verify', { method: 'POST', body: { pin } });
+          await biometricEnable(pin, account.id, bioKind);
+          setBioAsk(false); setBioOn(true); setNote(`${bioName} is on for this phone`);
+        }} />}
       </Sheet>
     </section>
   );
@@ -135,7 +161,24 @@ function ConfirmWithPin({ label, onPin }: { label: string; onPin: (pin: string) 
   return (<><p className="muted text-[14px] text-center">{label} — confirm with your PIN.</p><PinPad onComplete={onPin} /></>);
 }
 
-function ChangePin({ onDone }: { onDone: () => void }) {
+function EnableBiometric({ name, onPin }: { name: string; onPin: (pin: string) => Promise<void> }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [reset, setReset] = useState(0);
+  return (
+    <>
+      <p className="muted text-[14px] text-center">Enter your PIN once. After that, {name} unlocks the app and confirms payments on this phone.</p>
+      <PinPad busy={busy} error={err} resetKey={reset} onComplete={async (pin) => {
+        setBusy(true); setErr('');
+        try { await onPin(pin); }
+        catch (e) { setErr(e instanceof KcError ? e.message : `${name} wasn’t confirmed — try again`); setReset(x => x + 1); }
+        finally { setBusy(false); }
+      }} />
+    </>
+  );
+}
+
+function ChangePin({ onDone }: { onDone: (pin: string) => void }) {
   const [current, setCurrent] = useState<string | null>(null);
   const [first, setFirst] = useState<string | null>(null);
   const [err, setErr] = useState('');
@@ -147,7 +190,7 @@ function ChangePin({ onDone }: { onDone: () => void }) {
     if (!first) { setFirst(pin); setReset(x => x + 1); return; }
     if (pin !== first) { setErr('Those didn’t match — enter the new PIN again'); setFirst(null); setReset(x => x + 1); return; }
     setBusy(true);
-    try { await kc('security/pin', { method: 'POST', body: { pin, currentPin: current } }); onDone(); }
+    try { await kc('security/pin', { method: 'POST', body: { pin, currentPin: current } }); onDone(pin); }
     catch (e) { setErr(e instanceof Error ? e.message : 'Could not change your PIN'); setCurrent(null); setFirst(null); setReset(x => x + 1); }
     finally { setBusy(false); }
   }

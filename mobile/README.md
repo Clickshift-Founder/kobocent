@@ -20,8 +20,14 @@ None of this needs D-U-N-S, Apple or Play:
    **Android → test APK (no store)** by hand. Download the `.apk` from the build's artifacts onto an Android phone and
    open it (allow "install unknown apps"). This is the real app, Google sign-in included once the backend has
    `GOOGLE_APP_CLIENT_IDS` — use it for testing and for store screenshots.
-4. **Firebase** (console.firebase.google.com) — project **Kobocent** (link it to the same Google Cloud project) → add an
-   Android app `com.kobocent.app` with the SHA-1 → download `google-services.json` and keep it for native push.
+4. **Firebase (Android notifications)** (console.firebase.google.com) — project **Kobocent** (pick the same Google Cloud
+   project) → add an Android app `com.kobocent.app` with the SHA-1 → download `google-services.json`:
+   - Codemagic group **`kobocent_android`** → variable **`GOOGLE_SERVICES_JSON`** = the file's whole contents (secret).
+   - Firebase → Project settings → **Service accounts → Generate new private key** → upload that JSON to the VPS as
+     `/root/clickbot/secrets/firebase-sa.json` and add `FIREBASE_SERVICE_ACCOUNT_FILE=/root/clickbot/secrets/firebase-sa.json`
+     to the backend `.env`. (The file is a secret — never commit it.)
+   iPhone notifications come after the Apple account: the APNs key (Step 2.3) goes on the VPS the same way —
+   `APNS_KEY_FILE=/root/clickbot/secrets/apns.p8`, `APNS_KEY_ID=…`, `APNS_TEAM_ID=…`.
 5. **The company website for Apple's check** — Apple verifies the organisation through a website on the company's own
    domain and an email on it. Make sure that site is live and shows the legal name.
 6. **Reviewer demo account**, screenshots, and the counsel letter (Step 6).
@@ -131,8 +137,14 @@ Telegram, set the PIN, and leave ~$5 of USDC so they can try a send. Put the ema
 ## What the app adds over the website (Apple 4.2)
 
 Native sign-in (Google, Apple), splash screen, status bar that follows the theme, Android back button, offline screen, no
-browser bars. Still to add before submission: native push, Face ID / fingerprint unlock in place of typing the PIN, QR
-scanner for wallet addresses, links that open the app.
+browser bars, and (2026-10-13):
+- **Notifications** — Settings → Phone notifications; tapping one opens the page it's about (`src/lib/push.ts`,
+  backend `src/services/nativePush.js`: FCM for Android, APNs for iOS).
+- **Face ID / fingerprint** — Settings → App lock → "Use Face ID instead of typing the PIN"; unlocks the app and confirms
+  payments (`src/lib/native.ts`; the PIN sits in the Keychain / Keystore, the backend still checks it).
+- **QR scanner** — "Scan" beside wallet-address boxes: Send to wallet, Bridge (another address), Copy a wallet (Solana and
+  BNB) (`src/components/app/ScanButton.tsx`, `src/lib/qr.ts`).
+Still to add before submission: links that open the app.
 
 Inside the apps (store rules): no Earn, no crypto-paid subscriptions on iOS until in-app purchase is wired, no referral
 commission offer on iOS (`src/lib/platform.ts`, `src/features/yield/earnStatus.js` in the backend).

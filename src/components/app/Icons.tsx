@@ -28,3 +28,5 @@ export const IconWallet = ({ size = 22, className }: P) => (<svg {...base(size)}
 export const IconSwap = ({ size = 22, className }: P) => (<svg {...base(size)} className={className}><path d="M7 4 3 8l4 4M3 8h13M17 20l4-4-4-4M21 16H8" /></svg>);
 export const IconCard = ({ size = 22, className }: P) => (<svg {...base(size)} className={className}><rect x="2.5" y="5" width="19" height="14" rx="2.5" /><path d="M2.5 10h19M6.5 15h4" /></svg>);
 export const IconClose = ({ size = 18, className }: P) => (<svg {...base(size)} className={className}><path d="M18 6 6 18M6 6l12 12" /></svg>);
+export const IconScan = ({ size = 20, className }: P) => (<svg {...base(size)} className={className}><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M8 8h3v3H8zM13 13h3v3h-3zM13 8h3M8 16h3" /></svg>);
+export const IconFace = ({ size = 22, className }: P) => (<svg {...base(size)} className={className}><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M9 9v1M15 9v1M12 9v4h-1M9.5 16c1.5 1 3.5 1 5 0" /></svg>);

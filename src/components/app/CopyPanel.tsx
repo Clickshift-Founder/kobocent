@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { kc, KcError } from '@/lib/kc';
 import { Sheet, Skeleton } from './ui';
+import { ScanButton } from './ScanButton';
 import { ErrorNote } from './ErrorNote';
 import { signedUsd, pnlColor, pct } from './trade';
 import { ProLock, ago, until, type Hub } from './premium';
@@ -213,11 +214,11 @@ function CopySheet({ target, limits, onClose, onStarted }: { target: Wallet | 'c
         <div className="space-y-4">
           {isCustom && (
             <>
-              <label className="block">
-                <span className="text-[13px] muted">Wallet address (Solana)</span>
-                <input value={address} onChange={e => setAddress(e.target.value)} placeholder="Paste the wallet to copy" spellCheck={false} autoComplete="off"
+              <div>
+                <div className="flex items-center justify-between"><label htmlFor="copy-addr" className="text-[13px] muted">Wallet address (Solana)</label><ScanButton kind="solana" onAddress={setAddress} /></div>
+                <input id="copy-addr" value={address} onChange={e => setAddress(e.target.value)} placeholder="Paste the wallet to copy" spellCheck={false} autoComplete="off"
                   className="mt-1 w-full surface rounded-2xl px-4 min-h-[52px] text-[16px] font-mono outline-none focus:border-terracotta" />
-              </label>
+              </div>
               <label className="block">
                 <span className="text-[13px] muted">Nickname (optional)</span>
                 <input value={alias} onChange={e => setAlias(e.target.value)} maxLength={24} placeholder="e.g. Ayo’s wallet"
