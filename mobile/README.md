@@ -10,6 +10,24 @@ App Store icon on cream; logo.png = the transparent mark used for the Android ad
 
 ---
 
+## While the D-U-N-S number is pending (2026-10-13)
+
+None of this needs D-U-N-S, Apple or Play:
+1. **Android Studio + upload key + SHA-1** — Step 5.1.
+2. **Google Cloud** — Step 3.1 (consent screen), 3.2 (iOS client: only the bundle ID is required; Team ID can be added
+   later) and 3.3 (Android client with the upload key's SHA-1).
+3. **Codemagic** — sign up, add the repo, upload the keystore as `kobocent_upload_key` (Step 5.2), then start
+   **Android → test APK (no store)** by hand. Download the `.apk` from the build's artifacts onto an Android phone and
+   open it (allow "install unknown apps"). This is the real app, Google sign-in included once the backend has
+   `GOOGLE_APP_CLIENT_IDS` — use it for testing and for store screenshots.
+4. **Firebase** (console.firebase.google.com) — project **Kobocent** (link it to the same Google Cloud project) → add an
+   Android app `com.kobocent.app` with the SHA-1 → download `google-services.json` and keep it for native push.
+5. **The company website for Apple's check** — Apple verifies the organisation through a website on the company's own
+   domain and an email on it. Make sure that site is live and shows the legal name.
+6. **Reviewer demo account**, screenshots, and the counsel letter (Step 6).
+
+---
+
 ## Step 1 — Accounts (needs ClickShift Inc.'s D-U-N-S number)
 
 1. **D-U-N-S number** for ClickShift Inc. — check or request free at Apple's D-U-N-S lookup
@@ -46,8 +64,8 @@ Server settings:
 1. **APIs & Services → OAuth consent screen**: app name **Kobocent**, support email `support@kobocent.com`, logo,
    home page `https://kobocent.com`, privacy policy `https://kobocent.com/legal`, authorised domain `kobocent.com`,
    publishing status **In production**.
-2. **Credentials → Create credentials → OAuth client ID → iOS**: bundle ID `com.kobocent.app` (Team ID: from
-   developer.apple.com → Membership). Copy the **Client ID** and the **iOS URL scheme** (starts `com.googleusercontent.apps.`).
+2. **Credentials → Create credentials → OAuth client ID → iOS**: bundle ID `com.kobocent.app` (Team ID is optional —
+   add it later from developer.apple.com → Membership). Copy the **Client ID** and the **iOS URL scheme** (starts `com.googleusercontent.apps.`).
 3. **Credentials → Create credentials → OAuth client ID → Android**: package `com.kobocent.app` + **SHA-1** of the upload
    key (Step 5 shows how to get it). After the first Play upload, add a **second Android client** with the **App signing
    key SHA-1** from Play Console → Test and release → App integrity. (One client per SHA-1.)
