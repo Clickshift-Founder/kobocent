@@ -155,8 +155,27 @@ function NewRecipient({ onPick, onCancel }: { onPick: (r: Recipient) => void; on
   );
 }
 
+// Naira amounts take kobo: some billers (Remita) only accept the exact amount, e.g. ₦1,365.43. Commas are grouping and
+// are dropped; one dot, at most 2 decimals.
+function cleanNgn(v: string) {
+  const [i, ...rest] = v.replace(/[^\d.]/g, '').split('.');
+  const whole = i.replace(/^0+(?=\d)/, '').slice(0, 9);
+  return rest.length ? `${whole || '0'}.${rest.join('').slice(0, 2)}` : whole;
+}
+/** ₦ with kobo only when there is some: ₦1,365.43 · ₦5,000. */
+function nairaKobo(n: number | null | undefined) {
+  if (n === null || n === undefined || !Number.isFinite(n)) return '—';
+  return Number.isInteger(n) ? naira(n) : `₦${n.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+function showNgn(s: string) {
+  if (!s) return '';
+  const [i, f] = s.split('.');
+  const whole = Number(i || 0).toLocaleString('en-NG');
+  return f === undefined ? whole : `${whole}.${f}`;
+}
+
 function Amount({ to, onBack, onStarted }: { to: Recipient; onBack: () => void; onStarted: (id: string) => void }) {
-  const [ngn, setNgn] = useState('');
+  const [ngn, setNgn] = useState('');   // digits with up to 2 decimals (kobo), e.g. "1365.43"
   const [note, setNote] = useState('');
   const [quote, setQuote] = useState<Quote | null>(null);
   const [qErr, setQErr] = useState('');
@@ -211,8 +230,8 @@ function Amount({ to, onBack, onStarted }: { to: Recipient; onBack: () => void; 
         <label htmlFor="amt" className="eyebrow">They receive</label>
         <div className="mt-2 flex items-baseline justify-center gap-1">
           <span className="font-display text-[34px] text-warmgray">₦</span>
-          <input id="amt" value={ngn ? Number(ngn).toLocaleString('en-NG') : ''} onChange={e => setNgn(e.target.value.replace(/\D/g, '').slice(0, 9))} inputMode="numeric" placeholder="0" autoFocus
-            style={{ width: `${Math.max(1, (ngn ? Number(ngn).toLocaleString('en-NG') : '0').length) + 0.5}ch` }}
+          <input id="amt" value={showNgn(ngn)} onChange={e => setNgn(cleanNgn(e.target.value))} inputMode="decimal" placeholder="0" autoFocus
+            style={{ width: `${Math.max(1, (showNgn(ngn) || '0').length) + 0.5}ch` }}
             className="bg-transparent font-display font-bold text-[52px] leading-none text-ink dark:text-cream-warm outline-none text-center placeholder:text-cream-border max-w-full" />
         </div>
         <div className="mt-4 flex flex-wrap justify-center gap-2">
@@ -238,7 +257,7 @@ function Amount({ to, onBack, onStarted }: { to: Recipient; onBack: () => void; 
         ) : null}
 
       <button disabled={!ready} onClick={() => { setStartErr(''); setReview(true); }} className="btn-primary w-full min-h-[56px] text-[16px] disabled:opacity-40 disabled:pointer-events-none">
-        {busy && value ? 'Getting the rate…' : value ? `Review ${naira(value)} to ${to.accountName.split(' ')[0]}` : 'Enter an amount'}
+        {busy && value ? 'Getting the rate…' : value ? `Review ${nairaKobo(value)} to ${to.accountName.split(' ')[0]}` : 'Enter an amount'}
       </button>
 
       <Sheet open={review} onClose={() => !starting && setReview(false)} title="Review payment">
@@ -246,7 +265,7 @@ function Amount({ to, onBack, onStarted }: { to: Recipient; onBack: () => void; 
           <>
             <div className="text-center py-2">
               <div className="muted text-[13.5px]">Sending to {to.accountName}</div>
-              <div className="font-display font-bold text-[40px] text-ink dark:text-cream-warm leading-tight">{naira(value)}</div>
+              <div className="font-display font-bold text-[40px] text-ink dark:text-cream-warm leading-tight">{nairaKobo(value)}</div>
               <div className="muted text-[13.5px]">{to.bankName} · {to.accountNumber}</div>
             </div>
             <dl className="mt-4 rounded-2xl bg-cream-warm dark:bg-night p-4 grid grid-cols-2 gap-y-2 text-[14px]">
@@ -257,7 +276,7 @@ function Amount({ to, onBack, onStarted }: { to: Recipient; onBack: () => void; 
             </dl>
             {lines.priceNote && <p className="mt-2 text-[12.5px] muted text-center">{lines.priceNote}</p>}
             <ErrorNote msg={startErr} className="mt-4 text-[14px] text-[#B84A40]" />
-            <div className="mt-5"><HoldToConfirm label={`Hold to send ${naira(value)}`} busy={starting} onConfirm={start} /></div>
+            <div className="mt-5"><HoldToConfirm label={`Hold to send ${nairaKobo(value)}`} busy={starting} onConfirm={start} /></div>
             <p className="mt-3 text-center text-[12.5px] muted">Press and hold so nothing is sent by accident.</p>
           </>
         )}
@@ -283,7 +302,7 @@ function Progress({ jobId, onFinish }: { jobId: string; onFinish: () => void }) 
   if (lost) return <Outcome tone="info" title="We lost track of this screen" body="The payment itself is unaffected — check Activity for its status." actions={<><Link href="/app/activity" onClick={onFinish} className="btn-primary w-full">Open Activity</Link><button onClick={onFinish} className="btn-ghost w-full">Close</button></>} />;
   const r = job?.result;
   if (job?.status === 'done' && r) {
-    if (r.ok) return <Outcome tone="success" title={`${naira(r.amountNgn)} is on its way`} body={`To ${r.recipientName || 'your recipient'}${r.recipientBank ? ` at ${r.recipientBank}` : ''}${r.funding ? `, paid from ${r.funding.label}` : ''}. Usually arrives within minutes. Get the receipt below to share as proof — it’s ready the moment the bank confirms.`} reference={r.reference} actions={<>{r.reference && <ReceiptButton reference={r.reference} kind="bill" wait className="btn-primary w-full" />}<Link href="/app" onClick={onFinish} className="btn-ghost w-full">Done</Link><button onClick={onFinish} className="block w-full text-center text-[14px] font-semibold text-terracotta min-h-[44px]">Send another</button></>} />;
+    if (r.ok) return <Outcome tone="success" title={`${nairaKobo(r.amountNgn)} is on its way`} body={`To ${r.recipientName || 'your recipient'}${r.recipientBank ? ` at ${r.recipientBank}` : ''}${r.funding ? `, paid from ${r.funding.label}` : ''}. Usually arrives within minutes. Get the receipt below to share as proof — it’s ready the moment the bank confirms.`} reference={r.reference} actions={<>{r.reference && <ReceiptButton reference={r.reference} kind="bill" wait className="btn-primary w-full" />}<Link href="/app" onClick={onFinish} className="btn-ghost w-full">Done</Link><button onClick={onFinish} className="block w-full text-center text-[14px] font-semibold text-terracotta min-h-[44px]">Send another</button></>} />;
     if (r.code === 'OUTCOME_UNKNOWN') return <Outcome tone="warn" title="Being confirmed" body="Please don’t send again. We’re confirming the payment and will complete it or refund you — you’ll hear from us on Telegram." reference={r.reference} actions={<button onClick={onFinish} className="btn-primary w-full">Got it</button>} />;
     const nothingMoved = ['INSUFFICIENT', 'BAD_ACCOUNT', 'IN_PROGRESS', 'BELOW_MIN', 'ABOVE_LIMIT'].includes(r.code || '');
     return <Outcome tone="error" title={nothingMoved ? 'Nothing was sent' : 'The payment didn’t go through'} body={`${r.error ? `${r.error}. ` : ''}${nothingMoved ? 'No money left your wallet.' : 'If any money left your wallet, our team has already been alerted and will refund it.'}`} reference={r.reference} actions={<><button onClick={onFinish} className="btn-primary w-full">Try again</button>{!nothingMoved && <a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer" className="btn-ghost w-full">Email support</a>}</>} />;
@@ -291,7 +310,7 @@ function Progress({ jobId, onFinish }: { jobId: string; onFinish: () => void }) 
   return (
     <section className="surface rounded-3xl p-8 text-center animate-fade-up" aria-live="polite">
       <div className="relative mx-auto h-24 w-24"><span className="absolute inset-0 rounded-full border-4 border-cream-warm dark:border-night" /><span className="absolute inset-0 rounded-full border-4 border-terracotta border-t-transparent animate-spin" style={{ animationDuration: '1.1s' }} /><span className="absolute inset-0 grid place-items-center text-terracotta"><IconSend size={34} /></span></div>
-      <div className="font-display text-[22px] font-bold text-ink dark:text-cream-warm mt-5">Sending {job ? naira(job.meta.amountNgn) : ''}</div>
+      <div className="font-display text-[22px] font-bold text-ink dark:text-cream-warm mt-5">Sending {job ? nairaKobo(job.meta.amountNgn) : ''}</div>
       <p className="muted text-[14px] mt-1">This usually takes a few seconds. You can leave this screen — it keeps going.</p>
     </section>
   );
