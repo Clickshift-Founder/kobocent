@@ -29,8 +29,9 @@ export function Hero() {
 
           <p className="muted text-[17px] leading-[1.75] max-w-[520px] mb-9">
             Buy stablecoins with your local currency. Send money to another country in minutes.
-            Pay bills at home, withdraw to your bank, trade what you hold, and earn up to 14% on
-            what sits still. One account, one balance — on Telegram or on the web.
+            Pay bills, send to any bank and withdraw — from whatever you hold, on any of six chains.
+            Trade, earn up to 14% on what sits still, and get money back on every payment.
+            One account — on Telegram or on the web.
           </p>
 
           <div className="flex flex-wrap gap-3 mb-10">
@@ -41,7 +42,7 @@ export function Hero() {
           </div>
 
           <div className="flex flex-wrap items-center gap-x-7 gap-y-3 text-[13px] muted">
-            {['No gas fees', 'Non-custodial', 'Withdraw to any bank', '0.2% cashback'].map((t) => (
+            {['No gas fees', 'Spend from 6 chains', 'Withdraw to any bank', 'Cashback at checkout'].map((t) => (
               <span key={t} className="inline-flex items-center gap-1.5">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C1502E" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
                 {t}

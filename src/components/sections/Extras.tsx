@@ -43,11 +43,12 @@ export function Extras() {
         <Reveal delay={80}>
           <div className="surface rounded-2xl p-6 h-full">
             <div className="text-[28px] mb-3">⛽</div>
-            <h3 className="font-display text-[19px] font-bold text-ink dark:text-cream-warm mb-2">No gas fees, ever</h3>
+            <h3 className="font-display text-[19px] font-bold text-ink dark:text-cream-warm mb-2">No gas fees</h3>
             <p className="text-[13.5px] leading-[1.7] muted mb-5">
-              You never need to hold a separate token just to move your own money. We sponsor the network
-              fee ourselves — so a wallet holding nothing but stablecoins still works perfectly. This is
-              the single biggest thing that stops normal people using crypto, and we removed it.
+              You don’t need to hold a separate token to move your own money. We sponsor the network fee on
+              payments, bills, withdrawals, stablecoin sends, bridges and USDC/USDT trades — so a wallet holding
+              nothing but stablecoins works. This is the single biggest thing that stops normal people using
+              crypto, and we removed it.
             </p>
             <div className="grid grid-cols-2 gap-2.5">
               {[['🚫⛽', 'No gas token needed'], ['⚡', 'We cover the fee']].map(([i, t]) => (
@@ -64,14 +65,14 @@ export function Extras() {
         <Reveal delay={160}>
           <div className="surface rounded-2xl p-6 h-full">
             <div className="text-[28px] mb-3">🎁</div>
-            <h3 className="font-display text-[19px] font-bold text-ink dark:text-cream-warm mb-2">0.2% cashback, with a receipt</h3>
+            <h3 className="font-display text-[19px] font-bold text-ink dark:text-cream-warm mb-2">A receipt, and money back</h3>
             <p className="text-[13.5px] leading-[1.7] muted mb-5">
-              Every transaction gives something back — and every one produces a receipt you can actually
-              keep. Most platforms charge you to move your money and hand you nothing. We do the opposite.
+              Every transfer, bill and withdrawal produces a receipt you can share as proof — and earns 0.2%
+              cashback you can take off your next payment, right on the review screen.
             </p>
             <div className="rounded-xl bg-terracotta/[0.07] border border-terracotta/20 p-4">
               <div className="font-mono text-[26px] font-semibold text-terracotta leading-none mb-1.5">0.2%</div>
-              <div className="text-[12px] muted">back on every single transaction</div>
+              <div className="text-[12px] muted">back on every payment — spent at checkout</div>
             </div>
           </div>
         </Reveal>

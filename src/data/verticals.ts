@@ -27,7 +27,7 @@ export const VERTICALS: Vertical[] = [
       { title: 'Withdraw to any bank', body: 'Cash out to 200+ Nigerian banks. Settlement in minutes, not days. No P2P counterparty risk.' },
       { title: 'Pay bills directly', body: 'Electricity, airtime, data, cable TV — paid from your stablecoin balance. Meter tokens arrive instantly.' },
       { title: 'Type it in plain words', body: '"Send 5000 to GTBank 0123456789" — Kobocent reads the intent, verifies the account name, and executes.' },
-      { title: 'Combine USDC and USDT', body: 'One transaction can settle from both balances. No manual swapping, no bridging first.' },
+      { title: 'Pay from any chain', body: 'USDC, USDT, SOL, ETH, BNB or POL on any of six chains — or split one payment across up to three balances. No swapping, no bridging first.' },
     ],
   },
   {
@@ -38,14 +38,14 @@ export const VERTICALS: Vertical[] = [
     question: 'I want to trade',
     color: '#20211F',
     summary:
-      'Full onchain trading with intelligence built in — risk scoring before you buy, automated exits while you sleep, and MEV protection so you keep what you earn.',
+      'Onchain trading on Solana and BNB Chain with intelligence built in — risk scoring before you buy, automated exits while you sleep, and MEV protection so you keep what you earn. Trade with USDC or USDT and you need no gas token at all.',
     features: [
       { title: 'AI risk analysis', body: 'Six live signals — RSI, buy pressure, volume surge, holder concentration, liquidity depth — into one scored verdict with the reasoning shown.' },
       { title: 'Trailing profit', body: 'Follows a run to its peak and exits automatically when price falls back by your set percentage. Works while you sleep.' },
       { title: 'Copy trading', body: 'Mirror proven wallets in real time. Set your amount once; every entry and exit fires into your wallet automatically.' },
       { title: 'Launch sniper', body: 'Instant and limit-order sniping on new launches, with take-profit and stop-loss arming automatically after execution.' },
       { title: 'MEV protection', body: 'Trades route privately instead of through the public mempool. No sandwich attacks, no frontrunning.' },
-      { title: 'Perps up to 5x', body: 'Long or short with leverage, position management, and the same protection as spot.' },
+      { title: 'BNB Chain too', body: 'Trade BNB Chain tokens from the same account, with smart-money signals and take-profit / stop-loss. Holding only USDT? We front the gas.' },
     ],
   },
   {

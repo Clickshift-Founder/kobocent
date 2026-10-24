@@ -3,7 +3,7 @@ import { Section, SectionHead, Reveal } from '@/components/ui/Section';
 const ITEMS = [
   { icon: '💳', title: 'The Kobocent Card', status: 'In build', body: 'Hold stablecoins, spend in local currency wherever cards are accepted. The balance stays yours until the moment you tap.', highlight: true },
   { icon: '🌍', title: 'More currency corridors', status: 'Rolling out', body: 'Dollars are live. Pounds, Kenyan Shillings, Yen and Yuan open as each corridor is built and licensed.' },
-  { icon: '📱', title: 'Native iOS & Android', status: 'Next', body: 'The web app installs to your home screen today. Full App Store and Play Store releases follow.' },
+  { icon: '📱', title: 'Native iOS & Android', status: 'In build', body: 'Face ID and fingerprint unlock, notifications when money lands, and a QR scanner for addresses. The web app installs to your home screen today.' },
   { icon: '⭐', title: 'Stellar support', status: 'Exploring', body: 'Adding Stellar would give us one of the cheapest, fastest settlement rails for cross-border payouts. Under active evaluation.' },
   { icon: '◆', title: '$SHIFT token launch', status: 'Q2 2027 target', body: 'Points accumulated today convert at launch. Early users earn at a 3× multiplier during this window.' },
   { icon: '🤝', title: 'Business accounts', status: 'Planned', body: 'Multi-user access, approval flows, and bulk payouts for companies paying suppliers or staff across borders.' },

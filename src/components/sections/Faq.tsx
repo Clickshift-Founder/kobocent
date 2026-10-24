@@ -12,7 +12,7 @@ export function Faq() {
       <SectionHead
         eyebrow="Questions, answered honestly"
         title={<>Everything you might <span className="text-terracotta italic">reasonably ask</span></>}
-        body="Including the parts most platforms leave out — what happens if you send on the wrong network, what non-custodial really costs you, and what we cannot promise."
+        body="Including the parts most platforms leave out — what happens if you send on the wrong network, who holds the keys to your wallet, and what we cannot promise."
       />
 
       {/* group tabs */}

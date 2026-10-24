@@ -10,19 +10,19 @@ const CHAINS = [
 ];
 
 const STEPS = [
-  { n: '01', t: 'Pick your chain and asset', d: 'Choose where your crypto lives today and whether it is a native token or a stablecoin.' },
-  { n: '02', t: 'Send to your address', d: 'One address works across every EVM chain we support. Pick the matching network when you send.' },
-  { n: '03', t: 'It becomes spendable', d: 'Whatever you send converts into stablecoin you can actually use — usually within minutes. Gas is handled for you.' },
-  { n: '04', t: 'Spend, send, or withdraw', d: 'Pay a bill, send it abroad, withdraw to a bank, trade it, or stake it. Same balance, all options open.' },
+  { n: '01', t: 'Hold it where you like', d: 'USDC and USDT on any of the six chains, or SOL, ETH, BNB and POL. One address covers every EVM chain; Solana has its own.' },
+  { n: '02', t: 'Pick “Pay from”', d: 'On a bill, a bank transfer or a withdrawal, choose which balance pays. We pick the cheapest one that covers it until you change it.' },
+  { n: '03', t: 'No bridging first', d: 'We collect it on its own chain and settle the payment — the naira lands, the bill is paid. Holding only USDT or USDC on BNB Chain, Polygon or Arbitrum? We cover that network fee.' },
+  { n: '04', t: 'Or split it', d: 'Not enough in one place? Pay from up to three balances at once, across chains, in a single payment.' },
 ];
 
 export function Multichain() {
   return (
     <Section id="multichain">
       <SectionHead
-        eyebrow="Six chains · one balance"
-        title={<>Hold crypto <span className="text-terracotta italic">anywhere</span>. Use it here.</>}
-        body="Crypto stuck on the wrong chain is money you cannot spend. Bring it in from any chain we support — and send it back out to whichever chain the other side actually uses."
+        eyebrow="Six chains · spend from any of them"
+        title={<>Hold crypto <span className="text-terracotta italic">anywhere</span>. Spend it here.</>}
+        body="Crypto stuck on the wrong chain used to be money you could not spend. Now it is not stuck: pay bills, send to a bank and withdraw straight from Solana, Ethereum, BNB Chain, Polygon, Arbitrum or Robinhood Chain."
       />
 
       <div className="mt-10 flex flex-wrap justify-center gap-2.5">
@@ -55,20 +55,20 @@ export function Multichain() {
             Both directions
           </span>
           <h3 className="font-display text-[20px] font-bold text-ink dark:text-cream-warm">
-            Bridging out, not just in
+            Bridging, in and out
           </h3>
         </div>
         <p className="text-[14px] leading-[1.75] muted mb-6 max-w-3xl">
-          Most platforms only let crypto flow one way. Kobocent works both. Buy a stablecoin with
-          Naira, and that same balance can be bridged out to Ethereum, BNB Chain, Polygon, Arbitrum
-          or Robinhood Chain — so you can pay someone on whichever network they actually use, or
-          move funds into a platform that only supports one chain.
+          Most platforms only let crypto flow one way. Kobocent works both. Bridge USDC, USDT or the native
+          coin from Ethereum, BNB Chain, Polygon, Arbitrum or Robinhood Chain into Solana — and bridge your
+          Solana balance out to any of those five, so you can pay someone on whichever network they actually
+          use, or move funds into a platform that only supports one chain.
         </p>
         <div className="grid sm:grid-cols-3 gap-3">
           {[
-            { t: 'Buy with local currency', d: 'Naira today. Dollars, Pounds, Shillings next.' },
-            { t: 'Held as stablecoin', d: 'Issued on Solana — fast and cheap to move.' },
-            { t: 'Bridge out anywhere', d: 'To any of the six chains, whenever you need to.' },
+            { t: 'Into Solana', d: 'From any of the five EVM chains — usually a few minutes.' },
+            { t: 'Out of Solana', d: 'To Ethereum, BNB Chain, Polygon, Arbitrum or Robinhood Chain.' },
+            { t: 'Or skip it', d: 'Most of the time you don’t need to bridge at all — just pay from where it is.' },
           ].map((x) => (
             <div key={x.t} className="rounded-xl bg-cream-warm dark:bg-night p-5">
               <div className="text-[14px] font-semibold text-ink dark:text-cream-warm mb-1.5">{x.t}</div>

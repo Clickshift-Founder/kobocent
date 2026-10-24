@@ -5,7 +5,7 @@ export const FAQ: FaqGroup[] = [
   {
     group: 'Getting started',
     items: [
-      { q: 'What exactly is Kobocent?', a: 'A financial account that runs on stablecoin rails. You can buy stablecoins with your local currency, send money to another country, pay bills at home, withdraw to a bank account, trade, and earn on what you are not using. It works on Telegram today and on the web as we roll the web app out.' },
+      { q: 'What exactly is Kobocent?', a: 'A financial account that runs on stablecoin rails. You can buy stablecoins with your local currency, send money to another country, pay bills at home, withdraw to a bank account, trade, and earn on what you are not using. It works on Telegram and on the web at kobocent.com, with iOS and Android apps on the way.' },
       { q: 'Do I need to already own crypto?', a: 'No. Most people start by transferring their local currency from a normal bank account, which becomes a stablecoin balance you can use immediately. If you already hold crypto, you can bring that in instead.' },
       { q: 'Do I need to understand blockchains to use this?', a: 'No. The stablecoin and the network underneath are plumbing. You see a balance, you send it somewhere, it arrives. Everything technical is handled for you, including the network fees.' },
       { q: 'Is there a way to try it without risking money?', a: 'Yes. Practice mode gives you virtual funds — $100, 1 SOL and ₦50,000 — so you can walk through every feature with nothing at stake before you fund anything real.' },
@@ -14,10 +14,10 @@ export const FAQ: FaqGroup[] = [
   {
     group: 'Your money and your wallet',
     items: [
-      { q: 'Who controls my funds?', a: 'You do. Wallets are non-custodial, which means the keys belong to you and not to us. We cannot move your money, and you can leave at any time and take it with you.' },
-      { q: 'What happens to my wallet if I lose my phone?', a: 'Your account is tied to your phone number and email, not to a single device. Sign in again on a new device and your wallet is still there. This is exactly why we ask for a real email at signup — it is your recovery route.' },
+      { q: 'Who controls my funds?', a: 'Your keys are encrypted, and only you can trigger a transaction. Each wallet has its own onchain address that you can check on a public explorer at any time, and you can export your recovery phrase and take your funds elsewhere whenever you like.' },
+      { q: 'What happens to my wallet if I lose my phone?', a: 'Your account is tied to your Google or Apple sign-in (and Telegram, if you connect it), not to a single device. Sign in again on a new device and your wallet is still there — your app PIN protects it on every device.' },
       { q: 'Where is my recovery phrase?', a: 'Your recovery phrase is generated for you and is only ever shown to you, once, when you ask for it. We deliberately do not email it, store it in plain text, or display it on a page you might screenshot casually. Treat it the way you would treat the only key to a safe.' },
-      { q: 'What does non-custodial actually mean for me in practice?', a: 'It means the balance you see is genuinely yours onchain rather than an entry in our ledger that we owe you. The trade-off is real: nobody can freeze your funds, but nobody can reverse a transaction you authorised either. Check addresses carefully.' },
+      { q: 'Is my balance really onchain?', a: 'Yes. The balance you see sits at your own onchain address, not as an entry in a ledger we owe you. The trade-off is real: an onchain transfer you authorise cannot be reversed, by us or anyone else. Check addresses carefully.' },
       { q: 'Do I get a record of my transactions?', a: 'Yes. You can download a PDF statement covering 7 days, 30 days, 90 days or everything — formatted the way a bank statement is, which makes it usable for visas, loan applications and accounting.' },
     ],
   },
@@ -25,10 +25,12 @@ export const FAQ: FaqGroup[] = [
     group: 'Sending and spending',
     items: [
       { q: 'How do I add money?', a: 'Transfer from your Nigerian bank account and it arrives as a stablecoin balance. Dollars, Pounds and Kenyan Shillings are next. You can also send crypto in from any chain we support.' },
+      { q: 'Can I pay from crypto on another chain?', a: 'Yes. Bills, bank transfers and withdrawals can be paid from USDC or USDT on any of our six chains, or from SOL, ETH, BNB or POL — choose it under “Pay from”, or split one payment across up to three balances. No bridging first.' },
       { q: 'Can I send money to someone in another country?', a: 'Yes. You hold stablecoins and send value across borders in minutes rather than days. Which local currencies can be paid out on the other side depends on the corridor — Dollars are live, with Yen, Yuan, Pounds and Shillings opening as each one is built.' },
       { q: 'How long does a bank withdrawal take?', a: 'Usually minutes. We support 200+ Nigerian banks. If something takes longer than expected it is almost always the receiving bank, not the transfer itself.' },
       { q: 'What bills can I pay?', a: 'Electricity across the major discos, airtime and data on every network, and cable TV including DStv, GOtv and Startimes. Electricity tokens are delivered to your meter immediately.' },
-      { q: 'Are there hidden fees?', a: 'No. Sending, spending, saving and earning are free of platform charges beyond the network cost, which we sponsor. The paid tiers exist only for high-frequency traders who want priority execution. Every transaction also returns 0.2% cashback.' },
+      { q: 'Are there hidden fees?', a: 'No. Every payment shows its fee and the exact amount before you confirm, and the network fee is on us. Every bank transfer, bill and withdrawal also earns 0.2% cashback, which you can take off your next payment on the review screen. The paid plans exist only for traders who want priority execution.' },
+      { q: 'How does cashback work?', a: 'Each bank transfer, bill and withdrawal earns 0.2% back. Once it adds up to ₦50, the review screen of your next payment shows “Use cashback” — switch it on and it comes off the fee, so you pay less or receive more naira. Your receipt shows how much was used.' },
     ],
   },
   {
@@ -39,7 +41,7 @@ export const FAQ: FaqGroup[] = [
       { q: 'Which network should I pick on my exchange?', a: 'Use the one shown on the deposit screen for the asset you chose. As a rough guide: ERC-20 for Ethereum, BEP-20 for BNB Chain, and the named network for Polygon, Arbitrum and Solana. Do not guess — the screen tells you.' },
       { q: 'Is my address the same on every chain?', a: 'You have one address that works across the EVM chains (Ethereum, BNB Chain, Polygon, Arbitrum, Robinhood Chain) and a separate Solana address, because Solana uses a different address format. The app shows you the right one for whichever chain you picked.' },
       { q: 'Why do I not need a gas token?', a: 'On most platforms you need to hold a separate token just to pay network fees, which traps beginners constantly. We sponsor the fee ourselves, so a wallet holding nothing but stablecoins works perfectly.' },
-      { q: 'Can I move funds between chains after they arrive?', a: 'Yes, in both directions. You can bring crypto in from any supported chain, and you can bridge your balance out to whichever chain the person or platform on the other side uses.' },
+      { q: 'Can I move funds between chains after they arrive?', a: 'Yes, in both directions. Bridge from Ethereum, BNB Chain, Polygon, Arbitrum or Robinhood Chain into Solana, or from Solana out to any of those five — whichever chain the person or platform on the other side uses.' },
       { q: 'How long does bridging take?', a: 'Usually a few minutes. Ethereum can be slower at busy times because that is how the network behaves, not because of anything on our side.' },
     ],
   },
@@ -48,16 +50,17 @@ export const FAQ: FaqGroup[] = [
     items: [
       { q: 'How does staking work?', a: 'You stake stablecoins or SOL and earn up to 14% a year. Flexible staking pays 5% and can be withdrawn at any time; locking for 7, 30 or 90 days pays more. Earnings accrue to your balance every hour rather than at the end of a term.' },
       { q: 'Is the yield guaranteed?', a: 'No. Rates are variable and depend on underlying market conditions. We show the current rate clearly and it can change. Treat any yield product, here or elsewhere, as carrying risk rather than as a savings account.' },
-      { q: 'What does the trading side actually do?', a: 'It scores a token on six live signals before you buy, routes your trade privately so it cannot be frontrun, and can exit automatically when a position turns using a trailing stop. You can also copy proven wallets and trade perps.' },
+      { q: 'What does the trading side actually do?', a: 'It scores a token on six live signals before you buy, routes your trade privately so it cannot be frontrun, and can exit automatically when a position turns using a trailing stop. You can copy wallets ranked from their real results, snipe at your price, and trade on Solana and BNB Chain. Perps are available in practice mode only — simulated, no real money.' },
       { q: 'Can the analysis guarantee I will not lose money?', a: 'No, and anyone telling you otherwise is selling something. It flags patterns associated with rug pulls and poor liquidity, which removes a category of avoidable mistakes. It cannot predict the market.' },
-      { q: 'What is $SHIFT?', a: 'A usage-reward point accumulated when you transact, ahead of a token generation event targeted for Q2 2027. Early users earn at a 3× multiplier. It is a reward mechanism, not a security, and carries no guarantee of future value.' },
+      { q: 'What is $SHIFT?', a: 'A usage-reward point you earn from payments, bills, withdrawals, staking and friends who start transacting, ahead of a token generation event targeted for Q2 2027. Early users earn at a 3× multiplier. It is a reward mechanism, not a security, and carries no guarantee of future value.' },
+      { q: 'What is Kobo Pal?', a: 'The assistant inside Kobocent, on the web and in Telegram. Ask it in plain words — it checks your actual activity when you ask about a payment, remembers your meter and usual bank, and hands you to a person on our team when you need one. Pal VIP, unlocked with a tip, goes deeper into your spending, Earn options and Smart Picks.' },
     ],
   },
   {
     group: 'Telegram, the web app, and your account',
     items: [
       { q: 'Do Telegram and the web app share one account?', a: 'Yes, that is the whole point. One account, one balance, one history. Start something in one and finish it in the other.' },
-      { q: 'I already use the Telegram bot. Do I need a new account for the web?', a: 'No. Sign in on the web, then connect your Telegram with a one-time code — your balance and history are the same in both.' },
+      { q: 'I already use the Telegram bot. Do I need a new account for the web?', a: 'No. Sign up on the web with Google or Apple, then connect your Telegram in one tap — your balance and history are the same in both.' },
       { q: 'I signed up on the web first. Do I need to do anything for Telegram?', a: 'We recommend connecting it — it takes a minute, and it gives you your referral link (20% of your friends’ fees) and $SHIFT points. Kobocent shows you how right after you sign up.' },
       { q: 'Can I install this like a normal app?', a: 'Yes. Tap Download app and it installs to your home screen straight from the browser — no app store needed. Native iOS and Android apps are coming.' },
       { q: 'Is a debit card coming?', a: 'It is on the roadmap. The intent is that you hold stablecoins and spend in local currency wherever cards are accepted. We will announce it properly when it is real rather than promise a date now.' },

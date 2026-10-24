@@ -13,48 +13,48 @@ const TIERS = [
       'Send across borders',
       'Withdraw to any bank',
       'Pay bills, airtime, data, cable',
-      'Bridge across all 6 chains',
+      'Spend from any of 6 chains',
+      'Bridge in and out of Solana',
       'Staking up to 14% APY',
-      'Full trading suite',
+      'Trading on Solana and BNB Chain',
+      'Kobo Pal, plus a real person when you need one',
       '20% referral commission',
-      '0.2% cashback on transactions',
+      '0.2% cashback, spent at checkout',
     ],
     cta: 'Start free',
     href: '/signup',
   },
   {
-    name: 'Ultra Speed',
-    price: '$20',
+    name: 'Kobocent Pro',
+    price: '$35',
     period: '/month',
-    sub: 'For people trading seriously',
+    sub: 'Everything for traders, one price',
     featured: true,
     features: [
       'Everything in Free',
-      'Unlimited MEV-protected trades',
-      'No per-trade priority fee',
-      'Priority block inclusion',
-      'Anti-sandwich routing',
-      'Anti-frontrun protection',
+      'Ultra on every trade — no +3% fee, MEV-protected',
+      'Copy Pro: wallets ranked from real results, no per-trade fee',
+      'Sniper Pro: snipe at your price, no 3% snipe fee',
+      'Smart Money alerts and Alpha Alerts',
+      '$85 bought separately',
     ],
-    cta: 'Subscribe',
-    href: '/signup?plan=ultra',
+    cta: 'Get Pro',
+    href: '/signup?plan=pro',
   },
   {
-    name: 'Sniper Pro',
+    name: 'Or pick one',
     price: '$20',
-    period: '/month',
-    sub: 'For launch hunters',
+    period: '/month each',
+    sub: 'Just the part you use',
     featured: false,
     features: [
-      'Everything in Free',
-      'Ultra Speed on all snipes',
-      'Instant and limit sniping',
-      'Auto take-profit and stop-loss',
-      'Pending snipe manager',
-      'Built for new launches',
+      'Ultra — Jito-routed, priority inclusion',
+      'Copy Pro — mirror ranked wallets',
+      'Sniper Pro — buy the dip or the breakout',
+      'Pay from any balance, on any chain',
     ],
-    cta: 'Get Sniper Pro',
-    href: '/signup?plan=sniper',
+    cta: 'Choose a plan',
+    href: '/signup?plan=ultra',
   },
 ];
 
@@ -64,7 +64,7 @@ export function Pricing() {
       <SectionHead
         eyebrow="Pricing"
         title={<>Free for <span className="text-terracotta italic">almost everyone</span></>}
-        body="Sending, spending, saving and earning cost nothing beyond the network's own transaction fees. The paid tiers exist only for high-frequency traders who want priority execution."
+        body="No subscription to send, spend, save or earn. Each payment shows its fee before you confirm, the network fee is on us, and cashback comes off the next one. The paid plans exist only for traders who want priority execution."
       />
 
       <div className="mt-12 grid lg:grid-cols-3 gap-5">
