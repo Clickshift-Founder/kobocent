@@ -1,5 +1,6 @@
 import { CORRIDORS } from '@/data/corridors';
 import { Section, SectionHead, Reveal } from '@/components/ui/Section';
+import { FlagOrEmoji } from '@/components/ui/Flag';
 
 /**
  * The clearest thing on the page: concrete money journeys.
@@ -19,7 +20,7 @@ export function Corridors() {
           <Reveal key={`${c.from}-${c.to}`} delay={i * 60}>
             <div className="surface rounded-2xl p-5 sm:p-6 flex flex-wrap items-center gap-x-4 gap-y-3 transition-colors hover:border-terracotta">
               <div className="flex items-center gap-2.5 min-w-[150px]">
-                <span className="text-[22px]">{c.fromFlag}</span>
+                <FlagOrEmoji value={c.fromFlag} className="h-[20px] w-[30px]" />
                 <span className="font-semibold text-[15px] text-ink dark:text-cream-warm">{c.from}</span>
               </div>
 
@@ -30,7 +31,7 @@ export function Corridors() {
               </div>
 
               <div className="flex items-center gap-2.5 min-w-[170px]">
-                <span className="text-[22px]">{c.toFlag}</span>
+                <FlagOrEmoji value={c.toFlag} className="h-[20px] w-[30px]" />
                 <span className="font-semibold text-[15px] text-ink dark:text-cream-warm">{c.to}</span>
                 {!c.live && (
                   <span className="font-mono text-[9.5px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-cream-warm dark:bg-night border border-cream-border dark:border-night-border muted">

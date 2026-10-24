@@ -12,6 +12,7 @@
  *    (SecurityProvider, SecuritySettings), QR scanner for wallet addresses (ScanButton) — 2026-10-13.
  */
 import { nativePlatform } from './platform';
+import { appPathFromLink } from './appLinks';
 
 type PluginProxy = Record<string, (...a: unknown[]) => Promise<unknown>> & { addListener?: (e: string, cb: (x: unknown) => void) => Promise<unknown> };
 type CapWithPlugins = { Plugins?: Record<string, PluginProxy> };
@@ -65,6 +66,22 @@ export function startNative(theme: 'light' | 'dark') {
     else plugin('App')?.exitApp?.().catch(() => {});
   }).catch(() => {});
   plugin('SplashScreen')?.hide?.().catch(() => {});
+  // App links (2026-10-24): a kobocent.com/app… link tapped in Telegram, WhatsApp, email or a browser opens the app
+  // (verified by /.well-known/assetlinks.json and apple-app-site-association) — show that page. Cold start: the link that
+  // launched the app; warm: the appUrlOpen event. Only our own paths (appPathFromLink), never another site.
+  const openLink = (url: unknown) => {
+    const path = typeof url === 'string' ? appPathFromLink(url) : null;
+    if (path && path !== `${window.location.pathname}${window.location.search}${window.location.hash}`) window.location.assign(path);
+  };
+  // The launch link is followed once per app session: every page load runs this again, and a signed-out user is sent on
+  // to /signin?next=… — following it a second time would loop.
+  plugin('App')?.getLaunchUrl?.().then((r) => {
+    const url = (r as { url?: unknown } | undefined)?.url;
+    if (typeof url !== 'string') return;
+    try { if (sessionStorage.getItem('kc-launch-link') === url) return; sessionStorage.setItem('kc-launch-link', url); } catch { return; }
+    openLink(url);
+  }).catch(() => {});
+  plugin('App')?.addListener?.('appUrlOpen', (e) => openLink((e as { url?: unknown })?.url)).catch(() => {});
   const push = plugin('PushNotifications');
   if (push) {
     // Android 8+: notifications need a channel; the backend sends on 'kobocent' (src/services/nativePush.js).

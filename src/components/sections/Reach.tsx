@@ -1,4 +1,5 @@
 'use client';
+import { Flag } from '@/components/ui/Flag';
 
 /**
  * Two scrolling belts: the chains we settle across, and the countries people
@@ -15,18 +16,18 @@ const CHAINS = [
 ];
 
 const COUNTRIES = [
-  { flag: '🇳🇬', name: 'Nigeria' },
-  { flag: '🇺🇸', name: 'United States' },
-  { flag: '🇬🇧', name: 'United Kingdom' },
-  { flag: '🇯🇵', name: 'Japan' },
-  { flag: '🇨🇳', name: 'China' },
-  { flag: '🇰🇪', name: 'Kenya' },
-  { flag: '🇬🇭', name: 'Ghana' },
-  { flag: '🇿🇦', name: 'South Africa' },
-  { flag: '🇮🇳', name: 'India' },
-  { flag: '🇨🇦', name: 'Canada' },
-  { flag: '🇩🇪', name: 'Germany' },
-  { flag: '🇦🇪', name: 'UAE' },
+  { flag: 'NG', name: 'Nigeria' },
+  { flag: 'US', name: 'United States' },
+  { flag: 'GB', name: 'United Kingdom' },
+  { flag: 'JP', name: 'Japan' },
+  { flag: 'CN', name: 'China' },
+  { flag: 'KE', name: 'Kenya' },
+  { flag: 'GH', name: 'Ghana' },
+  { flag: 'ZA', name: 'South Africa' },
+  { flag: 'IN', name: 'India' },
+  { flag: 'CA', name: 'Canada' },
+  { flag: 'DE', name: 'Germany' },
+  { flag: 'AE', name: 'UAE' },
 ];
 
 function Belt({
@@ -72,7 +73,7 @@ export function Reach() {
       <Belt reverse duration={52}>
         {countries.map((c, i) => (
           <span key={i} className="inline-flex items-center gap-2.5 rounded-full border border-cream-border dark:border-night-border px-5 py-3 text-[14px] whitespace-nowrap">
-            <span className="text-[17px]">{c.flag}</span>
+            <Flag code={c.flag} className="h-[16px] w-[24px]" />
             <span className="muted">{c.name}</span>
           </span>
         ))}

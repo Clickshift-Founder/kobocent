@@ -50,6 +50,14 @@ if ! grep -q "default_notification_icon" "$MANIFEST"; then
   META='<meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_stat_kobocent" /><meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="kobocent" />'
   sed -i.bak "s#</application>#${META}</application>#" "$MANIFEST"
 fi
+# App links (2026-10-24): https://kobocent.com/app…, /signin, /signup open the app (Android checks
+# kobocent.com/.well-known/assetlinks.json, which lists our signing keys — ANDROID_CERT_SHA256 on Vercel). Same prefixes as
+# kobocent-web src/lib/appLinks.ts.
+if ! grep -q "android:host=\"kobocent.com\"" "$MANIFEST"; then
+  LINKS='<intent-filter android:autoVerify="true"><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><category android:name="android.intent.category.BROWSABLE" /><data android:scheme="https" android:host="kobocent.com" android:pathPrefix="/app" /><data android:scheme="https" android:host="kobocent.com" android:pathPrefix="/signin" /><data android:scheme="https" android:host="kobocent.com" android:pathPrefix="/signup" /></intent-filter>'
+  # Capacitor's template has one activity (MainActivity): the filter goes inside it.
+  sed -i.bak "0,/<\/activity>/s##${LINKS}</activity>#" "$MANIFEST"
+fi
 # Firebase config for push (Codemagic group kobocent_android: GOOGLE_SERVICES_JSON = the file's contents, or base64 of it).
 # Capacitor's app/build.gradle applies the google-services plugin only when this file exists.
 if [ -n "${GOOGLE_SERVICES_JSON:-}" ]; then
@@ -60,4 +68,4 @@ else
   echo "GOOGLE_SERVICES_JSON not set — the app builds, but notifications stay off on Android"
 fi
 
-echo "Android project configured: versionCode ${VC}, release signing, permissions, push"
+echo "Android project configured: versionCode ${VC}, release signing, permissions, push, app links"

@@ -1,5 +1,6 @@
 # Kobocent iOS project settings, applied on Codemagic after `npx cap add ios` (no Mac needed on our side), 2026-10-13.
-#  - Sign in with Apple + push entitlements (App Store 4.8; native push)
+#  - Sign in with Apple + push entitlements (App Store 4.8; native push); Associated Domains for app links (2026-10-24:
+#    kobocent.com/app… opens the app — kobocent.com/.well-known/apple-app-site-association needs APPLE_TEAM_ID on Vercel)
 #  - Google sign-in URL scheme (the iOS client's reversed client ID, env GOOGLE_IOS_URL_SCHEME)
 #  - Export compliance: standard HTTPS only → ITSAppUsesNonExemptEncryption = NO
 #  - Display name, portrait on phones, version (APP_VERSION) and build number (IOS_BUILD)
@@ -20,6 +21,8 @@ File.write(ent_path, <<~PLIST)
     <array><string>Default</string></array>
     <key>aps-environment</key>
     <string>production</string>
+    <key>com.apple.developer.associated-domains</key>
+    <array><string>applinks:kobocent.com</string></array>
   </dict>
   </plist>
 PLIST

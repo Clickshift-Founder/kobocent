@@ -1,3 +1,4 @@
+import { Flag } from '@/components/ui/Flag';
 import { TESTIMONIALS } from '@/data/testimonials';
 import { SectionHead } from '@/components/ui/Section';
 
@@ -35,7 +36,7 @@ export function Testimonials() {
                 )}
                 <div>
                   <div className="text-[13.5px] font-semibold text-ink dark:text-cream-warm">{t.name}</div>
-                  <div className="text-[11.5px] muted">{t.flag} {t.location}</div>
+                  <div className="text-[11.5px] muted flex items-center gap-1.5"><Flag code={t.flag} className="h-[11px] w-[16px]" />{t.location}</div>
                 </div>
               </div>
             </article>

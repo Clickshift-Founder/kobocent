@@ -134,6 +134,22 @@ npx cap open android` → Run on an emulator or a phone with USB debugging. Buil
 **Demo account:** create a Google account for the reviewers (e.g. a new Gmail), sign up on Kobocent with it, connect a
 Telegram, set the PIN, and leave ~$5 of USDC so they can try a send. Put the email, password and PIN in the review notes.
 
+## Step 7 — Links that open the app (after the store accounts)
+
+The projects are already set up (Android intent filter in `android-setup.sh`, iOS Associated Domains in `ios-setup.rb`);
+kobocent.com only has to vouch for the apps. Two Vercel environment variables (kobocent-web project → Settings →
+Environment Variables, Production), then redeploy:
+- **`ANDROID_CERT_SHA256`** — Play Console → Test and release → App integrity → **App signing key certificate → SHA-256**,
+  and the **upload key** SHA-256 too (from `keytool -list -v -keystore kobocent-upload.jks`), comma-separated. The upload
+  key is what signs the test APK; Play re-signs store installs with the app signing key.
+- **`APPLE_TEAM_ID`** — developer.apple.com → Membership details → Team ID (10 characters). Also tick **Associated
+  Domains** on the identifier `com.kobocent.app` (Certificates, Identifiers & Profiles → Identifiers).
+
+Check: https://kobocent.com/.well-known/assetlinks.json and https://kobocent.com/.well-known/apple-app-site-association
+must show the key / Team ID. Install the app fresh (Android verifies on install), then tap a kobocent.com/app/send link in
+Telegram — it should open the app on Send. Android: Settings → Apps → Kobocent → Open by default shows kobocent.com as
+verified.
+
 ## What the app adds over the website (Apple 4.2)
 
 Native sign-in (Google, Apple), splash screen, status bar that follows the theme, Android back button, offline screen, no
@@ -144,7 +160,8 @@ browser bars, and (2026-10-13):
   payments (`src/lib/native.ts`; the PIN sits in the Keychain / Keystore, the backend still checks it).
 - **QR scanner** — "Scan" beside wallet-address boxes: Send to wallet, Bridge (another address), Copy a wallet (Solana and
   BNB) (`src/components/app/ScanButton.tsx`, `src/lib/qr.ts`).
-Still to add before submission: links that open the app.
+- **Links that open the app** (2026-10-24) — a kobocent.com/app…, /signin or /signup link tapped in Telegram, WhatsApp,
+  email or a browser opens the app on that page (`src/lib/appLinks.ts`, `src/lib/native.ts`).
 
 Inside the apps (store rules): no Earn, no crypto-paid subscriptions on iOS until in-app purchase is wired, no referral
 commission offer on iOS (`src/lib/platform.ts`, `src/features/yield/earnStatus.js` in the backend).
