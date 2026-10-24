@@ -9,7 +9,7 @@ import { useLiveRefresh } from '@/lib/useLiveRefresh';
 
 interface Climb { bills15Usd: number; withdrawals30Usd: number; trades0_1Sol: number; stakes50Usd: number }
 interface Earned {
-  cashback: { paidUsd: number; pendingUsd: number; count: number };
+  cashback: { paidUsd: number; pendingUsd: number; count: number; spendableUsd?: number; usedUsd?: number };
   referral: { paidUsd: number; pendingUsd: number; count: number; paidSol: number; paidSolUsd: number | null; friends: number };
   totalPaidUsd: number;
   recent: Array<{ kind: 'cashback' | 'referral'; asset: string; amount: number; usd: number | null; at: number | null; signature: string | null }>;
@@ -153,8 +153,8 @@ export default function RewardsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="surface rounded-2xl p-4">
                   <div className="flex items-center gap-2 text-terracotta"><IconGift size={18} /><span className="text-[13px] font-semibold uppercase tracking-wide">Cashback</span></div>
-                  <div className="font-mono text-[20px] font-semibold text-ink dark:text-cream-warm mt-2">{money(earned.cashback.paidUsd)}</div>
-                  <div className="text-[12.5px] muted">0.2% back on payments{earned.cashback.pendingUsd > 0 ? ` · ${money(earned.cashback.pendingUsd)} on its way` : ''}</div>
+                  <div className="font-mono text-[20px] font-semibold text-ink dark:text-cream-warm mt-2">{money(earned.cashback.spendableUsd ?? 0)}</div>
+                  <div className="text-[12.5px] muted">To spend at checkout — switch on “Use cashback” when you review a payment{earned.cashback.usedUsd ? ` · ${money(earned.cashback.usedUsd)} used` : ''}{earned.cashback.paidUsd > 0 ? ` · ${money(earned.cashback.paidUsd)} paid out before` : ''}</div>
                 </div>
                 <div className="surface rounded-2xl p-4">
                   <div className="flex items-center gap-2 text-terracotta"><IconTrophy size={18} /><span className="text-[13px] font-semibold uppercase tracking-wide">Referrals</span></div>

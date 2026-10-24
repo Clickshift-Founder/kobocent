@@ -10,6 +10,7 @@ import { TelegramLogin, type TelegramUser } from '@/components/app/TelegramLogin
 import { IconBank, IconCheck, IconShield, IconChevron, IconPlus } from '@/components/app/Icons';
 import { useLiveRefresh } from '@/lib/useLiveRefresh';
 import { newKey, store, read, initials, useCountUp, HoldToConfirm, Outcome } from '@/components/app/money';
+import { CashbackToggle, cashbackOff, type CashbackOffer } from '@/components/app/CashbackToggle';
 import { usePayFrom, PayFromPicker, fundingLines, coinAmount, type Funding, type JobFunding } from '@/components/app/PayFrom';
 
 /**
@@ -29,10 +30,10 @@ interface Overview {
   running: boolean;
 }
 // Spend from any chain (2026-10-07): sources, picker and wording live in components/app/PayFrom.tsx.
-interface Quote { amountUsd: number; feeRate: number; fee: number; net: number; displayRate: number; midMarket: number; payoutNgn: number; enough: boolean | null; funding?: Funding }
+interface Quote { amountUsd: number; feeRate: number; fee: number; net: number; displayRate: number; midMarket: number; payoutNgn: number; enough: boolean | null; funding?: Funding; cashback?: CashbackOffer | null }
 interface Job {
   id: string; status: 'running' | 'done'; stage: string; amountUsd: number;
-  result: null | { ok: boolean; code: string | null; reference: string | null; payoutNgn: number | null; signature: string | null; error: string | null; funding?: JobFunding | null; explorerUrl?: string | null };
+  result: null | { ok: boolean; code: string | null; reference: string | null; payoutNgn: number | null; signature: string | null; error: string | null; funding?: JobFunding | null; explorerUrl?: string | null; cashbackUsd?: number };
 }
 type Screen = 'loading' | 'bank' | 'amount' | 'progress';
 
@@ -251,6 +252,9 @@ function AmountStep({ ov, onChangeBank, onStarted }: { ov: Overview; onChangeBan
   const [startErr, setStartErr] = useState('');
   const keyRef = useRef<string>(newKey());
   const value = Number(raw) || 0;
+  const [useCb, setUseCb] = useState(false);   // cashback at checkout — off until the user switches it on
+  const cb = cashbackOff(quote?.cashback, useCb);
+  const payout = quote ? Math.round((quote.payoutNgn + cb.ngn) * 100) / 100 : 0;
 
   // Pay from (any chain) — cheapest balance that covers the amount until the user chooses.
   const pf = usePayFrom(value, ov.balances?.total ?? null);
@@ -303,7 +307,7 @@ function AmountStep({ ov, onChangeBank, onStarted }: { ov: Overview; onChangeBan
   async function start() {
     setStarting(true); setStartErr('');
     try {
-      const job = await kc<Job>('withdraw', { method: 'POST', body: { amountUsd: value, idempotencyKey: keyRef.current, ...(isSolana ? {} : { from }) } });
+      const job = await kc<Job>('withdraw', { method: 'POST', body: { amountUsd: value, idempotencyKey: keyRef.current, ...(isSolana ? {} : { from }), ...(cb.usd > 0 ? { useCashback: true } : {}) } });
       setReview(false);
       onStarted(job.id);
     } catch (e) {
@@ -398,12 +402,13 @@ function AmountStep({ ov, onChangeBank, onStarted }: { ov: Overview; onChangeBan
           <>
             <div className="text-center py-2">
               <div className="muted text-[13.5px]">Sending to {bank.accountName}</div>
-              <div className="font-display font-bold text-[40px] text-ink dark:text-cream-warm leading-tight">{naira(quote.payoutNgn)}</div>
+              <div className="font-display font-bold text-[40px] text-ink dark:text-cream-warm leading-tight tabular-nums">{naira(payout)}</div>
               <div className="muted text-[13.5px]">{bank.bankName} · {bank.accountNumber}</div>
             </div>
             <dl className="mt-4 rounded-2xl bg-cream-warm dark:bg-night p-4 grid grid-cols-2 gap-y-2 text-[14px]">
               <dt className="muted">You withdraw</dt><dd className="text-right font-mono">{usd(quote.amountUsd)}</dd>
               <dt className="muted">Fee</dt><dd className="text-right font-mono">{usd(quote.fee)}</dd>
+              {cb.usd > 0 && (<><dt className="muted">Cashback</dt><dd className="text-right font-mono text-[#58834C]">−{usd(cb.usd)}</dd></>)}
               <dt className="muted">Rate</dt><dd className="text-right font-mono">₦{quote.displayRate.toLocaleString('en-NG')} / $1</dd>
               <dt className="muted">Paid from</dt><dd className="text-right">{paidFrom}</dd>
               {feeLine && (<><dt className="muted">Network fee</dt><dd className="text-right">{feeLine}</dd></>)}
@@ -411,9 +416,10 @@ function AmountStep({ ov, onChangeBank, onStarted }: { ov: Overview; onChangeBan
             {quote.funding && quote.funding.collect && quote.funding.priceUsd !== 1 && (
               <p className="mt-2 text-[12.5px] muted text-center">Priced at {usd(quote.funding.priceUsd)} per {quote.funding.collect.symbol}, live — the exact amount is set the moment you confirm.</p>
             )}
+            <CashbackToggle offer={quote.cashback} on={useCb} onChange={setUseCb} mode="receive" />
             <ErrorNote msg={startErr} className="mt-4 text-[14px] text-[#B84A40]" />
             <div className="mt-5">
-              <HoldToConfirm label={`Hold to send ${naira(quote.payoutNgn)}`} busy={starting} onConfirm={start} />
+              <HoldToConfirm label={`Hold to send ${naira(payout)}`} busy={starting} onConfirm={start} />
             </div>
             <p className="mt-3 text-center text-[12.5px] muted">Press and hold so nothing is sent by accident.</p>
           </>
@@ -471,7 +477,7 @@ function Progress({ jobId, bankName, onFinish }: { jobId: string; bankName: stri
     if (r.ok) {
       return (
         <Outcome tone="success" title={`${naira(r.payoutNgn)} is on its way`}
-          body={`We’ve sent it to ${bankName}${r.funding ? `, paid from ${r.funding.label}` : ''}. It usually arrives within minutes — your receipt and cashback land in Telegram.`}
+          body={`We’ve sent it to ${bankName}${r.funding ? `, paid from ${r.funding.label}` : ''}.${r.cashbackUsd ? ` Your cashback paid ${usd(r.cashbackUsd)} of the fee.` : ''} It usually arrives within minutes, and this withdrawal earns new cashback for next time.`}
           reference={r.reference} signature={r.funding ? null : r.signature}
           actions={<>
             <Link href="/app" onClick={() => onFinish(false)} className="btn-primary w-full">Done</Link>

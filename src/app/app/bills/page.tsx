@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/app/PageHeader';
 import { Sheet, Skeleton, CopyButton, ReceiptButton } from '@/components/app/ui';
 import { IconBolt, IconCheck, IconChevron, IconPlus } from '@/components/app/Icons';
 import { newKey, store, read, initials, useCountUp, HoldToConfirm, Outcome } from '@/components/app/money';
+import { CashbackToggle, cashbackOff, type CashbackOffer } from '@/components/app/CashbackToggle';
 import { usePayFrom, PayFromPicker, fundingLines, coinAmount, type Funding, type JobFunding, type PayFromState } from '@/components/app/PayFrom';
 
 /**
@@ -22,10 +23,10 @@ interface Catalog { airtime: Service[]; electricity: { prepaid: Service[]; postp
 interface RecentItem { serviceId: string; serviceName: string; customerId: string; customerName: string | null; phone: string | null; lastAt: number | null }
 interface Recents { airtime: RecentItem[]; electricity: RecentItem[]; data: RecentItem[]; cable: RecentItem[] }
 interface Plan { code: string; name: string; amountNgn: number }
-interface Quote { amountNgn: number; amountUsd: number; feeUsd: number; totalUsd: number; rate: number; stable: string; isSplit: boolean; usdcAmount: number; usdtAmount: number; balanceUsd: number; canPay: boolean; funding?: Funding | null; fundingError?: string | null }
+interface Quote { amountNgn: number; amountUsd: number; feeUsd: number; totalUsd: number; rate: number; stable: string; isSplit: boolean; usdcAmount: number; usdtAmount: number; balanceUsd: number; canPay: boolean; funding?: Funding | null; fundingError?: string | null; cashback?: CashbackOffer | null }
 interface Job {
   id: string; status: 'running' | 'done'; stage: string; category: string; amountNgn: number;
-  result: null | { ok: boolean; code: string | null; reference: string | null; serviceName: string; planName?: string | null; customerId: string; customerName: string | null; token: string | null; units: string | null; cashback: { amount: number; asset: string } | null; error: string | null; funding?: JobFunding | null };
+  result: null | { ok: boolean; code: string | null; reference: string | null; serviceName: string; planName?: string | null; customerId: string; customerName: string | null; token: string | null; units: string | null; cashback: { amount: number; asset: string } | null; cashbackUsedUsd?: number; error: string | null; funding?: JobFunding | null };
 }
 type Tab = 'airtime' | 'electricity' | 'data' | 'cable';
 const TABS: Array<{ key: Tab; label: string }> = [
@@ -208,7 +209,7 @@ function CostCard({ quote, err, busy, amountNgn }: { quote: Quote | null; err: s
         <dl className="mt-3 grid grid-cols-2 gap-y-1.5 text-[13.5px]">
           <dt className="text-cream/70">Includes fee</dt><dd className="text-right font-mono">{usd(quote.feeUsd)}</dd>
           <dt className="text-cream/70">Rate</dt><dd className="text-right font-mono">₦{Math.round(quote.rate).toLocaleString('en-NG')} / $1</dd>
-          <dt className="text-cream/70">Cashback</dt><dd className="text-right text-terracotta-light">0.2% back</dd>
+          <dt className="text-cream/70">Cashback</dt><dd className="text-right text-terracotta-light">{quote.cashback?.available ? `₦${quote.cashback.spendableNgn.toLocaleString('en-NG', { maximumFractionDigits: 2 })} to use` : '0.2% back'}</dd>
           {lines.paidFrom && (<><dt className="text-cream/70">Paid from</dt><dd className="text-right font-mono">{lines.paidFrom}</dd><dt className="text-cream/70">Network fee</dt><dd className="text-right">{lines.feeLine}</dd></>)}
         </dl>
       )}
@@ -218,21 +219,25 @@ function CostCard({ quote, err, busy, amountNgn }: { quote: Quote | null; err: s
 
 function ReviewSheet({ open, onClose, title, lines, quote, onConfirm, busy, error, holdLabel }: {
   open: boolean; onClose: () => void; title: string; lines: Array<[string, string]>; quote: Quote | null;
-  onConfirm: () => void; busy: boolean; error: string; holdLabel: string;
+  onConfirm: (extra: { useCashback?: boolean }) => void; busy: boolean; error: string; holdLabel: string;
 }) {
   const lines2 = fundingLines(quote?.funding);
+  const [useCb, setUseCb] = useState(false);   // cashback at checkout — off until the user switches it on
+  const cb = cashbackOff(quote?.cashback, useCb);
   return (
     <Sheet open={open} onClose={() => !busy && onClose()} title={title}>
       {quote && (
         <>
           <dl className="rounded-2xl bg-cream-warm dark:bg-night p-4 grid grid-cols-[auto,1fr] gap-x-4 gap-y-2 text-[14px]">
             {lines.map(([k, v]) => (<Fragment key={k}><dt className="muted">{k}</dt><dd className="text-right font-medium break-all">{v}</dd></Fragment>))}
-            <dt className="muted">You pay</dt><dd className="text-right font-mono">{lines2.paidFrom ? `${usd(quote.totalUsd)} · ${lines2.paidFrom}` : `${usd(quote.totalUsd)} ${quote.isSplit ? 'USDC + USDT' : quote.stable}`}</dd>
+            <dt className="muted">You pay</dt><dd className="text-right font-mono">{cb.usd > 0 && <s className="muted mr-1.5">{usd(quote.totalUsd)}</s>}{lines2.paidFrom ? `${usd(quote.totalUsd - cb.usd)} · ${lines2.paidFrom}` : `${usd(quote.totalUsd - cb.usd)} ${quote.isSplit ? 'USDC + USDT' : quote.stable}`}</dd>
+            {cb.usd > 0 && (<><dt className="muted">Cashback</dt><dd className="text-right font-mono text-[#58834C]">−{usd(cb.usd)}</dd></>)}
             {lines2.feeLine && (<><dt className="muted">Network fee</dt><dd className="text-right">{lines2.feeLine}</dd></>)}
           </dl>
           {lines2.priceNote && <p className="mt-2 text-[12.5px] muted text-center">{lines2.priceNote}</p>}
+          <CashbackToggle offer={quote.cashback} on={useCb} onChange={setUseCb} mode="pay" />
           <ErrorNote msg={error} className="mt-4 text-[14px] text-[#B84A40]" />
-          <div className="mt-5"><HoldToConfirm label={holdLabel} busy={busy} onConfirm={onConfirm} /></div>
+          <div className="mt-5"><HoldToConfirm label={holdLabel} busy={busy} onConfirm={() => onConfirm(cb.usd > 0 ? { useCashback: true } : {})} /></div>
           <p className="mt-3 text-center text-[12.5px] muted">Press and hold so nothing is paid by accident.</p>
         </>
       )}
@@ -338,7 +343,7 @@ function Airtime({ services, recent, onStarted }: { services: Service[]; recent:
       <ReviewSheet open={review} onClose={() => setReview(false)} title="Review airtime" quote={quote} busy={paying} error={payErr}
         lines={[['Network', `${NETWORK[network || '']?.label || service?.name || ''}${mismatch ? ` (number looks ${NETWORK[detected!]?.label})` : ''}`], ['Number', digits], ['Airtime', naira(amountNgn)]]}
         holdLabel={`Hold to buy ${naira(amountNgn)} airtime`}
-        onConfirm={() => pay({ serviceId: service!.id, amountNgn, customerId: digits })} />
+        onConfirm={(x) => pay({ ...x, serviceId: service!.id, amountNgn, customerId: digits })} />
     </div>
   );
 }
@@ -471,7 +476,7 @@ function Electricity({ cat, recent, onStarted }: { cat: Catalog['electricity']; 
       <ReviewSheet open={review} onClose={() => setReview(false)} title="Review electricity" quote={quote} busy={paying} error={payErr}
         lines={[['Company', service?.name || ''], ['Meter', meter], ['Name', verified?.customerName || ''], ['Units for', naira(amountNgn)]]}
         holdLabel={`Hold to pay ${naira(amountNgn)}`}
-        onConfirm={() => pay({ serviceId: service!.id, amountNgn, customerId: meter, ...(phoneDigits ? { phone: phoneDigits } : {}) })} />
+        onConfirm={(x) => pay({ ...x, serviceId: service!.id, amountNgn, customerId: meter, ...(phoneDigits ? { phone: phoneDigits } : {}) })} />
     </div>
   );
 }
@@ -616,7 +621,7 @@ function Data({ services, recent, onStarted }: { services: Service[]; recent: Re
       <ReviewSheet open={review} onClose={() => setReview(false)} title="Review data" quote={quote} busy={paying} error={payErr}
         lines={[['Network', NETWORK[netKey(serviceId)]?.label || ''], ['Number', digits], ['Plan', plan?.name || ''], ['Price', naira(plan?.amountNgn || 0)]]}
         holdLabel={`Hold to buy ${plan?.name || 'data'}`}
-        onConfirm={() => pay({ serviceId: serviceId!, variationCode: plan!.code, amountNgn: plan!.amountNgn, customerId: digits })} />
+        onConfirm={(x) => pay({ ...x, serviceId: serviceId!, variationCode: plan!.code, amountNgn: plan!.amountNgn, customerId: digits })} />
     </div>
   );
 }
@@ -702,7 +707,7 @@ function Cable({ services, recent, onStarted }: { services: Service[]; recent: R
       <ReviewSheet open={review} onClose={() => setReview(false)} title="Review subscription" quote={quote} busy={paying} error={payErr}
         lines={[['Provider', service?.name || ''], ['Smartcard', card], ['Name', verified?.customerName || ''], ['Package', plan?.name || ''], ['Price', naira(plan?.amountNgn || 0)]]}
         holdLabel={`Hold to pay ${naira(plan?.amountNgn || 0)}`}
-        onConfirm={() => pay({ serviceId: service!.id, variationCode: plan!.code, amountNgn: plan!.amountNgn, customerId: card })} />
+        onConfirm={(x) => pay({ ...x, serviceId: service!.id, variationCode: plan!.code, amountNgn: plan!.amountNgn, customerId: card })} />
     </div>
   );
 }
@@ -764,7 +769,8 @@ function Progress({ jobId, onFinish }: { jobId: string; onFinish: () => void }) 
               <p className="mt-2 text-[12.5px] muted">Enter it on your meter. It’s also on your receipt and in Telegram.</p>
             </div>
           )}
-          {r.cashback && <p className="text-center text-[13.5px] text-[#58834C]">+{r.cashback.amount.toFixed(4)} {r.cashback.asset} cashback on its way</p>}
+          {!!r.cashbackUsedUsd && <p className="text-center text-[13.5px] text-[#58834C]">Your cashback paid {usd(r.cashbackUsedUsd)} of the fee</p>}
+          {r.cashback && <p className="text-center text-[13.5px] text-[#58834C]">+{r.cashback.amount.toFixed(4)} {r.cashback.asset} cashback to spend on your next payment</p>}
         </section>
       );
     }
