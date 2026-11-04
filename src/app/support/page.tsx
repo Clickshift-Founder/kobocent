@@ -17,7 +17,7 @@ export default function SupportPage() {
       <h1 className="h-display text-[34px] sm:text-[44px] mt-2">We’re here to help</h1>
 
       <p className="mt-6">
-        <a href={`mailto:${SUPPORT_EMAIL}?subject=Kobocent%20support`} className="btn-primary inline-flex items-center justify-center min-h-[48px] px-6 no-underline">Email {SUPPORT_EMAIL}</a>
+        <a href={`mailto:${SUPPORT_EMAIL}?subject=Kobocent%20support`} className="btn-primary inline-flex items-center justify-center min-h-[48px] px-6 no-underline !text-white">Email {SUPPORT_EMAIL}</a>
       </p>
 
       <h2>To get the fastest answer</h2>

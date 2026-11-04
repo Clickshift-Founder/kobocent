@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { kc, KcError } from '@/lib/kc';
 import { Sheet } from './ui';
 import { ErrorNote } from './ErrorNote';
@@ -70,7 +71,7 @@ export function PinAnswers({ intro, onUnlocked, onCancel }: { intro: string; onU
   if (lockedUntil) return (
     <div className="space-y-3 text-center">
       <p className="text-[14.5px] text-ink dark:text-cream-warm">Your security questions are locked until {when(lockedUntil)}, and your account is frozen to keep your money safe.</p>
-      <Link href="/support" className="btn-primary w-full">Contact support</Link>
+      <Link href="/app/settings#support" className="btn-primary w-full">Contact support</Link>
       {back}
     </div>
   );
@@ -378,8 +379,12 @@ export function ProtectionSheets({ onSignInAgain, onOpenChange }: { onSignInAgai
   );
 }
 
-/** Stays on screen while the account is frozen; a quieter line during the 24 hours after. */
+/** Where the 24-hour limit can actually stop a payment, plus Settings. Never Home (founder, 2026-11-04: it clutters). */
+const COOLING_PAGES = ['/app/settings', '/app/send', '/app/send-wallet', '/app/withdraw', '/app/bridge'];
+
+/** Stays on every screen while the account is frozen; a quieter line during the 24 hours after, only on COOLING_PAGES. */
 export function ProtectionBanner({ p }: { p: Protection | null | undefined }) {
+  const path = usePathname() || '';
   if (p?.frozen) return (
     <div className="mb-4 flex items-center gap-3 rounded-2xl bg-[#B84A40] text-white px-4 py-3" role="status">
       <span aria-hidden className="text-[20px]">🧊</span>
@@ -387,7 +392,7 @@ export function ProtectionBanner({ p }: { p: Protection | null | undefined }) {
       <button onClick={() => protect('unfreeze')} className="shrink-0 rounded-xl bg-white/15 px-3 min-h-[44px] text-[14px] font-semibold">Unfreeze</button>
     </div>
   );
-  if (p?.coolingUntil) return (
+  if (p?.coolingUntil && COOLING_PAGES.some(c => path === c || path.startsWith(c + '/'))) return (
     <div className="mb-4 rounded-2xl bg-cream-warm dark:bg-night px-4 py-3 text-[13.5px] muted" role="status">
       Until {when(p.coolingUntil)}, money can only go to banks and wallets you’ve paid before.
     </div>

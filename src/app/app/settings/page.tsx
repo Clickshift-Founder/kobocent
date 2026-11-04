@@ -20,11 +20,12 @@ import { GoogleButton, googleEnabled } from '@/components/app/GoogleButton';
 /**
  * Settings (rebuilt 2026-11-04, founder: easy navigation, mobile first). One short menu in groups; each row opens its own screen, and
  * the phone's back button returns to the menu. Deep links are hashes: #security, #lock, #telegram, #notifications, #invite, #guide,
- * #profile. Freezing stays one tap from the menu, because someone who has just lost a phone should not have to hunt for it.
+ * #profile, #support. Freezing stays one tap from the menu, because someone who has just lost a phone should not have to hunt for it.
  */
-type View = 'menu' | 'profile' | 'security' | 'lock' | 'telegram' | 'notifications' | 'invite' | 'guide';
-const VIEWS: View[] = ['profile', 'security', 'lock', 'telegram', 'notifications', 'invite', 'guide'];
-const TITLE: Record<Exclude<View, 'menu'>, string> = { profile: 'Your profile', security: 'Account protection', lock: 'App lock & sign-in', telegram: 'Telegram', notifications: 'Notifications', invite: 'Invite friends', guide: 'Product guide' };
+type View = 'menu' | 'profile' | 'security' | 'lock' | 'telegram' | 'notifications' | 'invite' | 'guide' | 'support';
+const VIEWS: View[] = ['profile', 'security', 'lock', 'telegram', 'notifications', 'invite', 'guide', 'support'];
+const SUPPORT_EMAIL = 'support@kobocent.com';
+const TITLE: Record<Exclude<View, 'menu'>, string> = { profile: 'Your profile', security: 'Account protection', lock: 'App lock & sign-in', telegram: 'Telegram', notifications: 'Notifications', invite: 'Invite friends', guide: 'Product guide', support: 'Contact support' };
 const viewFromHash = (): View => { const h = window.location.hash.slice(1) as View; return VIEWS.includes(h) ? h : 'menu'; };
 interface SecuritySummary { hasPin: boolean; protection?: Protection | null }
 
@@ -149,6 +150,21 @@ export default function SettingsPage() {
             ) : <p className="text-[14.5px] muted">Connect Telegram to get your invite link.</p>}
           </section>
         )}
+        {view === 'support' && (
+          <section id="support" className="surface rounded-3xl p-5 space-y-4">
+            <p className="text-[14.5px] text-ink dark:text-cream-warm">We’re here to help. Email us, or chat with someone from the team.</p>
+            <a href={`mailto:${SUPPORT_EMAIL}?subject=Kobocent%20support`} className="btn-primary w-full">Email {SUPPORT_EMAIL}</a>
+            <button onClick={() => window.dispatchEvent(new Event('kc-open-pal'))} className="btn-ghost w-full">Chat in Kobo Pal</button>
+            <div className="rounded-2xl bg-cream-warm dark:bg-night p-4 text-[13.5px] leading-relaxed">
+              <div className="eyebrow mb-1.5">To get the fastest answer</div>
+              <ul className="muted space-y-1.5 list-disc pl-4">
+                <li>Write from the email on your account, or tell us your Telegram username.</li>
+                <li>Include the reference or transaction ID from the receipt, the amount and roughly when it happened.</li>
+                <li>Never send your recovery phrase or PIN. Kobocent will never ask for them.</li>
+              </ul>
+            </div>
+          </section>
+        )}
         {view === 'guide' && (
           <section id="guide" className="surface rounded-3xl divide-y divide-cream-border dark:divide-night-border overflow-hidden">
             <button onClick={() => window.dispatchEvent(new Event('kc-guide-replay'))} className="w-full flex items-center gap-3.5 px-4 py-3 text-left min-h-[64px]">
@@ -213,7 +229,7 @@ export default function SettingsPage() {
 
       <Group title="Help">
         <Row icon={<span aria-hidden>🧭</span>} title="Product guide" note="The tour and how each feature works" onClick={() => open('guide')} />
-        <Row icon={<span aria-hidden>💬</span>} title="Contact support" href="/support" />
+        <Row icon={<span aria-hidden>💬</span>} title="Contact support" note="Email or chat with our team" onClick={() => open('support')} />
       </Group>
 
       <p className="text-[13px] muted leading-relaxed px-1">Your keys are encrypted, and only you can trigger a transaction. Kobocent will never message you first asking for money, your phrase or a code. The only official links are kobocent.com and t.me/{BOT}.</p>
