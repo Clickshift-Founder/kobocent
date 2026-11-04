@@ -15,15 +15,16 @@ import { newKey, store, read, HoldToConfirm, Outcome } from '@/components/app/mo
  *   Bridge in  — ETH/BNB/MATIC or USDC/USDT on Ethereum, BNB Chain, Polygon, Arbitrum, Robinhood Chain
  *               → USDC on Solana.
  *   Bridge out — your USDC → USDC/USDT or the network coin on those chains, to your own 0x wallet or another.
+ *   Chain to chain — straight from one of those chains to another, no stop on Solana (founder, 2026-11-04).
  * Every fee is paid in stablecoin (founder, 2026-10-05): if the user lacks the network coin, Kobocent
  * covers the network costs and takes the USDC equivalent — never an "add gas" step.
  * Backend /api/v1/bridge (src/services/bridge.js — same code as Telegram). Order progress is durable.
  */
 
-type Dir = 'in' | 'out';
+type Dir = 'in' | 'out' | 'direct';
 interface Asset { id: string; symbol: string; native: boolean; decimals?: number; balance?: number | null }
 interface Chain { key: string; label: string; native: string; minRecommendedUsd?: number; assets: Asset[] }
-interface Order { direction: Dir; assetKey: string; chainKey: string; symbol: string | null; amountIn: number; estOut: number | null; orderId: string; srcTx: string | null; status: string; dlnStatus: string | null; createdAt: number; completedAt: number | null }
+interface Order { direction: Dir; assetKey: string; chainKey: string; symbol: string | null; amountIn: number; estOut: number | null; orderId: string; srcTx: string | null; status: string; dlnStatus: string | null; createdAt: number; completedAt: number | null; toChainKey?: string | null; toSymbol?: string | null }
 interface Options {
   in: { chains: Chain[]; evmAddress: string | null };
   out: { available: boolean; usdc: number | null; sol: number | null; evmAddress: string | null; minUsd: number; recommendedUsd: number; chains: Chain[] };
@@ -31,7 +32,8 @@ interface Options {
 }
 interface InQuote { direction: 'in'; assetKey: string; chainLabel: string; symbol: string; native: string; amountIn: number; usdIn: number | null; receive: number; kobocentFee: number; feePct?: number; fixFee: number; gasEstimate: number; gasFront: { amount: number; usd: number } | null; etaSeconds: number | null; minRecommendedUsd: number; smallWarning: boolean }
 interface OutQuote { direction: 'out'; assetKey: string; chainLabel: string; symbol: string; amountIn: number; receive: number; kobocentFee: number; feePct?: number; solCost: number; solCostUsd: number | null; coveredFromUsdc: number; totalUsdc: number; etaSeconds: number | null; recipient: string; ownRecipient: boolean; minRecommendedUsd: number; smallWarning: boolean }
-type Quote = InQuote | OutQuote;
+interface DirectQuote { direction: 'direct'; assetKey: string; toAssetKey: string; chainLabel: string; toChainLabel: string; symbol: string; toSymbol: string; native: string; amountIn: number; usdIn: number; receive: number; receiveUsd: number | null; kobocentFee: number; feePct: number; fixFee: number; gasEstimate: number; gasFront: { amount: number; usd: number } | null; etaSeconds: number | null; recipient: string; ownRecipient: boolean; minRecommendedUsd: number; smallWarning: boolean }
+type Quote = InQuote | OutQuote | DirectQuote;
 interface QErr { code?: string; error?: string }
 interface Result { ok: boolean; code?: string; error?: string; txHash?: string | null; orderId?: string | null; q?: Quote }
 interface Job { id: string; status: 'running' | 'done'; stage: string; meta: { assetKey: string; amount: number; direction?: Dir }; result: Result | null }
@@ -54,6 +56,8 @@ export default function BridgePage() {
   const [inAsset, setInAsset] = useState('usdc_arb');
   // out
   const [outAsset, setOutAsset] = useState('usdc_arb');
+  const [dstAsset, setDstAsset] = useState('usdt_bnb');
+  const [pickerTo, setPickerTo] = useState(false);
   const [toOther, setToOther] = useState(false);
   const [recipient, setRecipient] = useState('');
   // shared
@@ -83,6 +87,10 @@ export default function BridgePage() {
   const inA = inC?.assets.find(a => a.id === inAsset) || inC?.assets[0] || null;
   const outC = opts?.out.chains.find(c => c.assets.some(a => a.id === outAsset)) || null;
   const outA = outC?.assets.find(a => a.id === outAsset) || null;
+  // Chain to chain: the destination can't be the chain the money is on.
+  const dstChains = (opts?.out.chains || []).filter(c => c.key !== inC?.key);
+  const dstC = dstChains.find(c => c.assets.some(a => a.id === dstAsset)) || dstChains[0] || null;
+  const dstA = dstC?.assets.find(a => a.id === dstAsset) || dstC?.assets[0] || null;
   const value = Number(amt) || 0;
   const recipientOk = !toOther || /^0x[a-fA-F0-9]{40}$/.test(recipient.trim());
 
@@ -90,11 +98,14 @@ export default function BridgePage() {
 
   useEffect(() => {
     setQErr(null);
-    const assetId = dir === 'in' ? inA?.id : outA?.id;
-    if (!assetId || (!value && !useMax) || !recipientOk) { setQuote(null); return; }
+    const assetId = dir === 'out' ? outA?.id : inA?.id;
+    if (!assetId || (dir === 'direct' && !dstA) || (!value && !useMax) || !recipientOk) { setQuote(null); return; }
     let live = true; setBusy(true);
-    const path = dir === 'in' ? 'bridge/quote' : 'bridge/out/quote';
-    const body = dir === 'in' ? { assetKey: assetId, amount: value, max: useMax } : { assetKey: assetId, amount: value, max: useMax, recipient: toOther ? recipient.trim() : null };
+    const path = dir === 'in' ? 'bridge/quote' : dir === 'out' ? 'bridge/out/quote' : 'bridge/direct/quote';
+    const to = toOther ? recipient.trim() : null;
+    const body = dir === 'in' ? { assetKey: assetId, amount: value, max: useMax }
+      : dir === 'out' ? { assetKey: assetId, amount: value, max: useMax, recipient: to }
+      : { fromKey: assetId, toKey: dstA?.id, amount: value, max: useMax, recipient: to };
     const t = setTimeout(() => {
       kc<Quote>(path, { method: 'POST', body })
         .then(q => { if (!live) return; setQuote(q); if (useMax) setAmt(String(q.amountIn)); })
@@ -102,15 +113,17 @@ export default function BridgePage() {
         .finally(() => { if (live) setBusy(false); });
     }, 650);
     return () => { live = false; clearTimeout(t); };
-  }, [dir, inA, outA, value, useMax, toOther, recipient, recipientOk]);
+  }, [dir, inA, outA, dstA, value, useMax, toOther, recipient, recipientOk]);
 
   async function start() {
     if (!quote) return;
     setStarting(true); setStartErr('');
     try {
-      const path = quote.direction === 'in' ? 'bridge/execute' : 'bridge/out/execute';
+      const path = quote.direction === 'in' ? 'bridge/execute' : quote.direction === 'out' ? 'bridge/out/execute' : 'bridge/direct/execute';
       const body = quote.direction === 'in'
         ? { assetKey: quote.assetKey, amount: quote.amountIn, expectReceive: quote.receive, idempotencyKey: keyRef.current }
+        : quote.direction === 'direct'
+        ? { fromKey: quote.assetKey, toKey: quote.toAssetKey, amount: quote.amountIn, expectReceive: quote.receive, recipient: quote.ownRecipient ? null : quote.recipient, idempotencyKey: keyRef.current }
         : { assetKey: quote.assetKey, amount: quote.amountIn, expectReceive: quote.receive, recipient: quote.ownRecipient ? null : quote.recipient, idempotencyKey: keyRef.current };
       const job = await kc<Job>(path, { method: 'POST', body });
       setReview(false); store(JOB_KEY, job.id); setJobId(job.id);
@@ -138,6 +151,27 @@ export default function BridgePage() {
       </div>
     </div>
   );
+  const destA = dir === 'direct' ? dstA : outA;
+  const destC = dir === 'direct' ? dstC : outC;
+  const recipientBox = (
+              <section className="surface rounded-2xl p-4 space-y-3">
+                <div className="grid grid-cols-2 gap-1 rounded-xl bg-cream-warm dark:bg-night p-1">
+                  <button onClick={() => setToOther(false)} className={`min-h-[44px] rounded-lg text-[13.5px] font-semibold ${!toOther ? 'bg-white dark:bg-night-card text-terracotta' : 'muted'}`}>My 0x wallet</button>
+                  <button onClick={() => setToOther(true)} className={`min-h-[44px] rounded-lg text-[13.5px] font-semibold ${toOther ? 'bg-white dark:bg-night-card text-terracotta' : 'muted'}`}>Another address</button>
+                </div>
+                {toOther ? (
+                  <>
+                    <div className="flex items-center gap-1">
+                      <input value={recipient} onChange={e => setRecipient(e.target.value.trim())} placeholder="0x…" spellCheck={false} autoCapitalize="off" aria-label="Recipient address"
+                        className="flex-1 min-w-0 rounded-xl border border-cream-border dark:border-night-border bg-transparent px-3 min-h-[48px] font-mono text-[14px]" />
+                      <ScanButton kind="evm" onAddress={setRecipient} />
+                    </div>
+                    {recipient && !recipientOk && <div className="text-[13px] text-[#B84A40]">0x addresses are 42 characters long</div>}
+                    <p className="text-[12.5px] muted">Make sure this wallet or exchange supports {destA?.symbol} on {destC?.label}.</p>
+                  </>
+                ) : <p className="text-[12.5px] muted break-all">Your Kobocent 0x wallet: <span className="font-mono">{opts?.out.evmAddress || '—'}</span></p>}
+              </section>
+  );
   const arrow = <div className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 grid place-items-center h-12 w-12 rounded-2xl bg-terracotta text-white shadow-card"><IconBridge size={20} className="rotate-90" /></div>;
 
   return (
@@ -148,13 +182,45 @@ export default function BridgePage() {
         : error ? <div className="surface rounded-2xl p-5 text-[15px]">{error}</div>
         : !opts || !inC || !inA ? <div className="space-y-3"><Skeleton className="h-12" /><Skeleton className="h-40" /><Skeleton className="h-28" /></div> : (
         <div className="space-y-4 animate-fade-up">
-          <div role="tablist" className="grid grid-cols-2 gap-1 rounded-2xl bg-cream-warm dark:bg-night p-1">
-            {(['in', 'out'] as Dir[]).map(d => (
-              <button key={d} role="tab" aria-selected={dir === d} onClick={() => switchDir(d)} className={`min-h-[44px] rounded-xl text-[14.5px] font-semibold ${dir === d ? 'bg-white dark:bg-night-card text-terracotta shadow-sm' : 'muted'}`}>{d === 'in' ? 'Bridge in' : 'Bridge out'}</button>
+          <div role="tablist" className="grid grid-cols-3 gap-1 rounded-2xl bg-cream-warm dark:bg-night p-1">
+            {(['in', 'out', 'direct'] as Dir[]).map(d => (
+              <button key={d} role="tab" aria-selected={dir === d} onClick={() => switchDir(d)} className={`min-h-[44px] rounded-xl text-[13.5px] font-semibold ${dir === d ? 'bg-white dark:bg-night-card text-terracotta shadow-sm' : 'muted'}`}>{d === 'in' ? 'Bridge in' : d === 'out' ? 'Bridge out' : 'Chain to chain'}</button>
             ))}
           </div>
 
-          {dir === 'in' ? (
+          {dir === 'direct' ? (
+            <>
+              <p className="text-[13.5px] muted px-1">Move straight from one chain to another, like ETH on Ethereum to USDT on BNB Chain. It never stops on Solana, and you need nothing there.</p>
+              <section className="relative">
+                <div className="surface rounded-3xl p-5">
+                  <div className="flex items-center justify-between text-[13px] muted"><span>From · your 0x wallet</span>
+                    <span>Balance {inA.balance == null ? '—' : fmt(inA.balance, dpOf(inA))}{(inA.balance || 0) > 0 && <button onClick={() => { setUseMax(true); setAmt(''); }} className="ml-2 font-semibold text-terracotta">Max</button>}</span>
+                  </div>
+                  <div className="mt-2 flex items-center gap-3">
+                    {amountInput(6, `Amount of ${inA.symbol}`)}
+                    <button onClick={() => setPicker(true)} className="inline-flex items-center gap-2 rounded-full bg-cream-warm dark:bg-night pl-1.5 pr-3 min-h-[44px] font-semibold text-[15px] text-ink dark:text-cream-warm">
+                      <span className="grid place-items-center h-8 w-8 rounded-full text-white text-[11px] font-bold" style={{ background: CHAIN_COLOR[inC.key] }}>{inA.native ? inA.symbol.slice(0, 1) : '$'}</span>
+                      <span className="text-left leading-tight">{inA.symbol}<span className="block text-[11px] muted font-normal">{inC.label}</span></span><IconChevron size={14} className="rotate-90 muted" />
+                    </button>
+                  </div>
+                  {quote?.direction === 'direct' && <div className="text-[13px] muted">≈ ${fmt(quote.usdIn, 2)}</div>}
+                </div>
+                {arrow}
+                <div className="surface rounded-3xl p-5 mt-2">
+                  <div className="mt-2 flex items-center gap-3">
+                    <div className="flex-1 min-w-0 font-display font-bold text-[36px] tabular-nums text-ink dark:text-cream-warm truncate">
+                      {!value && !useMax ? <span className="text-cream-border dark:text-night-border">0</span> : busy || !quote ? <span className="inline-block h-9 w-32 rounded-xl bg-cream-warm dark:bg-night animate-pulse align-middle" /> : `≈ ${fmt(quote.receive, dstA && !dstA.native ? 2 : 6)}`}
+                    </div>
+                    <button onClick={() => setPickerTo(true)} className="inline-flex items-center gap-2 rounded-full bg-cream-warm dark:bg-night pl-1.5 pr-3 min-h-[44px] font-semibold text-[15px] text-ink dark:text-cream-warm">
+                      <span className="grid place-items-center h-8 w-8 rounded-full text-white text-[11px] font-bold" style={{ background: CHAIN_COLOR[dstC?.key || 'BNB'] }}>{dstA?.native ? dstA.symbol.slice(0, 1) : '$'}</span>
+                      <span className="text-left leading-tight">{dstA?.symbol}<span className="block text-[11px] muted font-normal">{dstC?.label}</span></span><IconChevron size={14} className="rotate-90 muted" />
+                    </button>
+                  </div>
+                </div>
+              </section>
+              {recipientBox}
+            </>
+          ) : dir === 'in' ? (
             <>
               <p className="text-[13.5px] muted px-1">Move USDT, USDC, ETH, BNB and more from another chain to USDC on Solana.</p>
               <BridgeExample />
@@ -208,23 +274,7 @@ export default function BridgePage() {
                   </div>
                 </div>
               </section>
-              <section className="surface rounded-2xl p-4 space-y-3">
-                <div className="grid grid-cols-2 gap-1 rounded-xl bg-cream-warm dark:bg-night p-1">
-                  <button onClick={() => setToOther(false)} className={`min-h-[44px] rounded-lg text-[13.5px] font-semibold ${!toOther ? 'bg-white dark:bg-night-card text-terracotta' : 'muted'}`}>My 0x wallet</button>
-                  <button onClick={() => setToOther(true)} className={`min-h-[44px] rounded-lg text-[13.5px] font-semibold ${toOther ? 'bg-white dark:bg-night-card text-terracotta' : 'muted'}`}>Another address</button>
-                </div>
-                {toOther ? (
-                  <>
-                    <div className="flex items-center gap-1">
-                      <input value={recipient} onChange={e => setRecipient(e.target.value.trim())} placeholder="0x…" spellCheck={false} autoCapitalize="off" aria-label="Recipient address"
-                        className="flex-1 min-w-0 rounded-xl border border-cream-border dark:border-night-border bg-transparent px-3 min-h-[48px] font-mono text-[14px]" />
-                      <ScanButton kind="evm" onAddress={setRecipient} />
-                    </div>
-                    {recipient && !recipientOk && <div className="text-[13px] text-[#B84A40]">0x addresses are 42 characters long</div>}
-                    <p className="text-[12.5px] muted">Make sure this wallet or exchange supports {outA?.symbol} on {outC?.label}.</p>
-                  </>
-                ) : <p className="text-[12.5px] muted break-all">Your Kobocent 0x wallet: <span className="font-mono">{opts.out.evmAddress || '—'}</span></p>}
-              </section>
+              {recipientBox}
             </>
           )}
 
@@ -242,8 +292,8 @@ export default function BridgePage() {
                 {opts.recent.map(o => (
                   <li key={o.orderId}>
                     <button onClick={() => { store(ORDER_KEY, o.orderId); setOrderId(o.orderId); }} className="w-full flex items-center gap-3 py-3 text-left min-h-[56px]">
-                      <span className="grid place-items-center h-9 w-9 rounded-xl text-white text-[11px] font-bold" style={{ background: CHAIN_COLOR[o.chainKey] || '#C1502E' }}>{o.direction === 'in' ? '↓' : '↑'}</span>
-                      <span className="flex-1 min-w-0"><span className="block text-[14.5px] font-medium">{o.direction === 'in' ? `${fmt(o.amountIn, 4)} ${o.symbol} → USDC` : `${fmt(o.amountIn, 2)} USDC → ${o.symbol} · ${CHAIN_LABEL[o.chainKey] || o.chainKey}`}</span><span className="text-[12px] muted">{new Date(o.createdAt).toLocaleString()}</span></span>
+                      <span className="grid place-items-center h-9 w-9 rounded-xl text-white text-[11px] font-bold" style={{ background: CHAIN_COLOR[o.chainKey] || '#C1502E' }}>{o.direction === 'in' ? '↓' : o.direction === 'out' ? '↑' : '→'}</span>
+                      <span className="flex-1 min-w-0"><span className="block text-[14.5px] font-medium">{o.direction === 'direct' ? `${fmt(o.amountIn, 4)} ${o.symbol} → ${o.toSymbol || ''} · ${CHAIN_LABEL[o.toChainKey || ''] || o.toChainKey}` : o.direction === 'in' ? `${fmt(o.amountIn, 4)} ${o.symbol} → USDC` : `${fmt(o.amountIn, 2)} USDC → ${o.symbol} · ${CHAIN_LABEL[o.chainKey] || o.chainKey}`}</span><span className="text-[12px] muted">{new Date(o.createdAt).toLocaleString()}</span></span>
                       <StatusPill s={o.status} />
                     </button>
                   </li>
@@ -255,19 +305,19 @@ export default function BridgePage() {
       )}
 
       {opts && (
-        <Sheet open={picker} onClose={() => setPicker(false)} title={dir === 'in' ? 'Bridge in from' : 'Bridge out to'}>
+        <Sheet open={picker} onClose={() => setPicker(false)} title={dir === 'in' ? 'Bridge in from' : dir === 'direct' ? 'Move from' : 'Bridge out to'}>
           <div className="space-y-4">
-            {(dir === 'in' ? opts.in.chains : opts.out.chains).map(c => (
+            {(dir === 'out' ? opts.out.chains : opts.in.chains).map(c => (
               <div key={c.key}>
                 <div className="text-[12px] muted mb-1.5 flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: CHAIN_COLOR[c.key] }} />{c.label}</div>
                 <ul className="space-y-1.5">
                   {c.assets.map(a => {
-                    const selected = dir === 'in' ? a.id === inA?.id : a.id === outA?.id;
+                    const selected = dir === 'out' ? a.id === outA?.id : a.id === inA?.id;
                     return (
-                      <li key={a.id}><button onClick={() => { if (dir === 'in') { setInChain(c.key); setInAsset(a.id); } else setOutAsset(a.id); setAmt(''); setUseMax(false); setQuote(null); setPicker(false); }}
+                      <li key={a.id}><button onClick={() => { if (dir === 'out') setOutAsset(a.id); else { setInChain(c.key); setInAsset(a.id); } setAmt(''); setUseMax(false); setQuote(null); setPicker(false); }}
                         className={`w-full flex items-center gap-3 rounded-2xl border px-4 min-h-[52px] ${selected ? 'border-terracotta' : 'border-cream-border dark:border-night-border'}`}>
                         <span className="flex-1 text-left font-semibold">{a.symbol}{a.native && <span className="muted text-[12px] font-normal"> · network coin</span>}</span>
-                        {dir === 'in' && <span className="font-mono text-[13.5px] muted">{a.balance == null ? '—' : fmt(a.balance, dpOf(a))}</span>}
+                        {dir !== 'out' && <span className="font-mono text-[13.5px] muted">{a.balance == null ? '—' : fmt(a.balance, dpOf(a))}</span>}
                       </button></li>
                     );
                   })}
@@ -278,17 +328,36 @@ export default function BridgePage() {
         </Sheet>
       )}
 
+      <Sheet open={pickerTo} onClose={() => setPickerTo(false)} title="Move to">
+        <div className="space-y-4">
+          {dstChains.map(c => (
+            <div key={c.key}>
+              <div className="text-[12px] muted mb-1.5 flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: CHAIN_COLOR[c.key] }} />{c.label}</div>
+              <ul className="space-y-1.5">
+                {c.assets.map(a => (
+                  <li key={a.id}><button onClick={() => { setDstAsset(a.id); setQuote(null); setPickerTo(false); }} className={`w-full flex items-center gap-3 rounded-2xl border px-4 min-h-[52px] ${a.id === dstA?.id ? 'border-terracotta' : 'border-cream-border dark:border-night-border'}`}>
+                    <span className="flex-1 text-left font-semibold">{a.symbol}{a.native && <span className="muted text-[12px] font-normal"> · network coin</span>}</span>
+                  </button></li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </Sheet>
+
       <Sheet open={review} onClose={() => !starting && setReview(false)} title="Review bridge">
         {quote && (
           <>
             <div className="flex items-center justify-center gap-4 py-3">
-              <div className="text-center"><div className="font-display font-bold text-[24px]">{fmt(quote.amountIn, quote.direction === 'out' ? 2 : 6)}</div><div className="muted text-[13px]">{quote.direction === 'in' ? `${quote.symbol} · ${quote.chainLabel}` : 'USDC · Kobocent'}</div></div>
+              <div className="text-center"><div className="font-display font-bold text-[24px]">{fmt(quote.amountIn, quote.direction === 'out' ? 2 : 6)}</div><div className="muted text-[13px]">{quote.direction === 'out' ? 'USDC · Kobocent' : `${quote.symbol} · ${quote.chainLabel}`}</div></div>
               <IconBridge size={22} className="text-terracotta" />
-              <div className="text-center"><div className="font-display font-bold text-[24px]">≈ {fmt(quote.receive, quote.direction === 'in' ? 2 : 6)}</div><div className="muted text-[13px]">{quote.direction === 'in' ? 'USDC · Kobocent' : `${quote.symbol} · ${quote.chainLabel}`}</div></div>
+              <div className="text-center"><div className="font-display font-bold text-[24px]">≈ {fmt(quote.receive, quote.direction === 'in' ? 2 : 6)}</div><div className="muted text-[13px]">{quote.direction === 'in' ? 'USDC · Kobocent' : quote.direction === 'direct' ? `${quote.toSymbol} · ${quote.toChainLabel}` : `${quote.symbol} · ${quote.chainLabel}`}</div></div>
             </div>
-            {quote.direction === 'out' && <p className="text-center text-[13px] break-all"><span className="muted">To </span><span className="font-mono">{quote.recipient}</span>{quote.ownRecipient && <span className="muted"> (your wallet)</span>}</p>}
+            {quote.direction !== 'in' && <p className="text-center text-[13px] break-all"><span className="muted">To </span><span className="font-mono">{quote.recipient}</span>{quote.ownRecipient && <span className="muted"> (your wallet)</span>}</p>}
             <p className="text-center muted text-[13px] mt-2">
-              {quote.direction === 'in'
+              {quote.direction === 'direct'
+                ? (quote.gasFront ? `Our fee and network fees (~$${fmt(quote.gasFront.usd, 2)}) come out of what you send.` : `Our fee comes out of what you send. Plus ${fmt(quote.fixFee, 6)} ${quote.native} bridge fee and gas from your ${quote.native}.`)
+                : quote.direction === 'in'
                 ? (quote.gasFront ? `Network fees (~$${fmt(quote.gasFront.usd, 2)}) are paid for you and taken from the USDC that lands.` : `Plus ${fmt(quote.fixFee, 6)} ${quote.native} bridge fee and gas from your ${quote.native}.`)
                 : `Total from your balance: $${fmt(quote.totalUsdc, 2)} USDC${quote.coveredFromUsdc > 0 ? ` (includes ~$${fmt(quote.coveredFromUsdc, 2)} for Solana network fees)` : ''}.`}
               {' '}Arrives in {eta(quote.etaSeconds)}; the final amount can shift slightly with the market.
@@ -303,6 +372,18 @@ export default function BridgePage() {
 }
 
 function QuoteDetails({ q }: { q: Quote }) {
+  if (q.direction === 'direct') return (
+    <>
+      <dl className="surface rounded-2xl p-4 grid grid-cols-2 gap-y-1.5 text-[13.5px]">
+        <dt className="muted">{q.ownRecipient ? 'You receive' : 'They receive'}</dt><dd className="text-right font-mono font-semibold">≈ {fmt(q.receive, 6)} {q.toSymbol}</dd>
+        <dt className="muted">Kobocent fee ({q.feePct}%)</dt><dd className="text-right font-mono">≈ ${fmt(q.kobocentFee, 2)} <span className="muted">· from what you send</span></dd>
+        {q.gasFront ? (<><dt className="muted">Network fees</dt><dd className="text-right">~${fmt(q.gasFront.usd, 2)} <span className="muted">· paid for you</span></dd></>)
+          : (<><dt className="muted">Bridge fee</dt><dd className="text-right font-mono">{fmt(q.fixFee, 6)} {q.native}</dd><dt className="muted">Network gas</dt><dd className="text-right">≈ {fmt(q.gasEstimate, 6)} {q.native}</dd></>)}
+        <dt className="muted">Arrives in</dt><dd className="text-right">{eta(q.etaSeconds)}</dd>
+      </dl>
+      {q.smallWarning && <p className="text-[13px] text-[#B68B2A] px-1">Small bridges lose a big share to fixed network costs — we recommend at least ~${q.minRecommendedUsd}.</p>}
+    </>
+  );
   return (
     <>
       <dl className="surface rounded-2xl p-4 grid grid-cols-2 gap-y-1.5 text-[13.5px]">
@@ -328,16 +409,12 @@ function StatusPill({ s }: { s: string }) {
   return <span className="text-[12px] font-semibold rounded-full px-2.5 py-1" style={{ background: `${color}1F`, color }}>{label}</span>;
 }
 
-/** Worked example (founder, 2026-11-03): chain to chain is two steps today, through Solana. */
+/** Worked example (founder, 2026-11-03), now pointing at the direct route. */
 function BridgeExample() {
   return (
     <details className="rounded-2xl bg-cream-warm dark:bg-night px-4 py-3 text-[13.5px]">
       <summary className="font-semibold text-ink dark:text-cream-warm cursor-pointer min-h-[28px]">Example: Robinhood Chain to BNB Chain</summary>
-      <ol className="mt-2 space-y-1.5 muted list-decimal pl-5">
-        <li><b>Bridge in:</b> move your ETH on Robinhood Chain to USDC on Solana.</li>
-        <li><b>Bridge out:</b> move that USDC to BNB Chain.</li>
-      </ol>
-      <p className="mt-2 muted">Moving straight from one chain to another is coming later.</p>
+      <p className="mt-2 muted">Use <b>Chain to chain</b>: pick your ETH on Robinhood Chain, pick what should arrive on BNB Chain, and it goes straight there in one step.</p>
     </details>
   );
 }
@@ -388,14 +465,15 @@ function Tracker({ orderId, onFinish }: { orderId: string; onFinish: () => void 
     return () => { live = false; clearTimeout(t); };
   }, [orderId]);
   if (gone) return <Outcome tone="info" title="Bridge not found" body="It may have been made from another account." actions={<button onClick={onFinish} className="btn-primary w-full">Back to Bridge</button>} />;
-  const out = o?.direction === 'out';
-  const dest = out ? (CHAIN_LABEL[o?.chainKey || ''] || o?.chainKey || 'the other chain') : 'Solana';
+  const direct = o?.direction === 'direct';
+  const out = o?.direction === 'out' || direct;
+  const dest = direct ? (CHAIN_LABEL[o?.toChainKey || ''] || o?.toChainKey || 'the other chain') : out ? (CHAIN_LABEL[o?.chainKey || ''] || o?.chainKey || 'the other chain') : 'Solana';
   const done = o?.status === 'fulfilled';
   const failed = o?.status === 'cancelled' || o?.status === 'abandoned';
   const steps = [
-    { t: o ? (out ? `Sent ${fmt(o.amountIn, 2)} USDC` : `Sent ${fmt(o.amountIn, 6)} ${o.symbol || ''}`) : 'Sent', ok: !!o },
+    { t: o ? (out && !direct ? `Sent ${fmt(o.amountIn, 2)} USDC` : `Sent ${fmt(o.amountIn, 6)} ${o.symbol || ''}`) : 'Sent', ok: !!o },
     { t: o?.status === 'stuck' ? `Crossing to ${dest} — taking longer than usual` : `Crossing to ${dest}`, ok: done, active: !!o && !done && !failed },
-    { t: done ? (out ? `≈ ${fmt(o?.estOut ?? 0, 4)} ${o?.symbol || ''} delivered` : `≈ ${fmt(o?.estOut ?? 0, 2)} USDC in your wallet`) : (out ? 'Delivered' : 'USDC in your wallet'), ok: done },
+    { t: done ? (out ? `≈ ${fmt(o?.estOut ?? 0, 4)} ${(direct ? o?.toSymbol : o?.symbol) || ''} delivered` : `≈ ${fmt(o?.estOut ?? 0, 2)} USDC in your wallet`) : (out ? 'Delivered' : 'USDC in your wallet'), ok: done },
   ];
   return (
     <section className="surface rounded-3xl p-6 animate-fade-up" aria-live="polite">

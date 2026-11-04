@@ -108,6 +108,7 @@ function describe(i: HistoryItem): { title: string; sub: string; value: string; 
     case 'yield':
       return { title: `Earn · ${i.plan || 'staking'}`, sub: i.earned ? `Earned ${amount(i.earned)} ${i.asset || ''}` : 'Staking', value: `${amount(i.amount)} ${i.asset || ''}`, Icon: IconLeaf, negative: false };
     case 'bridge':
+      if (i.direction === 'direct') return { title: `Bridged to ${i.toChainName || 'another chain'}`, sub: `${i.asset || ''} on ${i.chainName || i.chain || ''} → ${i.toAsset || ''}`.trim(), value: i.amount != null ? `${amount(i.amount)} ${i.asset || ''}` : usd(i.amountUsd), Icon: IconBridge, negative: true };
       return i.direction === 'out'
         ? { title: `Bridged out to ${i.chainName || i.chain || 'another chain'}`, sub: `USDC → ${i.asset || ''}`.trim(), value: i.amount != null ? `${amount(i.amount)} USDC` : usd(i.amountUsd), Icon: IconBridge, negative: true }
         : { title: `Bridged in${i.chainName || i.chain ? ` from ${i.chainName || i.chain}` : ''}`, sub: i.asset ? `${i.asset} → USDC` : 'Bridge', value: i.receive != null ? `≈ ${amount(i.receive)} USDC` : usd(i.amountUsd), Icon: IconBridge, negative: false };

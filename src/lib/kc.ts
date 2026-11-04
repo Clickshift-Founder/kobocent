@@ -60,8 +60,10 @@ export interface HistoryItem {
   pnlUsd?: number | null;
   counterparty?: string | null;
   // Transfers and bridges (2026-10-05): proof of sending.
-  direction?: 'in' | 'out' | null;
+  direction?: 'in' | 'out' | 'direct' | null;
   chainName?: string | null;
+  toAsset?: string | null;
+  toChainName?: string | null;
   receive?: number | null;
   fee?: number | null;
   txHash?: string | null;

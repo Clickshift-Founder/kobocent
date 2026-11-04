@@ -70,6 +70,8 @@ const ALLOWED: Record<string, Array<'GET' | 'POST'>> = {
   'bridge/execute': ['POST'],
   'bridge/out/quote': ['POST'],
   'bridge/out/execute': ['POST'],
+  'bridge/direct/quote': ['POST'],
+  'bridge/direct/execute': ['POST'],
   'bridge/orders': ['GET'],
   // Kobo Pal + live human support (2026-10-05)
   'pal': ['GET'],
