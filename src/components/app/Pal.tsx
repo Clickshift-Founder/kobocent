@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { kc, KcError, BOT_URL } from '@/lib/kc';
+import { protect, type ProtectAction } from './AccountProtection';
 import { newKey, HoldToConfirm } from './money';
 import { IconClose, IconSend, IconChevron } from './Icons';
 import { usePayFrom, PayFromPicker } from './PayFrom';
@@ -23,7 +24,8 @@ interface ChatMsg { id: string; from: 'user' | 'pal' | 'agent' | 'system'; text:
 interface ChatRes { reply: string | null; tier: string; actions: string[]; caseId: number | null; routedToCase: boolean; credit: number | null; freeLeft: number | null; limited: string | null }
 interface Job { id: string; status: 'running' | 'done'; result: null | { ok: boolean; code?: string; error?: string; amount?: number; creditAdded?: number; credit?: number; answersLeft?: number; signature?: string; explorerUrl?: string | null; paidFrom?: string } }
 
-const SCREENS: Record<string, { label: string; href: string; external?: boolean }> = {
+const SCREENS: Record<string, { label: string; href: string; external?: boolean; protect?: ProtectAction }> = {
+  freeze: { label: '🧊 Freeze my account', href: '/app/settings', protect: 'freeze' }, unfreeze: { label: '🔓 Unfreeze', href: '/app/settings', protect: 'unfreeze' },
   add_money: { label: 'Add money', href: '/app/add-money' }, send_bank: { label: 'Send to bank', href: '/app/send' },
   withdraw: { label: 'Withdraw', href: '/app/withdraw' }, bills: { label: 'Pay bills', href: '/app/bills' },
   swap: { label: 'Swap', href: '/app/swap' }, send_wallet: { label: 'Send to wallet', href: '/app/send-wallet' },
@@ -314,7 +316,7 @@ function PalPanel({ onClose, ask }: { onClose: () => void; ask?: string }) {
                       <div className="mt-2 flex flex-wrap gap-2">
                         {m.actions.filter(a => SCREENS[a]).map(a => SCREENS[a].external
                           ? <a key={a} href={SCREENS[a].href} target="_blank" rel="noopener noreferrer" className="rounded-full bg-terracotta-soft text-terracotta px-3.5 min-h-[40px] inline-flex items-center text-[13.5px] font-semibold">{SCREENS[a].label}</a>
-                          : <button key={a} onClick={() => go(SCREENS[a].href)} className="rounded-full bg-terracotta-soft text-terracotta px-3.5 min-h-[40px] inline-flex items-center text-[13.5px] font-semibold">{SCREENS[a].label}</button>)}
+                          : <button key={a} onClick={() => { const s = SCREENS[a]; if (s.protect) { const p = s.protect; onClose(); protect(p); } else go(s.href); }} className="rounded-full bg-terracotta-soft text-terracotta px-3.5 min-h-[40px] inline-flex items-center text-[13.5px] font-semibold">{SCREENS[a].label}</button>)}
                       </div>
                     )}
                   </div>
