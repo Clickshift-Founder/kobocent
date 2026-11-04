@@ -29,8 +29,8 @@ interface Options {
   out: { available: boolean; usdc: number | null; sol: number | null; evmAddress: string | null; minUsd: number; recommendedUsd: number; chains: Chain[] };
   recent: Order[];
 }
-interface InQuote { direction: 'in'; assetKey: string; chainLabel: string; symbol: string; native: string; amountIn: number; usdIn: number | null; receive: number; kobocentFee: number; fixFee: number; gasEstimate: number; gasFront: { amount: number; usd: number } | null; etaSeconds: number | null; minRecommendedUsd: number; smallWarning: boolean }
-interface OutQuote { direction: 'out'; assetKey: string; chainLabel: string; symbol: string; amountIn: number; receive: number; kobocentFee: number; solCost: number; solCostUsd: number | null; coveredFromUsdc: number; totalUsdc: number; etaSeconds: number | null; recipient: string; ownRecipient: boolean; minRecommendedUsd: number; smallWarning: boolean }
+interface InQuote { direction: 'in'; assetKey: string; chainLabel: string; symbol: string; native: string; amountIn: number; usdIn: number | null; receive: number; kobocentFee: number; feePct?: number; fixFee: number; gasEstimate: number; gasFront: { amount: number; usd: number } | null; etaSeconds: number | null; minRecommendedUsd: number; smallWarning: boolean }
+interface OutQuote { direction: 'out'; assetKey: string; chainLabel: string; symbol: string; amountIn: number; receive: number; kobocentFee: number; feePct?: number; solCost: number; solCostUsd: number | null; coveredFromUsdc: number; totalUsdc: number; etaSeconds: number | null; recipient: string; ownRecipient: boolean; minRecommendedUsd: number; smallWarning: boolean }
 type Quote = InQuote | OutQuote;
 interface QErr { code?: string; error?: string }
 interface Result { ok: boolean; code?: string; error?: string; txHash?: string | null; orderId?: string | null; q?: Quote }
@@ -307,7 +307,7 @@ function QuoteDetails({ q }: { q: Quote }) {
     <>
       <dl className="surface rounded-2xl p-4 grid grid-cols-2 gap-y-1.5 text-[13.5px]">
         <dt className="muted">{q.direction === 'in' ? 'You receive' : q.ownRecipient ? 'You receive' : 'They receive'}</dt><dd className="text-right font-mono font-semibold">≈ {fmt(q.receive, q.direction === 'in' ? 2 : 6)} {q.direction === 'in' ? 'USDC' : q.symbol}</dd>
-        <dt className="muted">Kobocent fee</dt><dd className="text-right font-mono">{fmt(q.kobocentFee, 2)} USDC</dd>
+        <dt className="muted">Kobocent fee{q.feePct ? ` (${q.feePct}%)` : ''}</dt><dd className="text-right font-mono">{fmt(q.kobocentFee, 2)} USDC</dd>
         {q.direction === 'in' ? (
           q.gasFront ? (<><dt className="muted">Network fees</dt><dd className="text-right">~${fmt(q.gasFront.usd, 2)} <span className="muted">· paid for you</span></dd></>)
             : (<><dt className="muted">Bridge fee</dt><dd className="text-right font-mono">{fmt(q.fixFee, 6)} {q.native}</dd><dt className="muted">Network gas</dt><dd className="text-right">≈ {fmt(q.gasEstimate, 6)} {q.native}</dd></>)

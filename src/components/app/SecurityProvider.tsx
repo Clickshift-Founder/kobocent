@@ -10,7 +10,7 @@ import { IconCheck, IconFace, IconShield } from './Icons';
 import { ConnectTelegram } from './ConnectTelegram';
 import { biometricOn, biometricPin, biometricKind, biometricLabel, biometricUpdatePin, biometricDisable } from '@/lib/native';
 import { syncNativePush } from '@/lib/push';
-import { markPopupsReady, takePopup } from '@/lib/popups';
+import { guideKnown, markPopupsReady, newsPending, takePopup, tourPending } from '@/lib/popups';
 import { PinAnswers, ProtectionBanner, ProtectionSheets, protect, type Protection } from './AccountProtection';
 
 /**
@@ -119,18 +119,25 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     window.dispatchEvent(new Event('kc-security-changed'));
   };
 
-  // ── Every visit until set: the PIN and the questions. Then, if the visit is still free, the account-safety nudge ──
+  // ── Every visit until set: the PIN and the questions, after the first tour. New features follow on their own. ──
   const needsQuestions = !!sec?.protection && !sec.protection.hasQuestions;
+  const [guideTick, setGuideTick] = useState(0);
+  useEffect(() => {
+    const on = () => setGuideTick(n => n + 1);
+    window.addEventListener('kc-guide-state', on);
+    return () => window.removeEventListener('kc-guide-state', on);
+  }, []);
   useEffect(() => {
     if (!sec || !account || locked || ask || protectOpen || sec.protection?.frozen) return;
-    if ((!sec.hasPin || needsQuestions) && get(sessionStorage, SETUP_LATER) !== '1') { takePopup('setup'); setSetup(true); return; }
+    if (!guideKnown() || tourPending()) { setSetup(false); return; }
+    if ((!sec.hasPin || needsQuestions) && get(sessionStorage, SETUP_LATER) !== '1') { setSetup(true); return; }
     setSetup(false);
-    if (get(sessionStorage, NUDGED) === '1') return;
+    if (newsPending() || get(sessionStorage, NUDGED) === '1') return;
     const want = !account.telegramLinked ? 'telegram'
       : !account.googleLinked && googleEnabled() && !(window as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.() ? 'google'   // web Google button can't run inside the apps
       : null;
     if (want && takePopup('nudge')) setNudge(want);
-  }, [sec, account, locked, ask, protectOpen, needsQuestions]);
+  }, [sec, account, locked, ask, protectOpen, needsQuestions, guideTick]);
   const closeNudge = () => { set(sessionStorage, NUDGED, '1'); setNudge(null); };
   const setupLater = () => { set(sessionStorage, SETUP_LATER, '1'); setSetup(false); };
 

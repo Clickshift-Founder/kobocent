@@ -4,7 +4,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { kc } from '@/lib/kc';
 import { TOUR, tourKey, tipFor, tipKey, TIPS, ANNOUNCEMENTS, announcementKey, type Announcement, type Tip, type TourStep } from '@/lib/guide';
 import { Sheet } from './ui';
-import { popupsReady, takePopup } from '@/lib/popups';
+import { popupsReady, setGuideState, takePopup } from '@/lib/popups';
 
 /**
  * In-app product guide (2026-10-05): a first-run tour on Home, a tip the first time each feature is
@@ -51,10 +51,17 @@ export function GuideProvider() {
     const wanted = pathname === '/app' && (params.get('tour') === '1' || !seen[tourKey()]);
     if (!wanted) return;
     let t: ReturnType<typeof setTimeout>;
-    const tryStart = () => { if (dialogOpen() || !popupsReady()) { t = setTimeout(tryStart, 1500); return; } setTip(null); setTouring(true); };
+    // The tour comes first for a new user, so it doesn't wait for the setup prompt: that waits for the tour.
+    const tryStart = () => { if (dialogOpen()) { t = setTimeout(tryStart, 1500); return; } setTip(null); setTouring(true); };
     t = setTimeout(tryStart, 1200);
     return () => clearTimeout(t);
   }, [seen, pathname, params, touring]);
+
+  // Tell the setup prompt what is still to come. It waits for the tour, and nudges wait for new features.
+  useEffect(() => {
+    if (!seen) return;
+    setGuideState({ tourPending: touring || (pathname === '/app' && !seen[tourKey()]), newsPending: ANNOUNCEMENTS.some(a => !seen[announcementKey(a)]) });
+  }, [seen, touring, pathname]);
 
   // A tip the first time each feature is opened (not during the tour).
   useEffect(() => {

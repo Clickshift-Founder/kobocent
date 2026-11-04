@@ -113,6 +113,15 @@ function QuestionsWizard({ onDone }: { onDone: () => void }) {
       else setItems(all.slice(0, 2));
     } finally { setBusy(false); }
   }
+  // Check them now, not after three new questions have been typed.
+  async function checkCurrent(a: Record<string, string>) {
+    setBusy(true); setErr('');
+    try { await kc('security/questions/check', { method: 'POST', body: { answers: a } }); setCurrentAnswers(a); }
+    catch (e) {
+      if (e instanceof KcError && e.status === 404) setCurrentAnswers(a);   // an older server: they are checked on save
+      else { setErr(e instanceof Error ? e.message : 'Could not check your answers'); changed(); }
+    } finally { setBusy(false); }
+  }
   function next() {
     setErr('');
     const a = ans.trim();
@@ -136,7 +145,7 @@ function QuestionsWizard({ onDone }: { onDone: () => void }) {
   if (current && !currentAnswers) return (
     <div className="space-y-3">
       <p className="muted text-[14px]">Answer your current questions first.</p>
-      <AnswerForm questions={current} cta="Continue" busy={false} error={err} onSubmit={a => { setErr(''); setCurrentAnswers(a); }} />
+      <AnswerForm questions={current} cta="Continue" busy={busy} error={err} onSubmit={a => void checkCurrent(a)} />
     </div>
   );
   return (
