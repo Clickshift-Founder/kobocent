@@ -12,9 +12,9 @@ import { newKey, store, read, HoldToConfirm, Outcome } from '@/components/app/mo
 
 /**
  * Bridge — move money between chains (deBridge). One layout, two directions:
- *   Bring in  — ETH/BNB/MATIC or USDC/USDT on Ethereum, BNB Chain, Polygon, Arbitrum, Robinhood Chain
+ *   Bridge in  — ETH/BNB/MATIC or USDC/USDT on Ethereum, BNB Chain, Polygon, Arbitrum, Robinhood Chain
  *               → USDC on Solana.
- *   Send out  — your USDC → USDC/USDT or the network coin on those chains, to your own 0x wallet or another.
+ *   Bridge out — your USDC → USDC/USDT or the network coin on those chains, to your own 0x wallet or another.
  * Every fee is paid in stablecoin (founder, 2026-10-05): if the user lacks the network coin, Kobocent
  * covers the network costs and takes the USDC equivalent — never an "add gas" step.
  * Backend /api/v1/bridge (src/services/bridge.js — same code as Telegram). Order progress is durable.
@@ -142,7 +142,7 @@ export default function BridgePage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Bridge" subtitle="Move money between chains. Every fee is paid in stablecoin — no gas to buy." />
+      <PageHeader title="Bridge" subtitle="Move your money between chains. Every fee comes out of what you move, so there’s no gas to buy." />
       {jobId ? <BridgeJob jobId={jobId} onSubmitted={onSubmitted} onFinish={finish} onPriceMoved={(q) => { store(JOB_KEY, null); setJobId(null); setQuote(q); keyRef.current = newKey(); setReview(true); }} />
         : orderId ? <Tracker orderId={orderId} onFinish={finish} />
         : error ? <div className="surface rounded-2xl p-5 text-[15px]">{error}</div>
@@ -150,17 +150,17 @@ export default function BridgePage() {
         <div className="space-y-4 animate-fade-up">
           <div role="tablist" className="grid grid-cols-2 gap-1 rounded-2xl bg-cream-warm dark:bg-night p-1">
             {(['in', 'out'] as Dir[]).map(d => (
-              <button key={d} role="tab" aria-selected={dir === d} onClick={() => switchDir(d)} className={`min-h-[44px] rounded-xl text-[14.5px] font-semibold ${dir === d ? 'bg-white dark:bg-night-card text-terracotta shadow-sm' : 'muted'}`}>{d === 'in' ? 'Bring in' : 'Send out'}</button>
+              <button key={d} role="tab" aria-selected={dir === d} onClick={() => switchDir(d)} className={`min-h-[44px] rounded-xl text-[14.5px] font-semibold ${dir === d ? 'bg-white dark:bg-night-card text-terracotta shadow-sm' : 'muted'}`}>{d === 'in' ? 'Bridge in' : 'Bridge out'}</button>
             ))}
           </div>
 
           {dir === 'in' ? (
             <>
-              {/* 2026-10-07: spending no longer needs a bridge (Pay from any chain) — this screen only moves money. */}
-              <p className="text-[13px] muted px-1">Turns ETH, BNB, POL, USDC or USDT on another chain into USDC on Solana — every fee comes out of what you bridge. To <b>spend</b>, you don’t need this: Withdraw, Send to bank and Bills pay straight from any chain.</p>
+              <p className="text-[13.5px] muted px-1">Move USDT, USDC, ETH, BNB and more from another chain to USDC on Solana.</p>
+              <BridgeExample />
               {noInBalances && (
                 <div className="rounded-2xl p-4 text-[13.5px]" style={{ background: '#C1502E12' }}>
-                  Nothing to bring in yet. Receive ETH, BNB, MATIC, USDC or USDT to your 0x address first — <Link href="/app/add-money?tab=crypto" className="font-semibold text-terracotta">Add money → Crypto</Link>.
+                  Nothing to bridge in yet. Receive ETH, BNB, MATIC, USDC or USDT to your 0x address first — <Link href="/app/add-money?tab=crypto" className="font-semibold text-terracotta">Add money → Crypto</Link>.
                 </div>
               )}
               <section className="relative">
@@ -183,6 +183,8 @@ export default function BridgePage() {
             </>
           ) : (
             <>
+              <p className="text-[13.5px] muted px-1">Move your USDC on Solana to any of our other chains: Ethereum, BNB Chain, Polygon, Arbitrum or Robinhood Chain.</p>
+              <BridgeExample />
               <section className="relative">
                 <div className="surface rounded-3xl p-5">
                   <div className="flex items-center justify-between text-[13px] muted"><span>From · your USDC on Solana</span>
@@ -253,7 +255,7 @@ export default function BridgePage() {
       )}
 
       {opts && (
-        <Sheet open={picker} onClose={() => setPicker(false)} title={dir === 'in' ? 'Bring in from' : 'Send to'}>
+        <Sheet open={picker} onClose={() => setPicker(false)} title={dir === 'in' ? 'Bridge in from' : 'Bridge out to'}>
           <div className="space-y-4">
             {(dir === 'in' ? opts.in.chains : opts.out.chains).map(c => (
               <div key={c.key}>
@@ -324,6 +326,20 @@ function StatusPill({ s }: { s: string }) {
   const m: Record<string, [string, string]> = { fulfilled: ['Arrived', '#58834C'], submitted: ['On its way', '#B68B2A'], stuck: ['Delayed', '#B68B2A'], cancelled: ['Refunded', '#B84A40'], abandoned: ['Needs attention', '#B84A40'] };
   const [label, color] = m[s] || [s, '#6B5D52'];
   return <span className="text-[12px] font-semibold rounded-full px-2.5 py-1" style={{ background: `${color}1F`, color }}>{label}</span>;
+}
+
+/** Worked example (founder, 2026-11-03): chain to chain is two steps today, through Solana. */
+function BridgeExample() {
+  return (
+    <details className="rounded-2xl bg-cream-warm dark:bg-night px-4 py-3 text-[13.5px]">
+      <summary className="font-semibold text-ink dark:text-cream-warm cursor-pointer min-h-[28px]">Example: Robinhood Chain to BNB Chain</summary>
+      <ol className="mt-2 space-y-1.5 muted list-decimal pl-5">
+        <li><b>Bridge in:</b> move your ETH on Robinhood Chain to USDC on Solana.</li>
+        <li><b>Bridge out:</b> move that USDC to BNB Chain.</li>
+      </ol>
+      <p className="mt-2 muted">Moving straight from one chain to another is coming later.</p>
+    </details>
+  );
 }
 
 function BridgeJob({ jobId, onSubmitted, onFinish, onPriceMoved }: { jobId: string; onSubmitted: (orderId: string | null) => void; onFinish: () => void; onPriceMoved: (q: Quote) => void }) {

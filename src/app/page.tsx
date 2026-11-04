@@ -19,6 +19,7 @@ import { Humans } from '@/components/sections/Humans';
 import { Extras } from '@/components/sections/Extras';
 import { Rewards } from '@/components/sections/Rewards';
 import { KoboPal } from '@/components/sections/KoboPal';
+import { Security } from '@/components/sections/Security';
 import { LiveStats } from '@/components/sections/LiveStats';
 import { Testimonials } from '@/components/sections/Testimonials';
 import { Pricing } from '@/components/sections/Pricing';
@@ -55,6 +56,7 @@ export default function Home() {
         <Videos />
         <Humans />
         <Extras />
+        <Security />
         <KoboPal />
         <Rewards />
         <LiveStats />

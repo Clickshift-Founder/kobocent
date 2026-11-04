@@ -10,6 +10,7 @@ const LINKS = [
   { href: '#trading', label: 'Trade' },
   { href: '#staking', label: 'Earn' },
   { href: '#multichain', label: 'Multichain' },
+  { href: '#security', label: 'Security' },
   { href: '#faq', label: 'FAQ' },
   { href: '#download', label: 'Get the app' },
 ];
