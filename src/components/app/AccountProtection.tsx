@@ -1,5 +1,6 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { kc, KcError } from '@/lib/kc';
 import { Sheet } from './ui';
 import { ErrorNote } from './ErrorNote';
@@ -69,7 +70,7 @@ export function PinAnswers({ intro, onUnlocked, onCancel }: { intro: string; onU
   if (lockedUntil) return (
     <div className="space-y-3 text-center">
       <p className="text-[14.5px] text-ink dark:text-cream-warm">Your security questions are locked until {when(lockedUntil)}, and your account is frozen to keep your money safe.</p>
-      <a href="/support" className="btn-primary w-full">Contact support</a>
+      <Link href="/support" className="btn-primary w-full">Contact support</Link>
       {back}
     </div>
   );

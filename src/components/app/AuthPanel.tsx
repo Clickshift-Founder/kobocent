@@ -54,6 +54,21 @@ export function AuthPanel({ mode }: { mode: 'signin' | 'signup' }) {
       setBusy(false);
     }
   }
+  // Email code (2026-11-03): another way in, for people without Google or Apple.
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [codeSent, setCodeSent] = useState(false);
+  async function sendCode() {
+    setBusy(true); setError('');
+    try {
+      const res = await fetch('/api/auth/email', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'start', email }) });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(data.error || 'We could not send the email');
+      setCodeSent(true);
+    } catch (e) { setError(e instanceof Error ? e.message : 'We could not send the email'); }
+    finally { setBusy(false); }
+  }
   const onGoogle = (credential: string) => finish('/api/auth/google', { credential }, true);
   const onApple = (idToken: string, name: string | null) => finish('/api/auth/apple', { idToken, name }, false);
   async function onNative(provider: 'google' | 'apple') {
@@ -136,6 +151,20 @@ export function AuthPanel({ mode }: { mode: 'signin' | 'signup' }) {
               </>
             )}
           </div>
+          {!emailOpen ? (
+            <button onClick={() => setEmailOpen(true)} className="block w-full text-center text-[14px] font-semibold text-terracotta min-h-[44px] mt-3">Continue with email</button>
+          ) : (
+            <form className={`mt-4 space-y-3 ${busy ? 'opacity-50 pointer-events-none' : ''}`} onSubmit={e => { e.preventDefault(); if (codeSent) void finish('/api/auth/email', { action: 'verify', email, code }, false); else void sendCode(); }}>
+              <input type="email" required autoComplete="email" placeholder="you@example.com" value={email} onChange={e => { setEmail(e.target.value); setCodeSent(false); }} aria-label="Email address"
+                className="w-full rounded-2xl border border-cream-border dark:border-night-border bg-transparent px-4 min-h-[48px] text-[16px]" />
+              {codeSent && <>
+                <p className="text-[13.5px] muted">We sent a 6-digit code to your email. Check spam too.</p>
+                <input inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="6-digit code" value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ''))} aria-label="Code from your email"
+                  className="w-full rounded-2xl border border-cream-border dark:border-night-border bg-transparent px-4 min-h-[48px] text-[16px] tracking-[0.3em]" />
+              </>}
+              <button type="submit" disabled={codeSent && code.length !== 6} className="btn-primary w-full disabled:opacity-50">{codeSent ? 'Continue' : 'Email me a code'}</button>
+            </form>
+          )}
           {busy && <p className="text-center text-[14px] muted mt-4">{signup ? 'Creating your account…' : 'Signing you in…'}</p>}
           {error && <p role="alert" className="mt-4 rounded-xl bg-terracotta-soft text-terracotta-dark dark:text-terracotta-light px-4 py-3 text-[14px]">{error}</p>}
 

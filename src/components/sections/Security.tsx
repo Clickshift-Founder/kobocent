@@ -32,6 +32,9 @@ export function Security() {
           </Reveal>
         ))}
       </div>
+      <p className="mt-6 text-center text-[12.5px] muted max-w-2xl mx-auto leading-relaxed">
+        A freeze stops every move made through Kobocent. Keep your recovery phrase private: anyone who has it can use it outside Kobocent.
+      </p>
     </Section>
   );
 }
