@@ -27,8 +27,7 @@ export function PushSettings() {
     : 'Get a notification when money arrives, a payment finishes, or support replies.';
 
   return (
-    <section id="notifications" className="scroll-mt-20">
-      <div className="eyebrow mb-2">Phone notifications</div>
+    <section id="notifications">
       <div className="surface rounded-3xl p-5 flex items-center gap-4">
         <span className="grid place-items-center h-10 w-10 shrink-0 rounded-xl bg-terracotta-soft text-terracotta"><IconBell size={20} /></span>
         <div className="flex-1 min-w-0">

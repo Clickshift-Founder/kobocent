@@ -15,7 +15,7 @@ import { newKey, store, read, HoldToConfirm, Outcome } from '@/components/app/mo
  *   Bridge in  — ETH/BNB/MATIC or USDC/USDT on Ethereum, BNB Chain, Polygon, Arbitrum, Robinhood Chain
  *               → USDC on Solana.
  *   Bridge out — your USDC → USDC/USDT or the network coin on those chains, to your own 0x wallet or another.
- *   Chain to chain — straight from one of those chains to another, no stop on Solana (founder, 2026-11-04).
+ *   Chain to chain — straight between any of the six chains, Solana included (founder, 2026-11-04).
  * Every fee is paid in stablecoin (founder, 2026-10-05): if the user lacks the network coin, Kobocent
  * covers the network costs and takes the USDC equivalent — never an "add gas" step.
  * Backend /api/v1/bridge (src/services/bridge.js — same code as Telegram). Order progress is durable.
@@ -27,12 +27,13 @@ interface Chain { key: string; label: string; native: string; minRecommendedUsd?
 interface Order { direction: Dir; assetKey: string; chainKey: string; symbol: string | null; amountIn: number; estOut: number | null; orderId: string; srcTx: string | null; status: string; dlnStatus: string | null; createdAt: number; completedAt: number | null; toChainKey?: string | null; toSymbol?: string | null }
 interface Options {
   in: { chains: Chain[]; evmAddress: string | null };
+  direct?: { chains: Chain[]; evmAddress: string | null; solAddress: string | null };
   out: { available: boolean; usdc: number | null; sol: number | null; evmAddress: string | null; minUsd: number; recommendedUsd: number; chains: Chain[] };
   recent: Order[];
 }
 interface InQuote { direction: 'in'; assetKey: string; chainLabel: string; symbol: string; native: string; amountIn: number; usdIn: number | null; receive: number; kobocentFee: number; feePct?: number; fixFee: number; gasEstimate: number; gasFront: { amount: number; usd: number } | null; etaSeconds: number | null; minRecommendedUsd: number; smallWarning: boolean }
 interface OutQuote { direction: 'out'; assetKey: string; chainLabel: string; symbol: string; amountIn: number; receive: number; kobocentFee: number; feePct?: number; solCost: number; solCostUsd: number | null; coveredFromUsdc: number; totalUsdc: number; etaSeconds: number | null; recipient: string; ownRecipient: boolean; minRecommendedUsd: number; smallWarning: boolean }
-interface DirectQuote { direction: 'direct'; assetKey: string; toAssetKey: string; chainLabel: string; toChainLabel: string; symbol: string; toSymbol: string; native: string; amountIn: number; usdIn: number; receive: number; receiveUsd: number | null; kobocentFee: number; feePct: number; fixFee: number; gasEstimate: number; gasFront: { amount: number; usd: number } | null; etaSeconds: number | null; recipient: string; ownRecipient: boolean; minRecommendedUsd: number; smallWarning: boolean }
+interface DirectQuote { direction: 'direct'; assetKey: string; toAssetKey: string; chainLabel: string; toChainLabel: string; symbol: string; toSymbol: string; native: string; amountIn: number; usdIn: number; receive: number; receiveUsd: number | null; kobocentFee: number; feePct: number; fixFee: number; gasEstimate: number; gasFront: { amount: number; usd: number } | null; feeOnTop?: boolean; etaSeconds: number | null; recipient: string; ownRecipient: boolean; minRecommendedUsd: number; smallWarning: boolean }
 type Quote = InQuote | OutQuote | DirectQuote;
 interface QErr { code?: string; error?: string }
 interface Result { ok: boolean; code?: string; error?: string; txHash?: string | null; orderId?: string | null; q?: Quote }
@@ -41,7 +42,7 @@ interface Job { id: string; status: 'running' | 'done'; stage: string; meta: { a
 const JOB_KEY = 'kc-bridge-job';
 const ORDER_KEY = 'kc-bridge-order';
 const CHAIN_COLOR: Record<string, string> = { ETH: '#627EEA', BNB: '#F0B90B', POLYGON: '#8247E5', ARBITRUM: '#28A0F0', ROBINHOOD: '#58834C', SOLANA: '#20211F' };
-const CHAIN_LABEL: Record<string, string> = { ETH: 'Ethereum', BNB: 'BNB Chain', POLYGON: 'Polygon', ARBITRUM: 'Arbitrum', ROBINHOOD: 'Robinhood Chain' };
+const CHAIN_LABEL: Record<string, string> = { SOLANA: 'Solana', ETH: 'Ethereum', BNB: 'BNB Chain', POLYGON: 'Polygon', ARBITRUM: 'Arbitrum', ROBINHOOD: 'Robinhood Chain' };
 const dpOf = (a: { native: boolean }) => (a.native ? 6 : 2);
 const eta = (s: number | null) => (!s ? 'a few minutes' : s < 90 ? 'about a minute' : `about ${Math.round(s / 60)} minutes`);
 const cleanAmt = (v: string, dp: number) => { let s = v.replace(/[^\d.]/g, ''); const [i, ...r] = s.split('.'); s = r.length ? `${i}.${r.join('').slice(0, dp)}` : i; return s.slice(0, 14); };
@@ -83,18 +84,23 @@ export default function BridgePage() {
   }), []);
   useEffect(() => { setJobId(read(JOB_KEY)); setOrderId(read(ORDER_KEY)); load(); }, [load]);
 
-  const inC = opts?.in.chains.find(c => c.key === inChain) || null;
+  // Chain to chain reaches Solana too; bridge in stays the 0x chains.
+  const meshChains = opts?.direct?.chains || opts?.in.chains || [];
+  const inC = (dir === 'direct' ? meshChains : opts?.in.chains || []).find(c => c.key === inChain) || null;
   const inA = inC?.assets.find(a => a.id === inAsset) || inC?.assets[0] || null;
   const outC = opts?.out.chains.find(c => c.assets.some(a => a.id === outAsset)) || null;
   const outA = outC?.assets.find(a => a.id === outAsset) || null;
   // Chain to chain: the destination can't be the chain the money is on.
-  const dstChains = (opts?.out.chains || []).filter(c => c.key !== inC?.key);
+  const dstChains = (opts?.direct?.chains || opts?.out.chains || []).filter(c => c.key !== inC?.key);
   const dstC = dstChains.find(c => c.assets.some(a => a.id === dstAsset)) || dstChains[0] || null;
   const dstA = dstC?.assets.find(a => a.id === dstAsset) || dstC?.assets[0] || null;
   const value = Number(amt) || 0;
-  const recipientOk = !toOther || /^0x[a-fA-F0-9]{40}$/.test(recipient.trim());
+  const toSolana = dir === 'direct' && dstC?.key === 'SOLANA';
+  const recipientOk = !toOther || (toSolana ? /^[1-9A-HJ-NP-Za-km-z]{32,44}$/ : /^0x[a-fA-F0-9]{40}$/).test(recipient.trim());
 
-  function switchDir(d: Dir) { setDir(d); setAmt(''); setUseMax(false); setQuote(null); setQErr(null); }
+  function switchDir(d: Dir) {
+    if (d !== 'direct' && inChain === 'SOLANA' && opts?.in.chains[0]) { setInChain(opts.in.chains[0].key); setInAsset(opts.in.chains[0].assets[0].id); }
+    setDir(d); setAmt(''); setUseMax(false); setQuote(null); setQErr(null); }
 
   useEffect(() => {
     setQErr(null);
@@ -156,20 +162,20 @@ export default function BridgePage() {
   const recipientBox = (
               <section className="surface rounded-2xl p-4 space-y-3">
                 <div className="grid grid-cols-2 gap-1 rounded-xl bg-cream-warm dark:bg-night p-1">
-                  <button onClick={() => setToOther(false)} className={`min-h-[44px] rounded-lg text-[13.5px] font-semibold ${!toOther ? 'bg-white dark:bg-night-card text-terracotta' : 'muted'}`}>My 0x wallet</button>
+                  <button onClick={() => setToOther(false)} className={`min-h-[44px] rounded-lg text-[13.5px] font-semibold ${!toOther ? 'bg-white dark:bg-night-card text-terracotta' : 'muted'}`}>{toSolana ? 'My wallet' : 'My 0x wallet'}</button>
                   <button onClick={() => setToOther(true)} className={`min-h-[44px] rounded-lg text-[13.5px] font-semibold ${toOther ? 'bg-white dark:bg-night-card text-terracotta' : 'muted'}`}>Another address</button>
                 </div>
                 {toOther ? (
                   <>
                     <div className="flex items-center gap-1">
-                      <input value={recipient} onChange={e => setRecipient(e.target.value.trim())} placeholder="0x…" spellCheck={false} autoCapitalize="off" aria-label="Recipient address"
+                      <input value={recipient} onChange={e => setRecipient(e.target.value.trim())} placeholder={toSolana ? 'Solana address' : '0x…'} spellCheck={false} autoCapitalize="off" aria-label="Recipient address"
                         className="flex-1 min-w-0 rounded-xl border border-cream-border dark:border-night-border bg-transparent px-3 min-h-[48px] font-mono text-[14px]" />
-                      <ScanButton kind="evm" onAddress={setRecipient} />
+                      <ScanButton kind={toSolana ? 'solana' : 'evm'} onAddress={setRecipient} />
                     </div>
-                    {recipient && !recipientOk && <div className="text-[13px] text-[#B84A40]">0x addresses are 42 characters long</div>}
+                    {recipient && !recipientOk && <div className="text-[13px] text-[#B84A40]">{toSolana ? 'That doesn’t look like a Solana address' : '0x addresses are 42 characters long'}</div>}
                     <p className="text-[12.5px] muted">Make sure this wallet or exchange supports {destA?.symbol} on {destC?.label}.</p>
                   </>
-                ) : <p className="text-[12.5px] muted break-all">Your Kobocent 0x wallet: <span className="font-mono">{opts?.out.evmAddress || '—'}</span></p>}
+                ) : <p className="text-[12.5px] muted break-all">{toSolana ? 'Your Kobocent wallet' : 'Your Kobocent 0x wallet'}: <span className="font-mono">{(toSolana ? opts?.direct?.solAddress : opts?.out.evmAddress) || '—'}</span></p>}
               </section>
   );
   const arrow = <div className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 grid place-items-center h-12 w-12 rounded-2xl bg-terracotta text-white shadow-card"><IconBridge size={20} className="rotate-90" /></div>;
@@ -190,10 +196,10 @@ export default function BridgePage() {
 
           {dir === 'direct' ? (
             <>
-              <p className="text-[13.5px] muted px-1">Move straight from one chain to another, like ETH on Ethereum to USDT on BNB Chain. It never stops on Solana, and you need nothing there.</p>
+              <p className="text-[13.5px] muted px-1">Move straight between any of our six chains in one step, like SOL on Solana to USDT on BNB Chain.</p>
               <section className="relative">
                 <div className="surface rounded-3xl p-5">
-                  <div className="flex items-center justify-between text-[13px] muted"><span>From · your 0x wallet</span>
+                  <div className="flex items-center justify-between text-[13px] muted"><span>From · {inC.key === 'SOLANA' ? 'your wallet' : 'your 0x wallet'}</span>
                     <span>Balance {inA.balance == null ? '—' : fmt(inA.balance, dpOf(inA))}{(inA.balance || 0) > 0 && <button onClick={() => { setUseMax(true); setAmt(''); }} className="ml-2 font-semibold text-terracotta">Max</button>}</span>
                   </div>
                   <div className="mt-2 flex items-center gap-3">
@@ -307,7 +313,7 @@ export default function BridgePage() {
       {opts && (
         <Sheet open={picker} onClose={() => setPicker(false)} title={dir === 'in' ? 'Bridge in from' : dir === 'direct' ? 'Move from' : 'Bridge out to'}>
           <div className="space-y-4">
-            {(dir === 'out' ? opts.out.chains : opts.in.chains).map(c => (
+            {(dir === 'out' ? opts.out.chains : dir === 'direct' ? meshChains : opts.in.chains).map(c => (
               <div key={c.key}>
                 <div className="text-[12px] muted mb-1.5 flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: CHAIN_COLOR[c.key] }} />{c.label}</div>
                 <ul className="space-y-1.5">
@@ -356,7 +362,9 @@ export default function BridgePage() {
             {quote.direction !== 'in' && <p className="text-center text-[13px] break-all"><span className="muted">To </span><span className="font-mono">{quote.recipient}</span>{quote.ownRecipient && <span className="muted"> (your wallet)</span>}</p>}
             <p className="text-center muted text-[13px] mt-2">
               {quote.direction === 'direct'
-                ? (quote.gasFront ? `Our fee and network fees (~$${fmt(quote.gasFront.usd, 2)}) come out of what you send.` : `Our fee comes out of what you send. Plus ${fmt(quote.fixFee, 6)} ${quote.native} bridge fee and gas from your ${quote.native}.`)
+                ? (quote.feeOnTop
+                  ? `Our fee (~$${fmt(quote.kobocentFee, 2)}) is taken from your balance when it lands.${quote.gasFront ? ` Network fees (~$${fmt(quote.gasFront.usd, 2)}) come from your ${quote.symbol}.` : ` Plus about ${fmt(quote.fixFee + quote.gasEstimate, 4)} SOL in network fees.`}`
+                  : quote.gasFront ? `Our fee and network fees (~$${fmt(quote.gasFront.usd, 2)}) come out of what you send.` : `Our fee comes out of what you send. Plus ${fmt(quote.fixFee, 6)} ${quote.native} bridge fee and gas from your ${quote.native}.`)
                 : quote.direction === 'in'
                 ? (quote.gasFront ? `Network fees (~$${fmt(quote.gasFront.usd, 2)}) are paid for you and taken from the USDC that lands.` : `Plus ${fmt(quote.fixFee, 6)} ${quote.native} bridge fee and gas from your ${quote.native}.`)
                 : `Total from your balance: $${fmt(quote.totalUsdc, 2)} USDC${quote.coveredFromUsdc > 0 ? ` (includes ~$${fmt(quote.coveredFromUsdc, 2)} for Solana network fees)` : ''}.`}
@@ -376,7 +384,7 @@ function QuoteDetails({ q }: { q: Quote }) {
     <>
       <dl className="surface rounded-2xl p-4 grid grid-cols-2 gap-y-1.5 text-[13.5px]">
         <dt className="muted">{q.ownRecipient ? 'You receive' : 'They receive'}</dt><dd className="text-right font-mono font-semibold">≈ {fmt(q.receive, 6)} {q.toSymbol}</dd>
-        <dt className="muted">Kobocent fee ({q.feePct}%)</dt><dd className="text-right font-mono">≈ ${fmt(q.kobocentFee, 2)} <span className="muted">· from what you send</span></dd>
+        <dt className="muted">Kobocent fee</dt><dd className="text-right font-mono">≈ ${fmt(q.kobocentFee, 2)} <span className="muted">· {q.feeOnTop ? 'when it lands' : 'from what you send'}</span></dd>
         {q.gasFront ? (<><dt className="muted">Network fees</dt><dd className="text-right">~${fmt(q.gasFront.usd, 2)} <span className="muted">· paid for you</span></dd></>)
           : (<><dt className="muted">Bridge fee</dt><dd className="text-right font-mono">{fmt(q.fixFee, 6)} {q.native}</dd><dt className="muted">Network gas</dt><dd className="text-right">≈ {fmt(q.gasEstimate, 6)} {q.native}</dd></>)}
         <dt className="muted">Arrives in</dt><dd className="text-right">{eta(q.etaSeconds)}</dd>
@@ -388,7 +396,7 @@ function QuoteDetails({ q }: { q: Quote }) {
     <>
       <dl className="surface rounded-2xl p-4 grid grid-cols-2 gap-y-1.5 text-[13.5px]">
         <dt className="muted">{q.direction === 'in' ? 'You receive' : q.ownRecipient ? 'You receive' : 'They receive'}</dt><dd className="text-right font-mono font-semibold">≈ {fmt(q.receive, q.direction === 'in' ? 2 : 6)} {q.direction === 'in' ? 'USDC' : q.symbol}</dd>
-        <dt className="muted">Kobocent fee{q.feePct ? ` (${q.feePct}%)` : ''}</dt><dd className="text-right font-mono">{fmt(q.kobocentFee, 2)} USDC</dd>
+        <dt className="muted">Kobocent fee</dt><dd className="text-right font-mono">{fmt(q.kobocentFee, 2)} USDC</dd>
         {q.direction === 'in' ? (
           q.gasFront ? (<><dt className="muted">Network fees</dt><dd className="text-right">~${fmt(q.gasFront.usd, 2)} <span className="muted">· paid for you</span></dd></>)
             : (<><dt className="muted">Bridge fee</dt><dd className="text-right font-mono">{fmt(q.fixFee, 6)} {q.native}</dd><dt className="muted">Network gas</dt><dd className="text-right">≈ {fmt(q.gasEstimate, 6)} {q.native}</dd></>)

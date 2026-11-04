@@ -404,8 +404,7 @@ export function ProtectionCard({ hasPin, twoSignIns, p }: { hasPin: boolean; two
   ];
   const score = checks.filter(c => c.done).length;
   return (
-    <section id="security" className="scroll-mt-20">
-      <div className="eyebrow mb-2">Account protection</div>
+    <section id="security">
       <div className="surface rounded-3xl divide-y divide-cream-border dark:divide-night-border">
         <div className="p-5">
           <div className="flex items-center gap-3">

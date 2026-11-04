@@ -33,8 +33,7 @@ export function DeleteAccount() {
     finally { setBusy(false); }
   }
   return (
-    <section id="delete" className="scroll-mt-20">
-      <div className="eyebrow mb-2">Account</div>
+    <section id="delete">
       <button onClick={start} className="w-full surface rounded-3xl p-5 text-left min-h-[64px]">
         <span className="block font-medium text-[#B84A40]">Delete account</span>
         <span className="block text-[13.5px] muted">Permanently delete your Kobocent account and its data.</span>

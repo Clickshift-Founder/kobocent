@@ -8,7 +8,7 @@ import { TelegramLogin, type TelegramUser } from './TelegramLogin';
 import { GoogleButton, googleEnabled } from './GoogleButton';
 import { AppleButton, appleEnabled } from './AppleButton';
 import { IconShield, IconBolt, IconGift, IconCheck } from './Icons';
-import { saveProfile, type Account } from '@/lib/kc';
+import { kc, saveProfile, type Account } from '@/lib/kc';
 import { nativeSignInAvailable, nativeAppleAvailable, nativeSignIn } from '@/lib/native';
 
 /**
@@ -47,12 +47,26 @@ export function AuthPanel({ mode }: { mode: 'signin' | 'signup' }) {
         return;
       }
       if (!res.ok || !data.account) throw new Error(data.error || 'Sign-in failed — please try again');
-      saveProfile({ firstName: data.profile?.firstName || data.account.displayName || null, username: null, photoUrl: photo ? data.profile?.photoUrl || null : null, telegramId: null });
-      router.replace(data.account.hasWallet === false ? '/app/setup' : nextPath());
+      const firstName = data.profile?.firstName || data.account.displayName?.split(' ')[0] || null;
+      saveProfile({ firstName, username: null, photoUrl: photo ? data.profile?.photoUrl || null : null, telegramId: null });
+      const dest = data.account.hasWallet === false ? '/app/setup' : nextPath();
+      // Email gives us no name, and the app greets people by theirs (2026-11-04).
+      if (!firstName && body.action === 'verify') { setAskName(dest); setBusy(false); return; }
+      router.replace(dest);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Sign-in failed — please try again');
       setBusy(false);
     }
+  }
+  const [askName, setAskName] = useState<string | null>(null);
+  const [name, setName] = useState('');
+  async function saveName() {
+    const clean = name.trim();
+    if (!clean || askName === null) return;
+    setBusy(true);
+    saveProfile({ firstName: clean.split(/\s+/)[0], username: null, photoUrl: null, telegramId: null });
+    await kc('account/name', { method: 'POST', body: { name: clean } }).catch(() => {});   // Settings can set it again; never block getting in
+    router.replace(askName);
   }
   // Email code (2026-11-03): another way in, for people without Google or Apple.
   const [emailOpen, setEmailOpen] = useState(false);
@@ -117,6 +131,16 @@ export function AuthPanel({ mode }: { mode: 'signin' | 'signup' }) {
 
       <main className="flex-1 container-page grid lg:grid-cols-2 gap-10 lg:gap-16 items-center pb-12">
         <section className="surface rounded-3xl p-6 sm:p-9 shadow-card w-full max-w-md mx-auto lg:order-2">
+          {askName !== null ? (
+            <form onSubmit={e => { e.preventDefault(); void saveName(); }} className="space-y-4">
+              <div className="eyebrow">One last thing</div>
+              <h1 className="h-display text-[30px] sm:text-[36px]">What should we call you?</h1>
+              <input autoFocus required maxLength={40} autoComplete="given-name" placeholder="Your first name" value={name} onChange={e => setName(e.target.value)} aria-label="Your name"
+                className="w-full rounded-2xl border border-cream-border dark:border-night-border bg-transparent px-4 min-h-[48px] text-[16px]" />
+              <button type="submit" disabled={busy || !name.trim()} className="btn-primary w-full disabled:opacity-50">Continue</button>
+              <button type="button" onClick={() => router.replace(askName)} className="block w-full text-center text-[14px] muted min-h-[44px]">Skip for now</button>
+            </form>
+          ) : <>
           <div className="eyebrow mb-3">{signup ? 'Create account' : 'Sign in'}</div>
           <h1 className="h-display text-[30px] sm:text-[36px] mb-3">{heading}</h1>
 
@@ -178,6 +202,7 @@ export function AuthPanel({ mode }: { mode: 'signin' | 'signup' }) {
           <p className="mt-6 text-[12px] muted">
             By continuing you agree to our <a href="https://kobocent.com/legal" target="_blank" rel="noopener noreferrer" className="underline">terms and privacy policy</a>.
           </p>
+          </>}
         </section>
 
         <section className="lg:order-1 max-w-lg mx-auto lg:mx-0">

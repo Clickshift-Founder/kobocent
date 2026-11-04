@@ -20,7 +20,7 @@ interface Security { hasPin: boolean; enabled: boolean; timeoutMin: number; requ
 const LABEL: Record<number, string> = { 5: '5 minutes', 15: '15 minutes (recommended)', 30: '30 minutes', 60: '1 hour', 240: '4 hours', 0: 'Never' };
 const changed = () => window.dispatchEvent(new Event('kc-security-changed'));
 
-export function SecuritySettings({ account, onAccount }: { account: Account | null; onAccount: (a: Account) => void }) {
+export function SecuritySettings({ account, onAccount, part }: { account: Account | null; onAccount: (a: Account) => void; part: 'protection' | 'lock' }) {
   const [sec, setSec] = useState<Security | null>(null);
   const [unsupported, setUnsupported] = useState(false);
   const [err, setErr] = useState('');
@@ -55,11 +55,10 @@ export function SecuritySettings({ account, onAccount }: { account: Account | nu
   }
 
   if (unsupported) return null;
+  if (part === 'protection') return <ProtectionCard hasPin={!!sec?.hasPin} twoSignIns={!!account?.telegramLinked && !!account?.googleLinked} p={sec?.protection || null} />;
   return (
     <>
-    <ProtectionCard hasPin={!!sec?.hasPin} twoSignIns={!!account?.telegramLinked && !!account?.googleLinked} p={sec?.protection || null} />
     <section>
-      <div className="eyebrow mb-2">App lock & sign-in</div>
       <div className="surface rounded-3xl divide-y divide-cream-border dark:divide-night-border">
         <div className="p-5 space-y-4">
           <div className="flex items-start gap-4">
