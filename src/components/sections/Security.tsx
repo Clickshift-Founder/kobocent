@@ -9,6 +9,7 @@ const POINTS = [
   { icon: '🔑', t: 'Questions only you can answer', d: 'Pick three security questions. They unfreeze your account and reset your PIN. Answers are scrambled before we store them, so nobody at Kobocent can read them.' },
   { icon: '🔢', t: 'A PIN that gets stricter', d: 'Your PIN or Face ID guards the app and every payment. Too many wrong tries and even the right PIN waits for your security answers.' },
   { icon: '🕑', t: 'A safe 24 hours after', d: 'For a day after an unfreeze, money can only go to banks and wallets you have paid before. A thief’s new account gets nothing.' },
+  { icon: '🚚', t: 'A leaked phrase has an answer', d: 'Think your recovery phrase got out? Move to a new wallet: brand new keys, and your money moves there by itself, on every chain.' },
   { icon: '🛟', t: 'Stop losses still protect you', d: 'While frozen, money can still come in, and your stop loss and take profit keep watching your holdings.' },
   { icon: '🙋', t: 'A real person when it matters', d: 'Forgot your answers? Someone on our team checks details a thief could not guess, and every step is written down.' },
 ];
@@ -33,7 +34,7 @@ export function Security() {
         ))}
       </div>
       <p className="mt-6 text-center text-[12.5px] muted max-w-2xl mx-auto leading-relaxed">
-        A freeze stops every move made through Kobocent. Keep your recovery phrase private: anyone who has it can use it outside Kobocent.
+        A freeze stops every move made through Kobocent. Anyone holding your recovery phrase can use it outside Kobocent, so if it leaks, move to a new wallet straight away.
       </p>
     </Section>
   );

@@ -25,6 +25,7 @@ interface ChatRes { reply: string | null; tier: string; actions: string[]; caseI
 interface Job { id: string; status: 'running' | 'done'; result: null | { ok: boolean; code?: string; error?: string; amount?: number; creditAdded?: number; credit?: number; answersLeft?: number; signature?: string; explorerUrl?: string | null; paidFrom?: string } }
 
 const SCREENS: Record<string, { label: string; href: string; external?: boolean; protect?: ProtectAction }> = {
+  move_wallet: { label: '🚚 Move to a new wallet', href: '/app/settings', protect: 'move' },
   freeze: { label: '🧊 Freeze my account', href: '/app/settings', protect: 'freeze' }, unfreeze: { label: '🔓 Unfreeze', href: '/app/settings', protect: 'unfreeze' },
   add_money: { label: 'Add money', href: '/app/add-money' }, send_bank: { label: 'Send to bank', href: '/app/send' },
   withdraw: { label: 'Withdraw', href: '/app/withdraw' }, bills: { label: 'Pay bills', href: '/app/bills' },

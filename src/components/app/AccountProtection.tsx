@@ -7,7 +7,7 @@ import { ErrorNote } from './ErrorNote';
 import { IconCheck, IconShield } from './Icons';
 
 /**
- * Account protection (founder, 2026-11-03): security questions, freeze, unfreeze.
+ * Account protection (founder, 2026-11-03): security questions, freeze, unfreeze, move to a new wallet.
  *  - Freeze is one tap and asks for nothing: the owner may be in a hurry on a borrowed device.
  *  - Unfreeze needs a real sign-in in the last 10 minutes and all three answers. No answers set → a person on our team.
  *  - Anything in the app opens these sheets with protect('freeze' | 'unfreeze' | 'questions').
@@ -19,7 +19,7 @@ export interface Protection {
   hasQuestions: boolean; questions: Question[] | null;
   answersLockedUntil: number | null; coolingUntil: number | null;
 }
-export type ProtectAction = 'freeze' | 'unfreeze' | 'questions';
+export type ProtectAction = 'freeze' | 'unfreeze' | 'questions' | 'move';
 
 export const protect = (action: ProtectAction) => window.dispatchEvent(new CustomEvent('kc-protect', { detail: action }));
 const changed = () => window.dispatchEvent(new Event('kc-security-changed'));
@@ -268,7 +268,87 @@ function UnfreezeBody({ onClose, onSignInAgain }: { onClose: () => void; onSignI
   );
 }
 
-/** The three sheets, mounted once. They sit above the lock screen: someone locked out can still freeze. */
+interface MoveItem { chain: string; symbol: string | null; amount: number | null; usd: number | null; status: string; tx: string | null }
+interface MoveState { id: number; status: string; newAddress: string; newEvmAddress: string | null; items: MoveItem[] }
+interface MovePlan { canMove: boolean; blocker: string | null; blockerCode: string | null; questions: Question[] | null; usd: number | null; move: MoveState | null; freshSignIn: boolean }
+
+/** A leaked phrase: brand new keys, and the money moves there by itself. Backend src/services/walletMove.js. */
+function MoveBody({ onClose, onSignInAgain }: { onClose: () => void; onSignInAgain: () => void }) {
+  const [p, setP] = useState<MovePlan | null>(null);
+  const [step, setStep] = useState<'info' | 'answers'>('info');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const load = useCallback(async () => {
+    try { setP(await kc<MovePlan>('security/wallet-move')); }
+    catch (e) { setErr(e instanceof Error ? e.message : 'Could not load this'); }
+  }, []);
+  useEffect(() => { void load(); }, [load]);
+  const moving = !!p?.move && p.move.status !== 'done';
+  useEffect(() => {
+    if (!moving) return;
+    const t = setInterval(() => void load(), 6000);
+    return () => clearInterval(t);
+  }, [moving, load]);
+  async function submit(answers: Record<string, string>) {
+    setBusy(true); setErr('');
+    try { await kc('security/wallet-move', { method: 'POST', body: { answers } }); await load(); changed(); }
+    catch (e) { setErr(e instanceof Error ? e.message : 'Could not start the move'); }
+    finally { setBusy(false); }
+  }
+  if (!p) return <ErrorNote msg={err} className="text-[13.5px] text-[#B84A40]" />;
+  if (p.move && (moving || (p.blockerCode === 'TOO_SOON'))) {
+    const moved = p.move.items.filter(i => i.status === 'done');
+    const left = p.move.items.filter(i => i.status === 'dust');
+    return (
+      <div className="space-y-4" role="status" aria-live="polite">
+        <div className="text-center">
+          <div className={`mx-auto grid place-items-center h-16 w-16 rounded-full ${moving ? 'bg-terracotta-soft text-[28px]' : 'bg-[#58834C]/15 text-[#58834C]'}`}>{moving ? <span aria-hidden>🚚</span> : <IconCheck size={30} />}</div>
+          <h3 className="font-display text-[20px] font-bold mt-3 text-ink dark:text-cream-warm">{moving ? 'Your money is moving' : 'You’re on your new wallet'}</h3>
+          <p className="muted text-[14px] mt-1">{moving ? 'Usually a few minutes. You can leave this screen: we’ll tell you when it’s done.' : 'Save your new recovery phrase now, and give anyone who pays you your new address.'}</p>
+        </div>
+        {moved.length > 0 && <ul className="rounded-2xl bg-cream-warm dark:bg-night p-4 space-y-1.5 text-[13.5px]">{moved.map((i, n) => <li key={n} className="flex justify-between gap-3"><span className="text-ink dark:text-cream-warm">✓ {i.symbol}</span><span className="muted">{i.chain}</span></li>)}</ul>}
+        {left.length > 0 && !moving && <p className="muted text-[13px]">{left.length === 1 ? 'One tiny amount' : `${left.length} tiny amounts`} stayed behind because moving them would cost more than they’re worth.</p>}
+        <div className="text-[12.5px] muted break-all"><div>New onchain wallet: <span className="font-mono">{p.move.newAddress}</span></div>{p.move.newEvmAddress && <div className="mt-1">New 0x wallet: <span className="font-mono">{p.move.newEvmAddress}</span></div>}</div>
+        <button onClick={onClose} className="btn-primary w-full">Done</button>
+      </div>
+    );
+  }
+  if (!p.canMove) return (
+    <div className="space-y-4">
+      <p className="text-[14.5px] text-ink dark:text-cream-warm">{p.blocker}</p>
+      {p.blockerCode === 'NO_QUESTIONS' ? <button onClick={() => protect('questions')} className="btn-primary w-full">Set security questions</button> : <button onClick={onClose} className="btn-primary w-full">OK</button>}
+    </div>
+  );
+  if (!p.freshSignIn) return (
+    <div className="space-y-4">
+      <p className="text-[14.5px] text-ink dark:text-cream-warm">First, sign in again. It proves you’re the owner and not someone holding your phone. Then come back here.</p>
+      <button onClick={onSignInAgain} className="btn-primary w-full">Sign in again</button>
+    </div>
+  );
+  if (step === 'answers') return (
+    <div className="space-y-3">
+      <p className="text-[14.5px] text-ink dark:text-cream-warm">Answer your three security questions to start the move.</p>
+      {p.questions && <AnswerForm questions={p.questions} cta="Move my money" busy={busy} error={err} onSubmit={submit} />}
+      <button onClick={() => setStep('info')} className="block w-full text-center text-[14px] muted min-h-[44px]">Back</button>
+    </div>
+  );
+  return (
+    <div className="space-y-4">
+      <p className="text-[14.5px] text-ink dark:text-cream-warm">For when your recovery phrase or private key may have leaked. A freeze can’t stop someone using it in another wallet app, so we give you brand new keys and move your money there.</p>
+      <div className="rounded-2xl bg-cream-warm dark:bg-night p-4 text-[13.5px] leading-relaxed">
+        <div className="eyebrow mb-1.5">What changes</div>
+        <p className="muted">New wallet addresses on every chain, and a new recovery phrase. Your old phrase stops controlling this account.</p>
+        <div className="eyebrow mt-3 mb-1.5">What stays</div>
+        <p className="muted">Your account, balance, tokens and history. Stop losses pause for a few minutes while it moves.</p>
+      </div>
+      <p className="muted text-[13px]">Tiny amounts may stay behind if moving them costs more than they’re worth. Afterwards, give anyone who pays you your new address.</p>
+      <button onClick={() => setStep('answers')} className="btn-primary w-full">Continue</button>
+      <button onClick={onClose} className="block w-full text-center text-[14px] muted min-h-[44px]">Cancel</button>
+    </div>
+  );
+}
+
+/** The sheets, mounted once. They sit above the lock screen: someone locked out can still freeze. */
 export function ProtectionSheets({ onSignInAgain, onOpenChange }: { onSignInAgain: () => void; onOpenChange: (open: boolean) => void }) {
   const [open, setOpen] = useState<ProtectAction | null>(null);
   useEffect(() => {
@@ -278,12 +358,13 @@ export function ProtectionSheets({ onSignInAgain, onOpenChange }: { onSignInAgai
   }, []);
   useEffect(() => { onOpenChange(!!open); }, [open, onOpenChange]);
   const close = () => setOpen(null);
-  const title = open === 'freeze' ? 'Freeze your account' : open === 'unfreeze' ? 'Unfreeze your account' : 'Security questions';
+  const title = open === 'freeze' ? 'Freeze your account' : open === 'unfreeze' ? 'Unfreeze your account' : open === 'move' ? 'Move to a new wallet' : 'Security questions';
   return (
     <Sheet open={!!open} onClose={close} title={title} top>
       {open === 'freeze' && <FreezeBody onClose={close} />}
       {open === 'unfreeze' && <UnfreezeBody onClose={close} onSignInAgain={onSignInAgain} />}
       {open === 'questions' && <QuestionsWizard onDone={close} />}
+      {open === 'move' && <MoveBody onClose={close} onSignInAgain={onSignInAgain} />}
     </Sheet>
   );
 }
@@ -337,6 +418,10 @@ export function ProtectionCard({ hasPin, twoSignIns, p }: { hasPin: boolean; two
               <span className="flex-1"><span className="block font-medium text-[#B84A40]">Freeze my account</span><span className="block text-[13.5px] muted">Lost your phone? One tap stops all money leaving, everywhere.</span></span>
               <span aria-hidden className="text-[20px]">🧊</span>
             </button>}
+        <button onClick={() => protect('move')} className="w-full flex items-center gap-4 p-5 text-left min-h-[64px]">
+          <span className="flex-1"><span className="block font-medium text-ink dark:text-cream-warm">Move to a new wallet</span><span className="block text-[13.5px] muted">Recovery phrase leaked? Get new keys and move your money there.</span></span>
+          <span aria-hidden className="text-[20px]">🚚</span>
+        </button>
       </div>
     </section>
   );

@@ -62,6 +62,7 @@ const ALLOWED: Record<string, Array<'GET' | 'POST'>> = {
   // Account protection (2026-11-03)
   'security/questions': ['GET', 'POST'],
   'security/questions/check': ['POST'],
+  'security/wallet-move': ['GET', 'POST'],
   'security/pin/unlock': ['POST'],
   'security/freeze': ['POST'],
   'security/unfreeze': ['POST'],

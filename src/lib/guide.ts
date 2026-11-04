@@ -200,6 +200,16 @@ export function tipFor(pathname: string): (Tip & { route: string }) | null {
 export interface Announcement { key: string; version: number; eyebrow: string; title: string; body: string; bullets: string[]; cta: { label: string; href: string } }
 export const ANNOUNCEMENTS: Announcement[] = [
   {
+    key: 'move-wallet', version: 1, eyebrow: 'New', title: 'If your phrase leaks, move',
+    body: 'Think your recovery phrase got out? You can now get brand new keys, and your money moves there by itself.',
+    bullets: [
+      'New addresses on every chain. Your balance and history stay.',
+      'You only need your three security answers.',
+      'It works even while your account is frozen.',
+    ],
+    cta: { label: 'See how', href: '/app/settings#security' },
+  },
+  {
     key: 'direct-bridge', version: 1, eyebrow: 'New', title: 'Bridge straight from chain to chain',
     body: 'Move money from Ethereum to BNB Chain, Robinhood to Arbitrum, or any of our chains to another, in one step.',
     bullets: [
