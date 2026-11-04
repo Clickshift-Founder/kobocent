@@ -168,7 +168,7 @@ export const TIPS: Array<{ route: string } & Tip> = [
   { route: '/app/bridge', key: 'bridge', version: 4, title: 'Bridging',
     intro: 'Move money between chains.',
     steps: ['Bridge in: move USDT, USDC, ETH, BNB and more from another chain to USDC on Solana.', 'Bridge out: move your USDC on Solana to any of our other chains, to your own 0x wallet or another address.', 'Chain to chain: go straight from one of our chains to another, like Robinhood to BNB, with nothing needed on Solana.', 'Review, hold to bridge, then follow the tracker until it lands.'],
-    good: ['All fees come out of what you bridge — no gas to buy.', 'Our fee is 1.5% up to $100, 2% above $100 and 2.5% above $300. You see the exact amount before you confirm.', 'Small bridges lose a big share to fixed network costs; we show a recommended minimum.', 'Once it lands as USDC you can spend, send, withdraw, pay bills, earn or trade it.'] },
+    good: ['All fees come out of what you bridge — no gas to buy.', 'You see the exact amount you will receive before you confirm.', 'Small bridges lose a big share to fixed network costs; we show a recommended minimum.', 'Once it lands as USDC you can spend, send, withdraw, pay bills, earn or trade it.'] },
   { route: '/app/activity', key: 'activity', version: 1, title: 'Your activity',
     intro: 'Everything you do, from the web and Telegram, newest first.',
     steps: ['Switch the period at the top.', 'Tap a payment for its receipt; tap a transfer or bridge for the explorer link.', 'Download a PDF statement whenever you need one.'],

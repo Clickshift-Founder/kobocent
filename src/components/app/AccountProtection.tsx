@@ -341,7 +341,16 @@ function MoveBody({ onClose, onSignInAgain }: { onClose: () => void; onSignInAga
         <div className="eyebrow mt-3 mb-1.5">What stays</div>
         <p className="muted">Your account, balance, tokens and history. Stop losses pause for a few minutes while it moves.</p>
       </div>
-      <p className="muted text-[13px]">Tiny amounts may stay behind if moving them costs more than they’re worth. Afterwards, give anyone who pays you your new address.</p>
+      <div className="rounded-2xl border border-cream-border dark:border-night-border p-4 text-[13.5px] leading-relaxed">
+        <div className="eyebrow mb-1.5">Good to know first</div>
+        <ul className="muted space-y-1.5 list-disc pl-4">
+          <li>If someone already has your phrase and empties the wallet first, we can’t get that money back. Move as soon as you can.</li>
+          <li>Tiny amounts may stay behind if moving them costs more than they’re worth.</li>
+          <li>On 0x chains we move USDC, USDT, the network coin and tokens you bought in Kobocent. A token sent in from outside stays in the old wallet: ask our team and they can help you recover it.</li>
+          <li>Stop losses and take profits pause until the move finishes, usually a few minutes.</li>
+          <li>You can’t undo this. Save your new recovery phrase, and give anyone who pays you your new address.</li>
+        </ul>
+      </div>
       <button onClick={() => setStep('answers')} className="btn-primary w-full">Continue</button>
       <button onClick={onClose} className="block w-full text-center text-[14px] muted min-h-[44px]">Cancel</button>
     </div>
