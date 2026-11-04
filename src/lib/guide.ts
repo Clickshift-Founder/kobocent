@@ -181,9 +181,9 @@ export const TIPS: Array<{ route: string } & Tip> = [
     intro: 'Coming soon: a card that spends your stablecoin balance.',
     steps: ['Keep your account verified and hold some USDC — you’ll be ready on launch day.'],
     good: ['We’ll announce it in the app and on Telegram first.'] },
-  { route: '/app/settings', key: 'settings', version: 1, title: 'Settings',
+  { route: '/app/settings', key: 'settings', version: 2, title: 'Settings',
     intro: 'Security, sign-in and help.',
-    steps: ['App lock & sign-in: change your PIN and how long before the app locks, and whether payments ask for the PIN.', 'Add a second way to sign in so losing Telegram or Google never locks you out.', 'Show your recovery phrase to back up your wallet offline.', 'Product guide: replay the tour or bring back the feature tips.'],
+    steps: ['Account protection: set three security questions, and freeze your account in one tap if your phone is lost. A freeze stops all money leaving, on every device.', 'App lock & sign-in: change your PIN and how long before the app locks, and whether payments ask for the PIN.', 'Add a second way to sign in so losing Telegram or Google never locks you out.', 'Show your recovery phrase to back up your wallet offline.', 'Product guide: replay the tour or bring back the feature tips.'],
     good: ['Kobocent never asks for your phrase, PIN or a code in a message.'] },
 ];
 
@@ -199,6 +199,16 @@ export function tipFor(pathname: string): (Tip & { route: string }) | null {
 // Bump `version` to show an updated announcement again.
 export interface Announcement { key: string; version: number; eyebrow: string; title: string; body: string; bullets: string[]; cta: { label: string; href: string } }
 export const ANNOUNCEMENTS: Announcement[] = [
+  {
+    key: 'protection', version: 1, eyebrow: 'New', title: 'Freeze your account in one tap',
+    body: 'Lost your phone? Think someone got in? You can now stop all money leaving your account, on every device, in one tap.',
+    bullets: [
+      'Set three security questions. Only you know the answers, and they unfreeze your account and reset your PIN.',
+      'Money coming in and your stop losses keep working while you are frozen.',
+      'You can freeze from Settings, the lock screen, Telegram or Kobo Pal.',
+    ],
+    cta: { label: 'Protect my account', href: '/app/settings#security' },
+  },
   {
     key: 'premium', version: 1, eyebrow: 'New', title: 'Premium is on the web',
     body: 'Copy the best wallets, snipe at your price and get Smart Money alerts — right here, on the same engine as Telegram.',

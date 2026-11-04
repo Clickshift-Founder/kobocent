@@ -34,7 +34,7 @@ export function CopyButton({ value, label = 'Copy' }: { value: string; label?: s
 }
 
 /** Bottom sheet on phones, centred dialog on larger screens. Esc / backdrop closes. */
-export function Sheet({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
+export function Sheet({ open, onClose, title, children, top = false }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode; top?: boolean }) {
   // Keep the latest onClose without re-running the history effect on every parent render.
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
@@ -65,7 +65,7 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
   // 2026-10-06: rendered into <body>. Inside the mobile top bar (backdrop-blur) a `fixed` overlay is
   // trapped in the 56px bar — the bell's sheet showed as a white strip over the top that never closed.
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" role="dialog" aria-modal="true" aria-label={title}>
+    <div className={`fixed inset-0 ${top ? 'z-[75]' : 'z-50'} flex items-end sm:items-center justify-center`} role="dialog" aria-modal="true" aria-label={title}>
       <button className="absolute inset-0 bg-ink/40 backdrop-blur-[2px]" aria-label="Close" onClick={onClose} />
       {/* 2026-10-05: never taller than the screen; the header (with Close) stays put and the body scrolls. */}
       <div className="relative w-full sm:max-w-md surface rounded-t-3xl sm:rounded-3xl shadow-lift animate-fade-up flex flex-col max-h-[88dvh]">

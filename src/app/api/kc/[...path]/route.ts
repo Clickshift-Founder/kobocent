@@ -59,6 +59,11 @@ const ALLOWED: Record<string, Array<'GET' | 'POST'>> = {
   'security/pin': ['POST'],
   'security/pin/verify': ['POST'],
   'security/settings': ['POST'],
+  // Account protection (2026-11-03)
+  'security/questions': ['GET', 'POST'],
+  'security/pin/unlock': ['POST'],
+  'security/freeze': ['POST'],
+  'security/unfreeze': ['POST'],
   'auth/google/link': ['POST'],
   'bridge/quote': ['POST'],
   'bridge/execute': ['POST'],

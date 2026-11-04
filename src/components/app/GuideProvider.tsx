@@ -4,6 +4,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { kc } from '@/lib/kc';
 import { TOUR, tourKey, tipFor, tipKey, TIPS, ANNOUNCEMENTS, announcementKey, type Announcement, type Tip, type TourStep } from '@/lib/guide';
 import { Sheet } from './ui';
+import { popupsReady, takePopup } from '@/lib/popups';
 
 /**
  * In-app product guide (2026-10-05): a first-run tour on Home, a tip the first time each feature is
@@ -50,7 +51,7 @@ export function GuideProvider() {
     const wanted = pathname === '/app' && (params.get('tour') === '1' || !seen[tourKey()]);
     if (!wanted) return;
     let t: ReturnType<typeof setTimeout>;
-    const tryStart = () => { if (dialogOpen()) { t = setTimeout(tryStart, 1500); return; } setTip(null); setTouring(true); };
+    const tryStart = () => { if (dialogOpen() || !popupsReady()) { t = setTimeout(tryStart, 1500); return; } setTip(null); setTouring(true); };
     t = setTimeout(tryStart, 1200);
     return () => clearTimeout(t);
   }, [seen, pathname, params, touring]);
@@ -75,7 +76,7 @@ export function GuideProvider() {
     if (!next) return;
     if (pathname.startsWith(next.cta.href)) { markSeen(announcementKey(next)); return; }   // already there
     let t: ReturnType<typeof setTimeout>;
-    const tryShow = () => { if (dialogOpen()) { t = setTimeout(tryShow, 1500); return; } setNews(next); };
+    const tryShow = () => { if (dialogOpen() || !popupsReady()) { t = setTimeout(tryShow, 1500); return; } if (takePopup(announcementKey(next))) setNews(next); };   // one popup per visit
     t = setTimeout(tryShow, 1500);
     return () => clearTimeout(t);
   }, [seen, touring, news, pathname, markSeen]);

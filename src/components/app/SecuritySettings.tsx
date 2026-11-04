@@ -7,6 +7,7 @@ import { PinPad } from './PinPad';
 import { GoogleButton, googleEnabled } from './GoogleButton';
 import { IconFace, IconShield, IconTelegram } from './Icons';
 import { biometricKind, biometricLabel, biometricOn, biometricEnable, biometricDisable, biometricUpdatePin, type BiometricKind } from '@/lib/native';
+import { ProtectionCard, type Protection } from './AccountProtection';
 
 /**
  * Settings → App lock & sign-in (sign-in v2, founder 2026-10-05).
@@ -15,7 +16,7 @@ import { biometricKind, biometricLabel, biometricOn, biometricEnable, biometricD
  * Apps (2026-10-13): "Unlock with Face ID / fingerprint" — per phone; the PIN is confirmed once, then kept in the
  * phone's secure storage (src/lib/native.ts).
  */
-interface Security { hasPin: boolean; enabled: boolean; timeoutMin: number; requireForPayments: boolean; pinForSells?: boolean; methods?: { telegram: boolean; google: boolean; email: string | null } }
+interface Security { hasPin: boolean; enabled: boolean; timeoutMin: number; requireForPayments: boolean; pinForSells?: boolean; resetNeedsAnswers?: boolean; protection?: Protection | null; methods?: { telegram: boolean; google: boolean; email: string | null } }
 const LABEL: Record<number, string> = { 5: '5 minutes', 15: '15 minutes (recommended)', 30: '30 minutes', 60: '1 hour', 240: '4 hours', 0: 'Never' };
 const changed = () => window.dispatchEvent(new Event('kc-security-changed'));
 
@@ -36,11 +37,16 @@ export function SecuritySettings({ account, onAccount }: { account: Account | nu
   const bioName = biometricLabel(bioKind);
 
   const load = useCallback(() => kc<Security>('security').then(setSec).catch(e => { if (e instanceof KcError && e.status === 404) setUnsupported(true); }), []);
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    const on = () => { load(); };
+    window.addEventListener('kc-security-changed', on);
+    return () => window.removeEventListener('kc-security-changed', on);
+  }, [load]);
 
   async function apply(body: Record<string, unknown>, label: string) {
     setErr(''); setNote('');
-    try { setSec(await kc<Security>('security/settings', { method: 'POST', body })); setNote('Saved'); changed(); }
+    try { const r = await kc<Security>('security/settings', { method: 'POST', body }); setSec(s => ({ ...(s || {}), ...r })); setNote('Saved'); changed(); }
     catch (e) {
       // Loosening protection needs the PIN — ask, then retry with it.
       if (e instanceof KcError && (e.status === 401 || e.status === 422) && !('pin' in body) && /pin/i.test(e.message)) setPending({ label, body });
@@ -50,6 +56,8 @@ export function SecuritySettings({ account, onAccount }: { account: Account | nu
 
   if (unsupported) return null;
   return (
+    <>
+    <ProtectionCard hasPin={!!sec?.hasPin} twoSignIns={!!account?.telegramLinked && !!account?.googleLinked} p={sec?.protection || null} />
     <section>
       <div className="eyebrow mb-2">App lock & sign-in</div>
       <div className="surface rounded-3xl divide-y divide-cream-border dark:divide-night-border">
@@ -98,7 +106,7 @@ export function SecuritySettings({ account, onAccount }: { account: Account | nu
                   </label>
                 </>
               )}
-              <p className="text-[12.5px] muted">Forgot it? Sign out and sign in again — you can then set a new PIN.</p>
+              <p className="text-[12.5px] muted">{sec.resetNeedsAnswers ? 'Forgot it? Tap “Forgot PIN” on the lock screen: your security questions set a new one.' : 'Forgot it? Sign out and sign in again, and you can then set a new PIN.'}</p>
             </>
           )}
           {note && <p className="text-[13px] text-[#58834C]">{note}</p>}
@@ -154,6 +162,7 @@ export function SecuritySettings({ account, onAccount }: { account: Account | nu
         }} />}
       </Sheet>
     </section>
+    </>
   );
 }
 

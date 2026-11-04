@@ -10,24 +10,29 @@ import { IconCheck, IconFace, IconShield } from './Icons';
 import { ConnectTelegram } from './ConnectTelegram';
 import { biometricOn, biometricPin, biometricKind, biometricLabel, biometricUpdatePin, biometricDisable } from '@/lib/native';
 import { syncNativePush } from '@/lib/push';
+import { markPopupsReady, takePopup } from '@/lib/popups';
+import { PinAnswers, ProtectionBanner, ProtectionSheets, protect, type Protection } from './AccountProtection';
 
 /**
  * App PIN + account-safety prompts (sign-in v2, founder 2026-10-05).
  *  - Lock screen when the app opens and after the idle timeout (default 15 min; user can lengthen or
  *    turn off in Settings).
  *  - PIN before payments: kc() gets 423 from the backend and asks here for a short-lived PIN token.
- *  - First time: create a PIN (payments ask for one anyway).
- *  - Soft prompts once per session: connect Telegram (never lose your wallet; referral + $SHIFT), or add
- *    Google as a backup if only Telegram is linked.
+ *  - Setup prompt on every visit until both the PIN and the security questions are set (founder, 2026-11-03).
+ *  - Soft prompts: connect Telegram (never lose your wallet; referral + $SHIFT), or add Google as a backup if only
+ *    Telegram is linked. One popup per visit (src/lib/popups.ts), so the setup prompt goes first.
+ *  - 5 wrong PINs with questions set → the answers, on the lock screen or in the payment sheet. Freezing is always
+ *    reachable, even from the lock screen.
  * If the backend has no PIN support yet (404), everything here stays out of the way.
  * Inside the iOS / Android apps (2026-10-13): Face ID / fingerprint stands in for typing the PIN when turned on in
  * Settings (src/lib/native.ts keeps the PIN in the phone's secure storage; the backend still checks it).
  */
-interface Security { hasPin: boolean; enabled: boolean; timeoutMin: number; requireForPayments: boolean; lockedUntil: number | null; canResetPin?: boolean; methods?: { telegram: boolean; google: boolean } }
+interface Security { hasPin: boolean; enabled: boolean; timeoutMin: number; requireForPayments: boolean; lockedUntil: number | null; canResetPin?: boolean; resetNeedsAnswers?: boolean; needsAnswers?: boolean; protection?: Protection | null; methods?: { telegram: boolean; google: boolean } }
 
 const LAST_ACTIVE = 'kc-last-active';
 const UNLOCKED = 'kc-unlocked';
 const NUDGED = 'kc-nudged';
+const SETUP_LATER = 'kc-setup-later';   // "Later" lasts this visit only: the prompt is back on the next one
 const get = (s: Storage, k: string) => { try { return s.getItem(k); } catch { return null; } };
 const set = (s: Storage, k: string, v: string) => { try { s.setItem(k, v); } catch { /* private mode */ } };
 
@@ -44,19 +49,23 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
   const [locked, setLocked] = useState(false);
   const [ask, setAsk] = useState<null | { mode: 'verify' | 'setup'; reason: 'payment' | 'first' | 'reset' }>(null);
   const [nudge, setNudge] = useState<null | 'telegram' | 'google'>(null);
+  const [setup, setSetup] = useState(false);
+  const [protectOpen, setProtectOpen] = useState(false);
+  const [resetToken, setResetToken] = useState<string | null>(null);   // the answers were right: a new PIN may be set
   const resolver = useRef<((t: string | null) => void) | null>(null);
   const savedToken = useRef<string | null>(null);   // PIN just created during a payment
 
   const load = useCallback(async () => {
     try { setSec(await kc<Security>('security')); } catch (e) { if (e instanceof KcError && e.status === 404) setSec(null); }
     try { setAccount((await kc<{ account: Account }>('me')).account); } catch { /* ignore */ }
+    markPopupsReady();
   }, []);
   useEffect(() => {
     load();
     const onChange = () => load();
     window.addEventListener('kc-security-changed', onChange);
     // Settings → "Create PIN" (someone who tapped "Later" or closed the first prompt).
-    const onCreate = () => { try { sessionStorage.removeItem('kc-pin-later'); } catch { /* ignore */ } setAsk({ mode: 'setup', reason: 'first' }); };
+    const onCreate = () => setAsk({ mode: 'setup', reason: 'first' });
     window.addEventListener('kc-pin-create', onCreate);
     return () => { window.removeEventListener('kc-security-changed', onChange); window.removeEventListener('kc-pin-create', onCreate); };
   }, [load]);
@@ -110,27 +119,50 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     window.dispatchEvent(new Event('kc-security-changed'));
   };
 
-  // ── First time: create a PIN; then (once per session) the account-safety nudge ──
+  // ── Every visit until set: the PIN and the questions. Then, if the visit is still free, the account-safety nudge ──
+  const needsQuestions = !!sec?.protection && !sec.protection.hasQuestions;
   useEffect(() => {
-    if (!sec || !account || locked || ask) return;
-    if (!sec.hasPin && get(sessionStorage, 'kc-pin-later') !== '1') { setAsk({ mode: 'setup', reason: 'first' }); return; }
+    if (!sec || !account || locked || ask || protectOpen || sec.protection?.frozen) return;
+    if ((!sec.hasPin || needsQuestions) && get(sessionStorage, SETUP_LATER) !== '1') { takePopup('setup'); setSetup(true); return; }
+    setSetup(false);
     if (get(sessionStorage, NUDGED) === '1') return;
-    if (!account.telegramLinked) setNudge('telegram');
-    else if (!account.googleLinked && googleEnabled() && !(window as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.()) setNudge('google');   // web Google button can't run inside the apps
-  }, [sec, account, locked, ask]);
+    const want = !account.telegramLinked ? 'telegram'
+      : !account.googleLinked && googleEnabled() && !(window as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.() ? 'google'   // web Google button can't run inside the apps
+      : null;
+    if (want && takePopup('nudge')) setNudge(want);
+  }, [sec, account, locked, ask, protectOpen, needsQuestions]);
   const closeNudge = () => { set(sessionStorage, NUDGED, '1'); setNudge(null); };
+  const setupLater = () => { set(sessionStorage, SETUP_LATER, '1'); setSetup(false); };
 
   return (
     <>
+      <ProtectionBanner p={sec?.protection} />
       {children}
-      {locked && lockOn && <LockScreen accountId={account?.id} canReset={!!sec?.canResetPin} onUnlock={unlock} onForgot={() => setAsk({ mode: 'setup', reason: 'reset' })} onSignOut={() => signOut(router)} />}
-      <Sheet open={!!ask} onClose={() => { if (ask?.reason === 'first' && !savedToken.current) set(sessionStorage, 'kc-pin-later', '1'); if (ask?.reason === 'payment') finishAsk(savedToken.current); else { savedToken.current = null; setAsk(null); } }}
+      {locked && lockOn && <LockScreen accountId={account?.id} canReset={!!sec?.canResetPin} needsAnswersFirst={!!sec?.needsAnswers} forgotNeedsAnswers={!!sec?.resetNeedsAnswers} onUnlock={unlock}
+        onForgot={(token) => { setResetToken(token || null); setAsk({ mode: 'setup', reason: 'reset' }); }} onSignOut={() => signOut(router)} onAnswered={load} />}
+      <Sheet top open={!!ask} onClose={() => { if (ask?.reason === 'first' && !savedToken.current) set(sessionStorage, SETUP_LATER, '1'); if (ask?.reason === 'payment') finishAsk(savedToken.current); else { savedToken.current = null; setResetToken(null); setAsk(null); } }}
         title={ask?.mode === 'setup' ? (ask.reason === 'reset' ? 'Set a new PIN' : 'Create your app PIN') : 'Enter your PIN'}>
         {ask?.mode === 'setup'
-          ? <CreatePin accountId={account?.id} reason={ask.reason} onSaved={onPinSaved} onDone={() => { if (ask.reason === 'payment') finishAsk(savedToken.current); else { savedToken.current = null; setAsk(null); } }}
-              onLater={ask.reason === 'first' ? () => { set(sessionStorage, 'kc-pin-later', '1'); setAsk(null); } : undefined} />
+          ? <CreatePin accountId={account?.id} reason={ask.reason} resetToken={resetToken} onSaved={onPinSaved} onDone={() => { if (ask.reason === 'payment') finishAsk(savedToken.current); else { savedToken.current = null; setResetToken(null); setAsk(null); } }}
+              onLater={ask.reason === 'first' ? () => { set(sessionStorage, SETUP_LATER, '1'); setAsk(null); } : undefined} />
           : <VerifyPin accountId={account?.id} onDone={finishAsk} />}
       </Sheet>
+      <Sheet open={setup && !ask && !protectOpen} onClose={setupLater} title="Protect your account">
+        <div className="space-y-4">
+          <p className="text-[14.5px] text-ink dark:text-cream-warm">Two quick steps keep your money safe if your phone is ever lost or someone gets into your account.</p>
+          <ul className="space-y-2">
+            {[{ label: 'App PIN', sub: 'Asked when the app opens and before payments', done: !!sec?.hasPin }, { label: 'Three security questions', sub: 'Unfreeze your account and reset your PIN', done: !needsQuestions }].map(s => (
+              <li key={s.label} className="flex items-center gap-3 rounded-2xl bg-cream-warm dark:bg-night p-3.5">
+                <span className={`grid place-items-center h-8 w-8 rounded-full shrink-0 ${s.done ? 'bg-[#58834C]/15 text-[#58834C]' : 'bg-terracotta-soft text-terracotta'}`}>{s.done ? <IconCheck size={16} /> : <IconShield size={16} />}</span>
+                <span className="min-w-0"><span className="block font-medium text-[14.5px] text-ink dark:text-cream-warm">{s.label}</span><span className="block text-[12.5px] muted">{s.done ? 'Done' : s.sub}</span></span>
+              </li>
+            ))}
+          </ul>
+          <button onClick={() => { if (!sec?.hasPin) setAsk({ mode: 'setup', reason: 'first' }); else protect('questions'); }} className="btn-primary w-full">{!sec?.hasPin ? 'Create my PIN' : 'Set my questions'}</button>
+          <button onClick={setupLater} className="block w-full text-center text-[14px] muted min-h-[44px]">Later</button>
+        </div>
+      </Sheet>
+      <ProtectionSheets onOpenChange={setProtectOpen} onSignInAgain={async () => { await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {}); clearProfile(); router.replace('/signin?next=/app/settings'); }} />
       <Sheet open={!!nudge} onClose={closeNudge} title={nudge === 'telegram' ? 'Complete your registration' : 'Add a backup sign-in'}>
         {nudge === 'telegram' ? (
           <ConnectTelegram onLinked={() => { closeNudge(); load(); window.dispatchEvent(new Event('kc-security-changed')); }} onLater={closeNudge} />
@@ -175,26 +207,43 @@ function BioButton({ bio }: { bio: { label: string; run: () => void } | null }) 
   return <button type="button" onClick={bio.run} className="mx-auto mt-3 flex items-center gap-2 text-[14px] font-semibold text-terracotta min-h-[44px] px-3"><IconFace size={20} />Use {bio.label}</button>;
 }
 
-async function checkPin(pin: string, fromBio: boolean): Promise<{ token?: string; error?: string }> {
+async function checkPin(pin: string, fromBio: boolean): Promise<{ token?: string; error?: string; answers?: boolean }> {
   try { return { token: (await kc<{ pinToken: string }>('security/pin/verify', { method: 'POST', body: { pin } })).pinToken }; }
   catch (e) {
     // 401 = wrong PIN (423 = locked, 429 = too many tries — those say nothing about the stored PIN).
     if (fromBio && e instanceof KcError && e.status === 401) { await biometricDisable(); return { error: STALE_BIO }; }
+    if (e instanceof KcError && e.data.code === 'ANSWERS_REQUIRED') return { answers: true, error: e.message };
     return { error: e instanceof Error ? e.message : 'Wrong PIN' };
   }
 }
 
-function LockScreen({ accountId, canReset, onUnlock, onForgot, onSignOut }: { accountId?: string; canReset: boolean; onUnlock: (token: string) => void; onForgot: () => void; onSignOut: () => void }) {
+function LockScreen({ accountId, canReset, needsAnswersFirst, forgotNeedsAnswers, onUnlock, onForgot, onSignOut, onAnswered }: { accountId?: string; canReset: boolean; needsAnswersFirst: boolean; forgotNeedsAnswers: boolean; onUnlock: (token: string) => void; onForgot: (resetToken?: string) => void; onSignOut: () => void; onAnswered: () => void }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [reset, setReset] = useState(0);
+  const [answers, setAnswers] = useState<null | 'locked' | 'forgot'>(null);
+  const [opened, setOpened] = useState<string | null>(null);   // answers right: the PIN works again, or set a new one
+  useEffect(() => { if (needsAnswersFirst && !opened) setAnswers('locked'); }, [needsAnswersFirst, opened]);
   async function verify(pin: string, fromBio = false) {
     setBusy(true); setErr('');
     const r = await checkPin(pin, fromBio);
-    if (r.token) onUnlock(r.token); else { setErr(r.error || 'Wrong PIN'); setReset(x => x + 1); }
+    if (r.token) onUnlock(r.token);
+    else if (r.answers) setAnswers('locked');
+    else { setErr(r.error || 'Wrong PIN'); setReset(x => x + 1); }
     setBusy(false);
   }
   const bio = useBiometric(accountId, 'Unlock Kobocent', (pin) => verify(pin, true));
+  if (answers) return (
+    <div className="fixed inset-0 z-[60] bg-cream dark:bg-night flex flex-col items-center justify-center px-6 overflow-y-auto" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }} role="dialog" aria-modal="true" aria-label="Security questions">
+      <div className="w-full max-w-sm py-6">
+        <h2 className="font-display text-[22px] font-bold mb-3 text-center text-ink dark:text-cream-warm">Security questions</h2>
+        <PinAnswers intro={answers === 'locked' ? 'Too many wrong PINs. Answer your security questions to continue.' : 'Answer your security questions to set a new PIN.'}
+          onCancel={answers === 'forgot' ? () => setAnswers(null) : undefined}
+          onUnlocked={(token) => { const forgot = answers === 'forgot'; setAnswers(null); setOpened(token); setErr(''); onAnswered(); if (forgot) onForgot(token); }} />
+        <button onClick={() => protect('freeze')} className="block w-full text-center text-[14px] font-semibold text-[#B84A40] min-h-[44px] mt-2">Not you? Freeze this account</button>
+      </div>
+    </div>
+  );
   return (
     <div className="fixed inset-0 z-[60] bg-cream dark:bg-night flex flex-col items-center justify-center px-6" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }} role="dialog" aria-modal="true" aria-label="Unlock Kobocent">
       <div className="grid place-items-center h-16 w-16 rounded-2xl bg-terracotta-soft text-terracotta"><IconShield size={30} /></div>
@@ -202,28 +251,35 @@ function LockScreen({ accountId, canReset, onUnlock, onForgot, onSignOut }: { ac
       <p className="muted text-[14px] mt-1">Kobocent is locked to keep your money safe.</p>
       <div className="w-full max-w-sm"><PinPad onComplete={(p) => verify(p)} busy={busy} error={err} resetKey={reset} /><BioButton bio={bio} /></div>
       <div className="mt-4 flex flex-col items-center gap-1">
-        {canReset ? <button onClick={onForgot} className="text-[14px] font-semibold text-terracotta min-h-[44px]">Forgot PIN? Set a new one</button>
+        {opened ? <button onClick={() => onForgot(opened)} className="text-[14px] font-semibold text-terracotta min-h-[44px]">Set a new PIN</button>
+          : forgotNeedsAnswers ? <button onClick={() => setAnswers('forgot')} className="text-[14px] font-semibold text-terracotta min-h-[44px]">Forgot PIN? Answer your questions</button>
+          : canReset ? <button onClick={() => onForgot()} className="text-[14px] font-semibold text-terracotta min-h-[44px]">Forgot PIN? Set a new one</button>
           : <button onClick={onSignOut} className="text-[14px] font-semibold text-terracotta min-h-[44px]">Forgot PIN? Sign in again to reset it</button>}
+        <button onClick={() => protect('freeze')} className="text-[14px] font-semibold text-[#B84A40] min-h-[44px]">Lost this phone? Freeze your account</button>
       </div>
     </div>
   );
 }
 
 function VerifyPin({ accountId, onDone }: { accountId?: string; onDone: (token: string | null) => void }) {
+  const [answers, setAnswers] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [reset, setReset] = useState(0);
   async function verify(pin: string, fromBio = false) {
     setBusy(true); setErr('');
     const r = await checkPin(pin, fromBio);
-    if (r.token) onDone(r.token); else { setErr(r.error || 'Wrong PIN'); setReset(x => x + 1); }
+    if (r.token) onDone(r.token);
+    else if (r.answers) setAnswers(true);
+    else { setErr(r.error || 'Wrong PIN'); setReset(x => x + 1); }
     setBusy(false);
   }
   const bio = useBiometric(accountId, 'Confirm this payment', (pin) => verify(pin, true));
+  if (answers) return <PinAnswers intro="Too many wrong PINs. Answer your security questions, then enter your PIN." onUnlocked={() => { setAnswers(false); setErr(''); setReset(x => x + 1); }} />;
   return (<><p className="muted text-[14px] text-center">Confirm it’s you before this payment.</p><PinPad onComplete={(p) => verify(p)} busy={busy} error={err} resetKey={reset} /><BioButton bio={bio} /></>);
 }
 
-function CreatePin({ accountId, reason, onSaved, onDone, onLater }: { accountId?: string; reason: 'payment' | 'first' | 'reset'; onSaved: (token: string) => void; onDone: () => void; onLater?: () => void }) {
+function CreatePin({ accountId, reason, resetToken, onSaved, onDone, onLater }: { accountId?: string; reason: 'payment' | 'first' | 'reset'; resetToken?: string | null; onSaved: (token: string) => void; onDone: () => void; onLater?: () => void }) {
   const [first, setFirst] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   // During a payment, carry on by itself after a moment; otherwise wait for "Done".
@@ -236,7 +292,7 @@ function CreatePin({ accountId, reason, onSaved, onDone, onLater }: { accountId?
     if (!first) { setFirst(pin); setReset(x => x + 1); return; }
     if (pin !== first) { setErr('Those didn’t match — start again'); setFirst(null); setReset(x => x + 1); return; }
     setBusy(true);
-    try { const r = await kc<{ pinToken: string }>('security/pin', { method: 'POST', body: { pin } }); void biometricUpdatePin(pin, accountId); onSaved(r.pinToken); setSaved(true); }
+    try { const r = await kc<{ pinToken: string }>('security/pin', { method: 'POST', body: { pin, ...(resetToken ? { resetToken } : {}) } }); void biometricUpdatePin(pin, accountId); onSaved(r.pinToken); setSaved(true); }
     catch (e) { setErr(e instanceof Error ? e.message : 'Could not save your PIN'); setFirst(null); setReset(x => x + 1); }
     finally { setBusy(false); }
   }
