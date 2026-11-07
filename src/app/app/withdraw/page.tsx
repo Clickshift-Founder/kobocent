@@ -30,10 +30,10 @@ interface Overview {
   running: boolean;
 }
 // Spend from any chain (2026-10-07): sources, picker and wording live in components/app/PayFrom.tsx.
-interface Quote { payoutNotice?: string | null; amountUsd: number; feeRate: number; fee: number; net: number; displayRate: number; midMarket: number; payoutNgn: number; enough: boolean | null; funding?: Funding; cashback?: CashbackOffer | null }
+interface Quote { payoutLow?: boolean; amountUsd: number; feeRate: number; fee: number; net: number; displayRate: number; midMarket: number; payoutNgn: number; enough: boolean | null; funding?: Funding; cashback?: CashbackOffer | null }
 interface Job {
   id: string; status: 'running' | 'done'; stage: string; amountUsd: number;
-  result: null | { ok: boolean; code: string | null; reference: string | null; payoutNgn: number | null; signature: string | null; error: string | null; funding?: JobFunding | null; explorerUrl?: string | null; cashbackUsd?: number };
+  result: null | { ok: boolean; delayNote?: string | null; code: string | null; reference: string | null; payoutNgn: number | null; signature: string | null; error: string | null; funding?: JobFunding | null; explorerUrl?: string | null; cashbackUsd?: number };
 }
 type Screen = 'loading' | 'bank' | 'amount' | 'progress';
 
@@ -382,7 +382,7 @@ function AmountStep({ ov, onChangeBank, onStarted }: { ov: Overview; onChangeBan
                   <dt className="text-cream/70">Paid from</dt><dd className="text-right font-mono">{paidFrom}</dd>
                   <dt className="text-cream/70">Network fee</dt><dd className="text-right">{feeLine}</dd>
                 </>)}
-                <dt className="text-cream/70">Arrives</dt><dd className="text-right">{quote.funding?.eta && quote.funding.eta !== 'seconds' ? `Confirms on ${quote.funding.chainLabel} in ${quote.funding.eta}, then minutes` : 'Usually within minutes'}</dd>
+                {!quote.payoutLow && <><dt className="text-cream/70">Arrives</dt><dd className="text-right">{quote.funding?.eta && quote.funding.eta !== 'seconds' ? `Confirms on ${quote.funding.chainLabel} in ${quote.funding.eta}, then minutes` : 'Usually within minutes'}</dd></>}
               </dl>
             )}
           </div>
@@ -416,7 +416,6 @@ function AmountStep({ ov, onChangeBank, onStarted }: { ov: Overview; onChangeBan
             {quote.funding && quote.funding.collect && quote.funding.priceUsd !== 1 && (
               <p className="mt-2 text-[12.5px] muted text-center">Priced at {usd(quote.funding.priceUsd)} per {quote.funding.collect.symbol}, live — the exact amount is set the moment you confirm.</p>
             )}
-            {quote.payoutNotice && <p className="mt-4 rounded-2xl bg-[#B68B2A]/10 px-4 py-3 text-[13.5px] leading-relaxed text-ink dark:text-cream-warm" role="status">{quote.payoutNotice}</p>}
             <CashbackToggle offer={quote.cashback} on={useCb} onChange={setUseCb} mode="receive" />
             <ErrorNote msg={startErr} className="mt-4 text-[14px] text-[#B84A40]" />
             <div className="mt-5">
@@ -475,6 +474,10 @@ function Progress({ jobId, bankName, onFinish }: { jobId: string; bankName: stri
 
   const r = job?.result;
   if (job?.status === 'done' && r) {
+    if (r.ok && r.delayNote) {
+      return <Outcome tone="info" title="We’ve got your withdrawal" body={r.delayNote} reference={r.reference}
+        actions={<><Link href="/app/activity" onClick={() => onFinish(false)} className="btn-primary w-full">View activity</Link><Link href="/app" onClick={() => onFinish(false)} className="btn-ghost w-full">Done</Link></>} />;
+    }
     if (r.ok) {
       return (
         <Outcome tone="success" title={`${naira(r.payoutNgn)} is on its way`}

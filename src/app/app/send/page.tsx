@@ -20,8 +20,8 @@ import { CashbackToggle, cashbackOff, type CashbackOffer } from '@/components/ap
 
 interface Recipient { accountNumber: string; bankCode: string; bankName: string; accountName: string; lastAt: number | null }
 interface Bank { code: string; name: string }
-interface Quote { payoutNotice?: string | null; amountNgn: number; totalUsd: number; feeUsd: number; rate: number; stable: string; isSplit: boolean; balanceUsd: number; canPay: boolean; aboveLimit: boolean; limitUsd: number; funding?: Funding | null; fundingError?: string | null; maxUsd?: number | null; cashback?: CashbackOffer | null }
-interface Job { id: string; status: 'running' | 'done'; stage: string; meta: { amountNgn: number }; result: null | { ok: boolean; code: string | null; error: string | null; reference: string | null; amountNgn: number; recipientName: string | null; recipientBank: string | null; funding?: JobFunding | null } }
+interface Quote { amountNgn: number; totalUsd: number; feeUsd: number; rate: number; stable: string; isSplit: boolean; balanceUsd: number; canPay: boolean; aboveLimit: boolean; limitUsd: number; funding?: Funding | null; fundingError?: string | null; maxUsd?: number | null; cashback?: CashbackOffer | null }
+interface Job { id: string; status: 'running' | 'done'; stage: string; meta: { amountNgn: number }; result: null | { ok: boolean; delayNote?: string | null; code: string | null; error: string | null; reference: string | null; amountNgn: number; recipientName: string | null; recipientBank: string | null; funding?: JobFunding | null } }
 
 const JOB_KEY = 'kc-send-job';
 const SUPPORT_URL = 'mailto:support@kobocent.com';
@@ -279,7 +279,6 @@ function Amount({ to, onBack, onStarted }: { to: Recipient; onBack: () => void; 
               {note && (<><dt className="muted">Note</dt><dd className="text-right truncate">{note}</dd></>)}
             </dl>
             {lines.priceNote && <p className="mt-2 text-[12.5px] muted text-center">{lines.priceNote}</p>}
-            {quote.payoutNotice && <p className="mt-4 rounded-2xl bg-[#B68B2A]/10 px-4 py-3 text-[13.5px] leading-relaxed text-ink dark:text-cream-warm" role="status">{quote.payoutNotice}</p>}
             <CashbackToggle offer={quote.cashback} on={useCb} onChange={setUseCb} mode="pay" />
             <ErrorNote msg={startErr} className="mt-4 text-[14px] text-[#B84A40]" />
             <div className="mt-5"><HoldToConfirm label={`Hold to send ${nairaKobo(value)}`} busy={starting} onConfirm={start} /></div>
@@ -308,6 +307,7 @@ function Progress({ jobId, onFinish }: { jobId: string; onFinish: () => void }) 
   if (lost) return <Outcome tone="info" title="We lost track of this screen" body="The payment itself is unaffected — check Activity for its status." actions={<><Link href="/app/activity" onClick={onFinish} className="btn-primary w-full">Open Activity</Link><button onClick={onFinish} className="btn-ghost w-full">Close</button></>} />;
   const r = job?.result;
   if (job?.status === 'done' && r) {
+    if (r.ok && r.delayNote) return <Outcome tone="info" title="We’ve got your payment" body={r.delayNote} reference={r.reference} actions={<><Link href="/app/activity" onClick={onFinish} className="btn-primary w-full">View activity</Link><Link href="/app" onClick={onFinish} className="btn-ghost w-full">Done</Link></>} />;
     if (r.ok) return <Outcome tone="success" title={`${nairaKobo(r.amountNgn)} is on its way`} body={`To ${r.recipientName || 'your recipient'}${r.recipientBank ? ` at ${r.recipientBank}` : ''}${r.funding ? `, paid from ${r.funding.label}` : ''}. Usually arrives within minutes. Get the receipt below to share as proof — it’s ready the moment the bank confirms.`} reference={r.reference} actions={<>{r.reference && <ReceiptButton reference={r.reference} kind="bill" wait className="btn-primary w-full" />}<Link href="/app" onClick={onFinish} className="btn-ghost w-full">Done</Link><button onClick={onFinish} className="block w-full text-center text-[14px] font-semibold text-terracotta min-h-[44px]">Send another</button></>} />;
     if (r.code === 'OUTCOME_UNKNOWN') return <Outcome tone="warn" title="Being confirmed" body="Please don’t send again. We’re confirming the payment and will complete it or refund you — you’ll hear from us on Telegram." reference={r.reference} actions={<button onClick={onFinish} className="btn-primary w-full">Got it</button>} />;
     const nothingMoved = ['INSUFFICIENT', 'BAD_ACCOUNT', 'IN_PROGRESS', 'BELOW_MIN', 'ABOVE_LIMIT'].includes(r.code || '');
