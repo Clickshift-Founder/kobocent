@@ -20,7 +20,7 @@ import { CashbackToggle, cashbackOff, type CashbackOffer } from '@/components/ap
 
 interface Recipient { accountNumber: string; bankCode: string; bankName: string; accountName: string; lastAt: number | null }
 interface Bank { code: string; name: string }
-interface Quote { amountNgn: number; totalUsd: number; feeUsd: number; rate: number; stable: string; isSplit: boolean; balanceUsd: number; canPay: boolean; aboveLimit: boolean; limitUsd: number; funding?: Funding | null; fundingError?: string | null; maxUsd?: number | null; cashback?: CashbackOffer | null }
+interface Quote { payoutNotice?: string | null; amountNgn: number; totalUsd: number; feeUsd: number; rate: number; stable: string; isSplit: boolean; balanceUsd: number; canPay: boolean; aboveLimit: boolean; limitUsd: number; funding?: Funding | null; fundingError?: string | null; maxUsd?: number | null; cashback?: CashbackOffer | null }
 interface Job { id: string; status: 'running' | 'done'; stage: string; meta: { amountNgn: number }; result: null | { ok: boolean; code: string | null; error: string | null; reference: string | null; amountNgn: number; recipientName: string | null; recipientBank: string | null; funding?: JobFunding | null } }
 
 const JOB_KEY = 'kc-send-job';
@@ -279,6 +279,7 @@ function Amount({ to, onBack, onStarted }: { to: Recipient; onBack: () => void; 
               {note && (<><dt className="muted">Note</dt><dd className="text-right truncate">{note}</dd></>)}
             </dl>
             {lines.priceNote && <p className="mt-2 text-[12.5px] muted text-center">{lines.priceNote}</p>}
+            {quote.payoutNotice && <p className="mt-4 rounded-2xl bg-[#B68B2A]/10 px-4 py-3 text-[13.5px] leading-relaxed text-ink dark:text-cream-warm" role="status">{quote.payoutNotice}</p>}
             <CashbackToggle offer={quote.cashback} on={useCb} onChange={setUseCb} mode="pay" />
             <ErrorNote msg={startErr} className="mt-4 text-[14px] text-[#B84A40]" />
             <div className="mt-5"><HoldToConfirm label={`Hold to send ${nairaKobo(value)}`} busy={starting} onConfirm={start} /></div>
