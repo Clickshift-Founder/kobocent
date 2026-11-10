@@ -5,7 +5,7 @@ export interface LiveStats {
   countries: number | null;
 }
 
-const API = process.env.NEXT_PUBLIC_STATS_API || 'https://api.clickshift.io';
+const API = process.env.NEXT_PUBLIC_STATS_API || 'https://api.kobocent.com';
 
 export function fmtCompact(n: number | null, prefix = ''): string {
   if (n === null || Number.isNaN(n)) return '—';

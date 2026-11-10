@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
  * Captures early signups so no visitor is wasted before the app is live.
  *
  * Configure ONE of these in Vercel:
- *   WAITLIST_ENDPOINT  — your own backend (recommended: api.clickshift.io/api/waitlist)
+ *   WAITLIST_ENDPOINT  — your own backend (recommended: api.kobocent.com/api/waitlist)
  *   WAITLIST_WEBHOOK   — a Google Apps Script / Zapier / Make webhook URL
  *
  * With neither set it still returns success and logs the entry, so the form

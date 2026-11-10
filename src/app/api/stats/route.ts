@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-const API = process.env.NEXT_PUBLIC_STATS_API || 'https://api.clickshift.io';
+const API = process.env.NEXT_PUBLIC_STATS_API || 'https://api.kobocent.com';
 
 /**
  * Server-side proxy to the platform stats API.

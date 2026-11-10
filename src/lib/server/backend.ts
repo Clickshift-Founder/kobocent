@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers';
+import { cookies, headers as requestHeaders } from 'next/headers';
 
 /**
  * Server-side bridge to the Kobocent backend (clickbot repo, /api/v1 — contract in
@@ -8,7 +8,7 @@ import { cookies } from 'next/headers';
 export const API_BASE = (
   process.env.KOBOCENT_API_BASE ||
   process.env.NEXT_PUBLIC_API_BASE ||
-  'https://api.clickshift.io/api/v1'
+  'https://api.kobocent.com/api/v1'
 ).replace(/\/+$/, '');
 
 export const SESSION_COOKIE = 'kc_session';
@@ -55,6 +55,23 @@ export function clearSessionToken() {
   cookies().set(SESSION_COOKIE, '', { httpOnly: true, path: '/', maxAge: 0 });
 }
 
+/**
+ * Security fix C (2026-11-10): every web request reaches the backend from Vercel's servers, so the backend's sign-in
+ * limits counted all web users as one. Pass the visitor's IP, with WEB_PROXY_SECRET (server-only, never NEXT_PUBLIC_)
+ * so the backend believes it only from us. Vercel sets x-real-ip / x-forwarded-for itself; a visitor cannot forge them.
+ */
+function visitorHeaders(): Record<string, string> {
+  const secret = process.env.WEB_PROXY_SECRET;
+  if (!secret) return {};
+  try {
+    const h = requestHeaders();
+    const ip = (h.get('x-real-ip') || h.get('x-forwarded-for')?.split(',')[0] || '').trim();
+    return ip ? { 'X-Kc-Proxy-Key': secret, 'X-Kc-Client-Ip': ip } : {};
+  } catch {
+    return {};   // called outside a request (build time): nothing to pass
+  }
+}
+
 export async function backend(
   path: string,
   init: { method?: string; body?: unknown; token?: string | null; headers?: Record<string, string> } = {},
@@ -62,6 +79,7 @@ export async function backend(
   const headers: Record<string, string> = { Accept: 'application/json', ...(init.headers || {}) };
   if (init.body !== undefined) headers['Content-Type'] = 'application/json';
   if (init.token) headers.Authorization = `Bearer ${init.token}`;
+  Object.assign(headers, visitorHeaders());
   return fetch(`${API_BASE}${path.startsWith('/') ? path : `/${path}`}`, {
     method: init.method || 'GET',
     headers,
