@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     const res = await backend('/auth/apple', { method: 'POST', body: { idToken: body.idToken, name: body.name || null, mode: body.mode === 'signin' ? 'signin' : 'signup' } });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.token) return NextResponse.json({ error: data.error || 'Sign-in failed — please try again', code: data.code }, { status: res.status || 401 });
-    setSessionToken(data.token);
+    await setSessionToken(data.token);
     return NextResponse.json({ account: data.account, profile: data.profile, created: !!data.created });
   } catch {
     return NextResponse.json({ error: 'Kobocent is unreachable right now — please try again in a moment' }, { status: 503 });

@@ -149,7 +149,7 @@ async function handle(req: NextRequest, path: string[], method: 'GET' | 'POST') 
   const key = path.join('/');
   if (!allowed(key, method)) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const token = getSessionToken();
+  const token = await getSessionToken();
   if (!token) return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
 
   const qs = req.nextUrl.search || '';
@@ -190,19 +190,19 @@ async function handle(req: NextRequest, path: string[], method: 'GET' | 'POST') 
   const data = await res.json().catch(() => ({}));
   // Clear the cookie only when the backend says the session itself is gone — never for a
   // 401 from the recovery-phrase re-auth gate or anything else.
-  if (isSessionError(res.status, data) && !key.startsWith('wallet/recovery-phrase') && key !== 'auth/reauth') clearSessionToken();
+  if (isSessionError(res.status, data) && !key.startsWith('wallet/recovery-phrase') && key !== 'auth/reauth') await clearSessionToken();
   // Linking may move the session to another account — keep the new token server-side only.
   if (data && typeof data === 'object' && 'token' in data && typeof data.token === 'string') {
-    if (key === 'auth/link') setSessionToken(data.token);
+    if (key === 'auth/link') await setSessionToken(data.token);
     delete (data as { token?: string }).token;
   }
   return NextResponse.json(data, { status: res.status, headers: { 'Cache-Control': 'no-store' } });
 }
 
-export async function GET(req: NextRequest, { params }: { params: { path: string[] } }) {
-  return handle(req, params.path, 'GET');
+export async function GET(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+  return handle(req, (await params).path, 'GET');
 }
 
-export async function POST(req: NextRequest, { params }: { params: { path: string[] } }) {
-  return handle(req, params.path, 'POST');
+export async function POST(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+  return handle(req, (await params).path, 'POST');
 }
