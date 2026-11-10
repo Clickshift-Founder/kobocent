@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     const res = await backend('/auth/email/verify', { method: 'POST', body: { email: body.email, code: body.code, mode: body.mode === 'signin' ? 'signin' : undefined } });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.token) return NextResponse.json({ error: data.error || 'Sign-in failed — please try again', code: data.code }, { status: res.status === 200 ? 502 : res.status });
-    setSessionToken(data.token);
+    await setSessionToken(data.token);
     return NextResponse.json({ account: data.account, profile: data.profile, created: !!data.created });
   } catch {
     return NextResponse.json({ error: 'Kobocent is unreachable right now — please try again in a moment' }, { status: 503 });

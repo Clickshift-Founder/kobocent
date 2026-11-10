@@ -12,7 +12,7 @@ import { InstallCard } from '@/components/app/InstallCard';
 import { useLiveRefresh } from '@/lib/useLiveRefresh';
 
 // `href`: the action works on the web — open its screen instead of the Telegram sheet.
-type Action = { key: string; label: string; Icon: (p: { size?: number }) => JSX.Element; title: string; body: string; href?: string };
+type Action = { key: string; label: string; Icon: (p: { size?: number }) => React.JSX.Element; title: string; body: string; href?: string };
 
 // Money actions run in Telegram today and arrive on the web batch by batch (backend ROADMAP
 // Phase 3). We never show a web screen for something the API cannot do yet.

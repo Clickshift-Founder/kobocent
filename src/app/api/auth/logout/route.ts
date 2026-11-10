@@ -4,6 +4,6 @@ import { clearSessionToken } from '@/lib/server/backend';
 export const dynamic = 'force-dynamic';
 
 export async function POST() {
-  clearSessionToken();
+  await clearSessionToken();
   return NextResponse.json({ ok: true });
 }
