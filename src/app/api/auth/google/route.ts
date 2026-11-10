@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     const res = await backend('/auth/google', { method: 'POST', body: { credential: body.credential, mode: body.mode === 'signin' ? 'signin' : 'signup' } });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.token) return NextResponse.json({ error: data.error || 'Sign-in failed — please try again', code: data.code }, { status: res.status || 401 });
-    await setSessionToken(data.token);
+    setSessionToken(data.token);
     return NextResponse.json({ account: data.account, profile: data.profile, created: !!data.created });
   } catch {
     return NextResponse.json({ error: 'Kobocent is unreachable right now — please try again in a moment' }, { status: 503 });

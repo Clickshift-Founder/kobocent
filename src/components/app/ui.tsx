@@ -94,7 +94,7 @@ export function EmptyState({ title, body, action }: { title: string; body: strin
   );
 }
 
-function describe(i: HistoryItem): { title: string; sub: string; value: string; Icon: (p: { size?: number }) => React.JSX.Element; negative: boolean } {
+function describe(i: HistoryItem): { title: string; sub: string; value: string; Icon: (p: { size?: number }) => JSX.Element; negative: boolean } {
   const side = (i.side || '').toUpperCase();
   switch (i.kind) {
     case 'bank_transfer':

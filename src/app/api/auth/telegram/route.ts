@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     if (!res.ok || !data.token) {
       return NextResponse.json({ error: data.error || 'Sign-in failed — please try again' }, { status: res.status || 401 });
     }
-    await setSessionToken(data.token);
+    setSessionToken(data.token);
     return NextResponse.json({ account: data.account, profile: data.profile });
   } catch {
     return NextResponse.json({ error: 'Kobocent is unreachable right now — please try again in a moment' }, { status: 503 });

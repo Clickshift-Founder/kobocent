@@ -33,16 +33,16 @@ export async function maybeRefreshSession(token: string) {
     const res = await backend('/auth/refresh', { method: 'POST', token, body: {} });
     if (!res.ok) return;
     const data = (await res.json().catch(() => ({}))) as { token?: string };
-    if (data.token) await setSessionToken(data.token);
+    if (data.token) setSessionToken(data.token);
   } catch { /* keep the current token */ }
 }
 
-export async function getSessionToken(): Promise<string | null> {
-  return (await cookies()).get(SESSION_COOKIE)?.value || null;
+export function getSessionToken(): string | null {
+  return cookies().get(SESSION_COOKIE)?.value || null;
 }
 
-export async function setSessionToken(token: string) {
-  (await cookies()).set(SESSION_COOKIE, token, {
+export function setSessionToken(token: string) {
+  cookies().set(SESSION_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
@@ -51,8 +51,8 @@ export async function setSessionToken(token: string) {
   });
 }
 
-export async function clearSessionToken() {
-  (await cookies()).set(SESSION_COOKIE, '', { httpOnly: true, path: '/', maxAge: 0 });
+export function clearSessionToken() {
+  cookies().set(SESSION_COOKIE, '', { httpOnly: true, path: '/', maxAge: 0 });
 }
 
 /**
@@ -60,11 +60,11 @@ export async function clearSessionToken() {
  * limits counted all web users as one. Pass the visitor's IP, with WEB_PROXY_SECRET (server-only, never NEXT_PUBLIC_)
  * so the backend believes it only from us. Vercel sets x-real-ip / x-forwarded-for itself; a visitor cannot forge them.
  */
-async function visitorHeaders(): Promise<Record<string, string>> {
+function visitorHeaders(): Record<string, string> {
   const secret = process.env.WEB_PROXY_SECRET;
   if (!secret) return {};
   try {
-    const h = await requestHeaders();
+    const h = requestHeaders();
     const ip = (h.get('x-real-ip') || h.get('x-forwarded-for')?.split(',')[0] || '').trim();
     return ip ? { 'X-Kc-Proxy-Key': secret, 'X-Kc-Client-Ip': ip } : {};
   } catch {
@@ -79,7 +79,7 @@ export async function backend(
   const headers: Record<string, string> = { Accept: 'application/json', ...(init.headers || {}) };
   if (init.body !== undefined) headers['Content-Type'] = 'application/json';
   if (init.token) headers.Authorization = `Bearer ${init.token}`;
-  Object.assign(headers, await visitorHeaders());
+  Object.assign(headers, visitorHeaders());
   return fetch(`${API_BASE}${path.startsWith('/') ? path : `/${path}`}`, {
     method: init.method || 'GET',
     headers,
