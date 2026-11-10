@@ -86,7 +86,7 @@ change it in both repos in the same change. Light by default. Logo: `public/logo
 
 ## Stack
 
-Next.js 15 App Router (React 19, since 2026-11-10: `cookies()` / `headers()` / route `params` are async — always await them) · TypeScript (strict) · Tailwind · PWA (`public/sw.js`,
+Next.js 14 App Router · TypeScript (strict) · Tailwind · PWA (`public/sw.js`,
 `public/manifest.json`). Copy lives in `src/data/*` so text changes need no React.
 
 ## Environment (Vercel → Settings → Environment Variables)
