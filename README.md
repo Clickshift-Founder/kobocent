@@ -5,7 +5,7 @@ into users, and to be the foundation the authenticated app grows out of.
 
 ## Stack
 
-- **Next.js 14** (App Router) — server-rendered for SEO, Vercel-native
+- **Next.js 15** (App Router, React 19) — server-rendered for SEO, Vercel-native
 - **TypeScript** — strict mode
 - **Tailwind CSS** — brand tokens in `tailwind.config.ts`
 - **PWA** — installable, offline-resilient shell
