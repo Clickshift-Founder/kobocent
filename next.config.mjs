@@ -1,7 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  images: { formats: ['image/avif', 'image/webp'] },
+  // Security fix A (2026-11-10): nothing uses next/image, so the image optimizer (/_next/image) is off. Next 14 is end of
+  // life and its optimizer has unpatched remote-code-execution advisories (fixed only in 15.5.28+). Upgrade to Next 15 next.
+  images: { unoptimized: true },
   async headers() {
     return [
       // Security fix B (2026-11-10): no other site may frame kobocent.com (click-hijacking of payment screens), browsers
