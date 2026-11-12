@@ -135,6 +135,17 @@ Backend side (clickbot `.env`): `WEB_ORIGIN=https://kobocent.com,https://www.kob
 - `$SHIFT` "3× multiplier for early users" (`src/data/faq.ts:54`) — confirm it exists in the
   backend before keeping it.
 
+## Blog (2026-11-13)
+
+- **/blog** and **/blog/[slug]**: server pages that read the backend's public `GET /api/blog` (`src/lib/blog.ts`), rebuilt
+  every 5 minutes and at once when /ops publishes (`POST /api/blog/revalidate`, `X-Kc-Proxy-Key` = `WEB_PROXY_SECRET`).
+- Articles are written in /ops → Blog (clickbot `src/services/blog.js`), which refuses to publish copy that breaks the
+  language rules. The renderer (`toBlocks`) and the /ops preview (`BlogPreview` in recon-dashboard App.js) must stay in step.
+- Each article has Article + BreadcrumbList JSON-LD, a canonical URL and a share image (`opengraph-image.tsx`). The sitemap
+  lists every published article.
+- If the API is down the blog shows "new articles are on their way" and article pages 404 until the next rebuild; nothing
+  else on the site depends on it.
+
 ## Working style (same as the backend)
 
 - **Verify before asserting.** Read the code or the API.md entry; don't assume a route exists.

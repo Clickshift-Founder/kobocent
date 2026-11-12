@@ -18,6 +18,7 @@ const COLS = [
   {
     title: 'Company',
     links: [
+      { label: 'Blog', href: '/blog' },
       { label: 'Support', href: `https://t.me/${BOT}` },
       { label: 'Privacy & Terms', href: '/legal' },
       { label: 'Delete my account', href: '/delete-account' },

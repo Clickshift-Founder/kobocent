@@ -12,6 +12,7 @@ const LINKS = [
   { href: '#multichain', label: 'Multichain' },
   { href: '#security', label: 'Security' },
   { href: '#faq', label: 'FAQ' },
+  { href: '/blog', label: 'Blog' },
   { href: '#download', label: 'Get the app' },
 ];
 
@@ -34,17 +35,17 @@ export function Nav() {
       <nav className="container-page flex items-center justify-between gap-4">
         <Link href="/" aria-label="Kobocent home"><LogoLockup /></Link>
 
-        <ul className="hidden lg:flex items-center gap-7">
+        <ul className="hidden xl:flex items-center gap-6">
           {LINKS.map((l) => (
             <li key={l.href}>
-              <a href={l.href} className="text-[13.5px] muted hover:text-terracotta transition-colors">{l.label}</a>
+              <a href={l.href} className="whitespace-nowrap text-[13.5px] muted hover:text-terracotta transition-colors">{l.label}</a>
             </li>
           ))}
         </ul>
 
         <div className="flex items-center gap-2.5">
           <ThemeToggle compact />
-          <Link href="/signin" className="hidden sm:inline-flex items-center px-3 min-h-[40px] text-[14px] font-medium muted hover:text-terracotta transition-colors">
+          <Link href="/signin" className="hidden sm:inline-flex items-center whitespace-nowrap px-3 min-h-[40px] text-[14px] font-medium muted hover:text-terracotta transition-colors">
             Sign in
           </Link>
           <Link href="/signup" className="btn-primary !px-5 !py-2.5 !text-[14px] hidden sm:inline-flex">
@@ -54,7 +55,7 @@ export function Nav() {
             onClick={() => setOpen((v) => !v)}
             aria-label="Menu"
             aria-expanded={open}
-            className="lg:hidden grid place-items-center h-9 w-9 rounded-xl border border-cream-border dark:border-night-border"
+            className="xl:hidden grid place-items-center h-9 w-9 rounded-xl border border-cream-border dark:border-night-border"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               {open ? <path d="M18 6L6 18M6 6l12 12" /> : <path d="M3 12h18M3 6h18M3 18h18" />}
@@ -64,7 +65,7 @@ export function Nav() {
       </nav>
 
       {open && (
-        <div className="lg:hidden container-page mt-3 pb-3">
+        <div className="xl:hidden container-page mt-3 pb-3">
           <ul className="surface rounded-2xl p-2">
             {LINKS.map((l) => (
               <li key={l.href}>
