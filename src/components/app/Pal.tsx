@@ -20,8 +20,9 @@ interface PalState { credit: number; creditPct: number; answersLeft: number; vip
   case: SupportCase | null; messages: SupportMsg[] }
 interface SupportCase { id: number; status: 'waiting' | 'active' | 'closed'; agentName: string | null; reason: string | null; closedBy: string | null; resolution: string | null; rating: number | null }
 interface SupportMsg { id: number; sender: 'user' | 'agent' | 'pal' | 'system'; agentName: string | null; body: string; at: number }
-interface ChatMsg { id: string; from: 'user' | 'pal' | 'agent' | 'system'; text: string; name?: string | null; actions?: string[]; tier?: string }
-interface ChatRes { reply: string | null; tier: string; actions: string[]; caseId: number | null; routedToCase: boolean; credit: number | null; freeLeft: number | null; limited: string | null }
+interface PalLink { title: string; url: string }
+interface ChatMsg { id: string; from: 'user' | 'pal' | 'agent' | 'system'; text: string; name?: string | null; actions?: string[]; links?: PalLink[]; tier?: string }
+interface ChatRes { reply: string | null; tier: string; actions: string[]; links?: PalLink[]; caseId: number | null; routedToCase: boolean; credit: number | null; freeLeft: number | null; limited: string | null }
 interface Job { id: string; status: 'running' | 'done'; result: null | { ok: boolean; code?: string; error?: string; amount?: number; creditAdded?: number; credit?: number; answersLeft?: number; signature?: string; explorerUrl?: string | null; paidFrom?: string } }
 
 const SCREENS: Record<string, { label: string; href: string; external?: boolean; protect?: ProtectAction }> = {
@@ -50,9 +51,11 @@ export function IconPal({ size = 22 }: { size?: number }) {
 
 /** Light formatting: *bold*, _italic_, `code`, line breaks — escaped first. */
 function Rich({ text }: { text: string }) {
-  const parts = text.split(/(\*[^*\n]+\*|_[^_\n]+_|`[^`\n]+`)/g);
+  // Kobocent's own links (blog articles Pal suggests) are tappable; any other URL stays plain text.
+  const parts = text.split(/(https:\/\/(?:www\.)?kobocent\.com\/[^\s)]*[^\s).,]|\*[^*\n]+\*|_[^_\n]+_|`[^`\n]+`)/g);
   return (
     <>{parts.map((p, i) => {
+      if (/^https:\/\/(?:www\.)?kobocent\.com\//.test(p)) return <a key={i} href={p} target="_blank" rel="noopener noreferrer" className="text-terracotta font-semibold underline underline-offset-2 break-all">{p.replace(/^https:\/\//, '')}</a>;
       if (/^\*[^*]+\*$/.test(p)) return <b key={i}>{p.slice(1, -1)}</b>;
       if (/^_[^_]+_$/.test(p)) return <i key={i}>{p.slice(1, -1)}</i>;
       if (/^`[^`]+`$/.test(p)) return <code key={i} className="font-mono text-[13px] px-1 rounded bg-black/5 dark:bg-white/10">{p.slice(1, -1)}</code>;
@@ -222,7 +225,7 @@ function PalPanel({ onClose, ask }: { onClose: () => void; ask?: string }) {
         mergeSupport(s);
       } else {
         const r = await kc<ChatRes>('pal/chat', { method: 'POST', body: { message: text } });
-        if (r.reply) push({ id: `p${Date.now()}`, from: 'pal', text: r.reply, actions: r.actions, tier: r.tier });
+        if (r.reply) push({ id: `p${Date.now()}`, from: 'pal', text: r.reply, actions: r.actions, links: r.links, tier: r.tier });
         if (r.caseId || r.routedToCase || r.tier === 'vip' || r.freeLeft != null) await load();
       }
     } catch (e) {
@@ -313,6 +316,16 @@ function PalPanel({ onClose, ask }: { onClose: () => void; ask?: string }) {
                   <div className="max-w-[85%]">
                     <p className="text-[11.5px] muted mb-1 ml-1">{m.from === 'agent' ? `${m.name || 'Support'} · Kobocent support` : m.tier === 'vip' ? 'Kobo Pal · VIP' : 'Kobo Pal'}</p>
                     <div className={`rounded-2xl rounded-bl-md px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap break-words border ${m.from === 'agent' ? 'bg-white dark:bg-night-card border-ink/15 dark:border-cream-warm/20' : 'bg-white dark:bg-night-card border-cream-border dark:border-night-border'}`}><Rich text={m.text} /></div>
+                    {/* Blog articles Pal suggested: a tappable link each (2026-11-13). Only kobocent.com/blog links are shown. */}
+                    {!!m.links?.length && (
+                      <div className="mt-2 flex flex-col gap-2">
+                        {m.links.filter(l => l.url.startsWith('https://kobocent.com/blog/')).slice(0, 2).map(l => (
+                          <a key={l.url} href={l.url} target="_blank" rel="noopener noreferrer" className="rounded-2xl border border-terracotta/40 bg-terracotta-soft text-terracotta px-3.5 py-2.5 min-h-[44px] inline-flex items-center gap-2 text-[13.5px] font-semibold">
+                            <span aria-hidden>📖</span><span>Read: {l.title}</span>
+                          </a>
+                        ))}
+                      </div>
+                    )}
                     {i === msgs.length - 1 && !!m.actions?.length && (
                       <div className="mt-2 flex flex-wrap gap-2">
                         {m.actions.filter(a => SCREENS[a]).map(a => SCREENS[a].external
