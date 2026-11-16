@@ -1,5 +1,5 @@
 /* Kobocent films: deterministic scenes. window.seek(t) draws the frame at t seconds; window.VIDEO = { dur, sfx }.
-   ?v=1 bills · ?v=2 withdraw · ?v=3 Kobo Pal · ?v=4 trading · ?v=5 Earn · ?v=6 cashback · ?v=7 send to wallet · ?v=8 first deposit · ?v=9 freeze and new wallet · ?v=10 send to bank · ?v=11 bridge · ?v=12 swap · ?v=13 crypto deposit. Every amount is an illustration (the end card says so). */
+   ?v=1 bills · ?v=2 withdraw · ?v=3 Kobo Pal · ?v=4 trading · ?v=5 Earn · ?v=6 cashback · ?v=7 send to wallet · ?v=8 first deposit · ?v=9 freeze and new wallet · ?v=10 send to bank · ?v=11 bridge · ?v=12 swap · ?v=13 crypto deposit · ?v=14 bridge out · ?v=15 chain to chain · ?v=16 move to a new wallet. Every amount is an illustration (the end card says so). */
 (() => {
   const V = Number(new URLSearchParams(location.search).get('v') || 1);
   const $ = (s, r = document) => r.querySelector(s);
@@ -638,7 +638,7 @@
 
   /* ───────── films 10–13 (2026-11-17): send to bank, bridge, swap, crypto deposit. Built from the real screens:
      app/app/send, app/app/bridge, app/app/swap, components/app/ReceiveCrypto. ───────── */
-  const pill = (sym, sub, col, id) => `<div class="tokp" ${id ? `id="${id}"` : ''}><i style="background:${col}">${sym === 'SOL' ? '◎' : sym === 'ETH' ? 'E' : '$'}</i><span>${sym}${sub ? `<small>${sub}</small>` : ''}</span></div>`;
+  const pill = (sym, sub, col, id) => `<div class="tokp" ${id ? `id="${id}"` : ''}><i style="background:${col}">${sym === 'SOL' ? '◎' : sym === 'ETH' ? 'E' : sym === 'BNB' ? 'B' : '$'}</i><span>${sym}${sub ? `<small>${sub}</small>` : ''}</span></div>`;
 
   if (V === 10) {
     HOOK = ['Need to pay someone?', 'Send naira from your dollars.'];
@@ -838,6 +838,146 @@
       const v = 200 * io(p(t, 19.6, 20.6));
       $('.amt', s3).textContent = '$' + v.toFixed(2); $('.sub', s3).textContent = 'Stablecoins $' + v.toFixed(2);
       [...uses.children].forEach((u, k) => rise(u, t, 23.0 + k * 0.5, 0.45, 18));
+    };
+  }
+
+  /* ───────── films 14–16 (2026-11-18): bridge out, chain to chain, move to a new wallet.
+     From app/app/bridge (dir 'out' and 'direct', recipientBox, QuoteDetails, Tracker) and AccountProtection (MoveWallet). ───────── */
+  if (V === 14 || V === 15) {
+    const out = V === 14;
+    DUR = 32; END = 26.4; FINE = 'You see the exact fee before you confirm. Screens are illustrations.';
+    HOOK = out ? ['Paying someone on another chain?', 'Send it from your USDC.'] : ['Wrong chain for the job?', 'Move it across in one step.'];
+    CAPS = out
+      ? [[3.1, 5.2, 'Step 1', '<em>Bridge</em>, then<br><em>Bridge out</em>'], [5.2, 9.6, 'Step 2', 'Type the USDC.<br>Pick the <em>coin and chain</em>.'], [9.6, 13.6, 'Step 3', 'Your 0x wallet, or<br><em>another address</em>'], [13.6, 18.4, 'Step 4', 'See what they get.<br><em>Hold to bridge.</em>'], [18.4, 26.2, 'Track it', 'Delivered on<br><em>BNB Chain</em>']]
+      : [[3.1, 5.2, 'Step 1', '<em>Bridge</em>, then<br><em>Chain to chain</em>'], [5.2, 9.4, 'Step 2', 'Pick what you hold<br>and <em>how much</em>'], [9.4, 13.6, 'Step 3', 'Choose where<br>it <em>should land</em>'], [13.6, 18.4, 'Step 4', 'One step. <em>No stop</em><br>on Solana.'], [18.4, 26.2, 'Track it', 'Delivered on<br><em>BNB Chain</em>']];
+    const c = out
+      ? { tab: 1, intro: 'Move your USDC on Solana to any of our other chains: Ethereum, BNB Chain, Polygon, Arbitrum or Robinhood Chain.', fromLbl: 'From · your USDC on Solana', bal: 'USDC 320.00', amt: '100', fromPill: pill('USDC', '', '#2775CA'), toSym: 'BNB', toPill: pill('BNB', 'BNB Chain', '#F0B90B', 'tp14'), rec: '0.1562', who: 'They receive', recv: '≈ 0.156200 BNB',
+          rows: '<dt>Solana network fees</dt><dd>~$0.02 <span style="color:#6B5D52">· from your USDC</span></dd><dt>Arrives in</dt><dd>about a minute</dd>', sentT: 'Sent 100.00 USDC', doneT: '≈ 0.1562 BNB delivered', revL: '100.00', revLs: 'USDC · Kobocent', revR: '≈ 0.156200', revRs: 'BNB · BNB Chain', home: '$320.00' }
+      : { tab: 2, intro: 'Move straight between any of our six chains in one step, like SOL on Solana to USDT on BNB Chain.', fromLbl: 'From · your 0x wallet', bal: 'Balance 0.082', amt: '0.05', fromPill: pill('ETH', 'Arbitrum', '#28A0F0'), toSym: 'USDT', toPill: pill('USDT', 'BNB Chain', '#F0B90B', 'tp14'), rec: '146.20', who: 'You receive', recv: '≈ 146.200000 USDT',
+          rows: '<dt>Network fees</dt><dd>~$0.40 <span style="color:#6B5D52">· paid for you</span></dd><dt>Arrives in</dt><dd>about 2 minutes</dd>', sentT: 'Sent 0.050000 ETH', doneT: '≈ 146.2000 USDT delivered', revL: '0.05', revLs: 'ETH · Arbitrum', revR: '≈ 146.200000', revRs: 'USDT · BNB Chain', home: '$12.40' };
+    const OTHER = '0x9aF3dEm0c41B7e2D8a6F0b5C3e9D1a7B4c2dEm0';
+    const s1 = add(home(c.home));
+    const s2 = add(el(`<div class="scr">${status}
+      <div class="ph" style="position:relative;z-index:3"><div class="back">${ic.back}</div><div class="t">Bridge</div></div>
+      <div class="sa" style="top:104px"><div id="pg14" style="padding:0 18px 90px">
+        <div style="font-size:13.5px;color:#6B5D52;line-height:1.4">Move your money between chains. Every fee comes out of what you move, so there’s no gas to buy.</div>
+        <div class="seg" style="margin:12px 0 0;grid-template-columns:repeat(3,1fr)"><div id="sg0" class="on">Bridge in</div><div id="sg1">Bridge out</div><div id="sg2">Chain to chain</div></div>
+        <div style="font-size:13px;color:#6B5D52;line-height:1.4;margin-top:12px" id="in14"></div>
+        <div style="position:relative;margin-top:12px"><div class="card" style="padding:16px"><div style="display:flex;justify-content:space-between;font-size:13px;color:#6B5D52"><span id="fl14"></span><span><span id="bl14"></span> <b style="color:#C1502E">Max</b></span></div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:8px"><div style="flex:1;display:flex;align-items:baseline"><span class="display" style="font-size:36px" id="a14"></span><span class="caret" id="c14" style="height:32px"></span><span id="z14" class="display" style="font-size:36px;color:#E4D8C6">0</span></div><span id="fp14"></span></div></div>
+          <div class="flip">${I.svg('<path d="M12 5v14"/><path d="M6 13l6 6 6-6"/>', 20)}</div>
+          <div class="card" style="padding:16px;margin-top:8px"><div style="display:flex;align-items:center;gap:10px"><div style="flex:1" class="display"><span style="font-size:36px" id="r14">0</span></div><span id="tw14"></span></div></div></div>
+        <div class="card" style="padding:14px;margin-top:12px" id="rb14"><div class="seg" style="margin:0;grid-template-columns:1fr 1fr"><div id="rw0" class="on">My 0x wallet</div><div id="rw1">Another address</div></div>
+          <div id="mine14" style="font-size:12.5px;color:#6B5D52;margin-top:10px;word-break:break-all">Your Kobocent 0x wallet: <span class="mono">0x71C7dEm0a2B4c6D8e0F1a3B5c7D9e1F3a5dEm0</span></div>
+          <div id="oth14"><div class="input mono" style="height:48px;font-size:12.5px;margin-top:10px" id="oi14"></div><div style="font-size:12.5px;color:#6B5D52;margin-top:8px">Make sure this wallet or exchange supports ${c.toSym} on BNB Chain.</div></div></div>
+        <dl class="card rows" style="margin-top:12px;font-size:13.5px" id="q14"><dt>${c.who}</dt><dd class="mono" style="font-weight:700">${c.recv}</dd>${c.rows}</dl>
+      </div></div>
+      <div class="cta" id="rv14" style="z-index:4">Review bridge</div></div>`));
+    const dim = add(el('<div class="dim"></div>'));
+    const shP = add(el(`<div class="sheet"><div class="grab"></div><div class="t">${out ? 'Bridge out to' : 'Move to'}</div>
+      ${[['Solana', '#20211F', 'SOL · USDC · USDT'], ['Ethereum', '#627EEA', 'ETH · USDC · USDT'], ['BNB Chain', '#F0B90B', 'BNB · USDC · USDT'], ['Polygon', '#8247E5', 'POL · USDC · USDT'], ['Arbitrum', '#28A0F0', 'ETH · USDC · USDT'], ['Robinhood Chain', '#58834C', 'ETH · USDC']].slice(out ? 1 : 0).map(([n, col, a], k) => `<div class="chrow" ${n === 'BNB Chain' ? 'id="pb14"' : ''}><i style="background:${col}"></i><b>${n}</b><span>${a}</span></div>`).join('')}</div>`));
+    const sh = add(el(`<div class="sheet"><div class="grab"></div><div class="t">Review bridge</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:16px;padding:16px 0 6px"><div style="text-align:center"><div class="display" style="font-size:24px">${c.revL}</div><div style="font-size:13px;color:#6B5D52">${c.revLs}</div></div><span style="color:#C1502E">${ic.bridge}</span><div style="text-align:center"><div class="display" style="font-size:24px">${c.revR}</div><div style="font-size:13px;color:#6B5D52">${c.revRs}</div></div></div>
+      <p style="text-align:center;font-size:12.5px;word-break:break-all"><span style="color:#6B5D52">To </span><span class="mono">${out ? OTHER : '0x71C7dEm0a2B4c6D8e0F1a3B5c7D9e1F3a5dEm0'}</span>${out ? '' : '<span style="color:#6B5D52"> (your wallet)</span>'}</p>
+      <dl class="rows" style="font-size:13.5px">${c.rows}</dl>
+      <div class="hold" id="hold14"><div class="fill" id="fill14"></div><span>Hold to bridge</span></div></div>`));
+    const s4 = add(el(`<div class="scr">${status}
+      <div class="ph"><div class="back">${ic.back}</div><div class="t">Bridge</div></div>
+      <div class="field"><div class="card" style="padding:22px 18px;text-align:center"><div class="bigic" id="bi14">${ic.bridge}</div>
+        <div class="display" style="font-size:22px;margin-top:14px" id="h14">On its way</div><div style="font-size:14px;color:#6B5D52;margin-top:4px;line-height:1.4" id="p14">You can leave this screen — we’ll message you on Telegram when it lands.</div>
+        <div class="steps"><div class="st" id="s141"><i></i><span>${c.sentT}</span></div><div class="st" id="s142"><i></i><span>Crossing to BNB Chain</span></div><div class="st" id="s143"><i></i><span id="s143t">Delivered</span></div></div>
+        <div class="pbtn" id="dn14">Done</div><div style="color:#C1502E;font-weight:600;font-size:13.5px;margin-top:12px">Track on deBridge</div></div></div></div>`));
+    $('#in14').textContent = c.intro; $('#fl14').textContent = c.fromLbl; $('#bl14').textContent = c.bal; $('#fp14').innerHTML = c.fromPill; $('#tw14').innerHTML = c.toPill;
+    const pg = $('#pg14'), yR = $('#rb14').offsetTop - 150;
+    const T = out ? { type: [6.4, 7.2], pick: 7.9, chose: 8.9, other: 10.2, paste: 11.3, quote: 12.2 } : { type: [6.4, 7.3], pick: 9.6, chose: 10.8, other: 99, paste: 99, quote: 11.8 };
+    tap(4.5, $('[data-k=bridge] .ic', s1)); tapAt(5.6, $(out ? '#sg1' : '#sg2')); tapAt(T.pick, $('#tp14')); tap(T.chose, $('#pb14'));
+    if (out) tapAt(T.other, $('#rw1'));
+    tap(13.3, $('#rv14')); hold(15.6, 17.4, $('#hold14'));
+    typeSfx(T.type[0], T.type[1], c.amt.length);
+    sfx.push({ t: 4.75, k: 'whoosh' }, { t: 5.65, k: 'pop' }, { t: T.pick + 0.25, k: 'whoosh' }, { t: T.chose + 0.05, k: 'pop' }, { t: T.quote, k: 'ok' }, { t: 13.6, k: 'whoosh' }, { t: 17.7, k: 'success' }, { t: 18.6, k: 'ok' }, { t: 23.4, k: 'ding' });
+    if (out) sfx.push({ t: T.other + 0.05, k: 'pop' }, { t: T.paste, k: 'ok' });
+    draw = (t) => {
+      slide(s2, t, 4.75, s1); if (t < 4.75) set(s1, 1, '');
+      const on = t >= 5.65; ['#sg0', '#sg1', '#sg2'].forEach((s, k) => { $(s).className = (on ? k === c.tab : k === 0) ? 'on' : ''; });
+      $('#in14').style.opacity = on ? 1 : 0.35;
+      const typed = c.amt.slice(0, Math.round(c.amt.length * p(t, T.type[0], T.type[1])));
+      $('#a14').textContent = typed; $('#z14').style.display = typed ? 'none' : ''; $('#c14').style.opacity = t >= 6 && t < T.type[1] + 0.6 && Math.floor(t * 2.2) % 2 === 0 ? 1 : 0;
+      const chosen = t >= T.chose + 0.05;
+      $('#tp14').style.opacity = chosen ? 1 : 0.45;
+      const pk = out3(p(t, T.pick + 0.25, T.pick + 0.7)) * (1 - p(t, T.chose + 0.05, T.chose + 0.3));
+      const rv = out3(p(t, 13.6, 14.05)) * (1 - p(t, 17.7, 17.95));
+      dim.style.opacity = Math.max(pk, rv); dim.style.visibility = Math.max(pk, rv) > 0 ? 'visible' : 'hidden';
+      set(shP, 1, `translateY(${lerp(110, 0, pk)}%)`); shP.style.visibility = pk > 0 ? 'visible' : 'hidden';
+      set(sh, 1, `translateY(${lerp(110, 0, rv)}%)`); sh.style.visibility = rv > 0 ? 'visible' : 'hidden';
+      const q = io(p(t, T.quote - 0.6, T.quote)); $('#r14').textContent = q > 0 && chosen ? '≈ ' + (Number(c.rec) * q).toFixed(out ? 4 : 2) : '0'; $('#r14').style.color = q > 0 && chosen ? '' : '#E4D8C6';
+      const other = out && t >= T.other + 0.05;
+      $('#rw0').className = other ? '' : 'on'; $('#rw1').className = other ? 'on' : ''; $('#mine14').style.display = other ? 'none' : ''; $('#oth14').style.display = other ? '' : 'none';
+      $('#oi14').textContent = t >= T.paste ? OTHER : '0x…'; $('#oi14').style.color = t >= T.paste ? '' : '#a39686';
+      $('#q14').style.display = t >= T.quote ? '' : 'none'; rise($('#q14'), t, T.quote, 0.4, 14);
+      $('#rv14').style.opacity = t >= T.quote ? 1 : 0.4; $('#rv14').textContent = t >= T.quote ? 'Review bridge' : typed ? 'Finding the best route…' : 'Enter an amount';
+      pg.style.transform = `translateY(${-lerp(0, yR, io(p(t, T.chose + 0.3, T.chose + 1.0)))}px)`;
+      $('#fill14').style.width = 100 * p(t, 15.7, 17.4) + '%';
+      slide(s4, t, 17.7, null);
+      const done = t >= 23.4;
+      $('#s141').className = 'st' + (t >= 18.6 ? ' ok' : ' act'); $('#s142').className = 'st' + (done ? ' ok' : t >= 18.6 ? ' act' : ''); $('#s143').className = 'st' + (done ? ' ok' : '');
+      [...s4.querySelectorAll('.st i')].forEach((n) => { n.style.transform = n.parentNode.classList.contains('act') ? `rotate(${t * 320}deg)` : ''; });
+      $('#h14').textContent = done ? 'Arrived' : 'On its way'; $('#p14').textContent = done ? 'Delivered on BNB Chain.' : 'You can leave this screen — we’ll message you on Telegram when it lands.';
+      $('#s143t').textContent = done ? c.doneT : 'Delivered';
+      $('#bi14').className = 'bigic' + (done ? ' ok' : ''); $('#bi14').innerHTML = done ? ic.check(34) : ic.bridge;
+      $('#dn14').style.display = done ? '' : 'none';
+    };
+  }
+
+  if (V === 16) {
+    DUR = 36; END = 30.4; FINE = 'It cannot undo anything taken before you start. Screens are illustrations.';
+    HOOK = ['Recovery phrase leaked?', 'Get new keys in minutes.'];
+    CAPS = [[3.1, 7.6, 'Where it is', '<em>Settings</em>, then<br><em>Account protection</em>'], [7.6, 13.4, 'What it does', 'New keys. New addresses.<br><em>Same account.</em>'], [13.4, 18.4, 'Prove it’s you', 'Answer your three<br><em>security questions</em>'], [18.4, 24.4, 'Moving', 'Your money moves<br><em>by itself</em>'], [24.4, 30.2, 'Done', 'Save your <em>new phrase</em>.<br>Share your new address.']];
+    const rowS = (icn, t1, t2, id, em) => `<div class="srow" ${id ? `id="${id}"` : ''}><div class="lic">${icn}</div><div style="flex:1"><b>${t1}</b><span>${t2}</span></div><span style="color:#a39686;font-size:18px">${em || '›'}</span></div>`;
+    const shield = I.svg('<path d="M12 3l7 3v5c0 5-3.500 8-7 10-3.500-2-7-5-7-10V6z"/>', 20), snow = I.svg('<path d="M12 3v18M4.200 7.500l15.600 9M19.800 7.500l-15.600 9"/>', 20);
+    const s1 = add(el(`<div class="scr">${status}
+      <div class="pad" style="padding-top:8px"><div class="display" style="font-size:28px">Settings</div></div>
+      <div class="field">${rowS(ic.card, 'Your profile', 'Name, photo and email')}${rowS(shield, 'Account protection', 'Freeze, security questions, new wallet', 'ap16')}${rowS(ic.cog, 'App lock & sign-in', 'PIN and sign-in methods')}${rowS(ic.bell, 'Notifications', 'Money in, payments and bridges')}${rowS(ic.cup, 'Invite friends', 'Earn from their fees')}</div>
+      <div class="tabs"><div>${ic.home}Home</div><div>${ic.list}Activity</div><div>${ic.cup}Rewards</div><div>${ic.card}Card</div><div class="on" id="tb16">${ic.cog}Settings</div></div></div>`));
+    const s2 = add(el(`<div class="scr">${status}
+      <div class="ph"><div class="back">${ic.back}</div><div class="t">Account protection</div></div>
+      <div class="field">${rowS(snow, 'Freeze my account', 'Lost your phone? One tap stops all money leaving, everywhere.')}${rowS(I.svg('<circle cx="8" cy="14" r="4"/><path d="M11 11l8-8M16 6l3 3"/>', 20), 'Move to a new wallet', 'Recovery phrase leaked? Get new keys and move your money there.', 'mv16', '🚚')}${rowS(shield, 'Security questions', 'Questions saved')}</div>
+      <div class="sub2" style="font-size:12.5px">On Telegram: send /security to find the same options.</div></div>`));
+    const dim = add(el('<div class="dim"></div>'));
+    const sh = add(el(`<div class="sheet" style="top:70px;border-radius:28px 28px 0 0"><div class="grab"></div><div class="t">Move to a new wallet</div>
+      <div id="p16a"><p style="font-size:14px;line-height:1.5;margin-top:10px">For when your recovery phrase or private key may have leaked. A freeze can’t stop someone using it in another wallet app, so we give you brand new keys and move your money there.</p>
+        <div class="gk"><b>What changes</b><span>New wallet addresses on every chain, and a new recovery phrase. Your old phrase stops controlling this account.</span></div>
+        <div class="gk"><b>What stays</b><span>Your account, balance, tokens and history. Stop losses pause for a few minutes while it moves.</span></div>
+        <div class="gk"><b>Good to know first</b><span>• If someone already has your phrase and empties the wallet first, we can’t get that money back. Move as soon as you can.<br>• Tiny amounts may stay behind if moving them costs more than they’re worth.<br>• You can’t undo this. Save your new recovery phrase, and give anyone who pays you your new address.</span></div>
+        <div class="pbtn" id="ct16">Continue</div></div>
+      <div id="p16b"><p style="font-size:14px;color:#6B5D52;line-height:1.5;margin-top:10px">Answer your three security questions to start the move.</p>
+        ${[1, 2, 3].map((k) => `<div class="input" style="margin-top:10px;height:50px;font-size:15px"><span style="color:#6B5D52;font-size:13px;margin-right:10px">Your answer ${k}</span><span class="an16" style="letter-spacing:.25em"></span></div>`).join('')}
+        <div style="font-size:12.5px;color:#6B5D52;margin-top:8px">Capitals and spaces don’t matter.</div><div class="pbtn" id="go16">Move to a new wallet</div></div>
+      <div id="p16c" style="text-align:center;padding-top:26px"><div class="bigic" id="bi16" style="font-size:30px">🚚</div>
+        <div class="display" style="font-size:21px;margin-top:12px" id="h16">Your money is moving</div><div style="font-size:14px;color:#6B5D52;margin-top:4px;line-height:1.45" id="t16">Usually a few minutes. You can leave this screen: we’ll tell you when it’s done.</div>
+        <div class="stt" style="text-align:left;margin-top:16px"><div class="lv mvi"><span style="color:#20211F">✓ USDC</span><b style="font-weight:400;color:#6B5D52">Solana</b></div><div class="lv mvi"><span style="color:#20211F">✓ SOL</span><b style="font-weight:400;color:#6B5D52">Solana</b></div><div class="lv mvi"><span style="color:#20211F">✓ USDT</span><b style="font-weight:400;color:#6B5D52">BNB Chain</b></div><div class="lv mvi"><span style="color:#20211F">✓ ETH</span><b style="font-weight:400;color:#6B5D52">Arbitrum</b></div></div>
+        <div id="new16" style="text-align:left;font-size:12.5px;color:#6B5D52;margin-top:14px;word-break:break-all"><div>New onchain wallet: <span class="mono" style="color:#20211F">9fQpDEMoKXtg2Cw87d97TXJSDpbD5jBkheD3mo</span></div><div style="margin-top:4px">New 0x wallet: <span class="mono" style="color:#20211F">0x4bE1dEm0c7A9f2D6e8B0a3C5d7E9f1A3b5dEm0</span></div></div>
+        <div class="pbtn" id="dn16">Done</div></div></div>`));
+    const ans = [...sh.querySelectorAll('.an16')], items = [...sh.querySelectorAll('.mvi')];
+    tap(4.2, $('#ap16')); tap(6.6, $('#mv16')); tapAt(12.9, $('#ct16')); tapAt(17.8, $('#go16'));
+    typeSfx(14.2, 16.9, 14);
+    sfx.push({ t: 4.45, k: 'whoosh' }, { t: 6.9, k: 'whoosh' }, { t: 13.2, k: 'swish' }, { t: 18.2, k: 'whoosh' }, { t: 24.4, k: 'success' }, { t: 26.4, k: 'coin' });
+    [19.6, 20.6, 21.6, 22.6].forEach((x) => sfx.push({ t: x, k: 'ok' }));
+    draw = (t) => {
+      slide(s2, t, 4.45, s1); if (t < 4.45) set(s1, 1, '');
+      $('#mv16').style.borderColor = t >= 5.2 && t < 6.9 ? '#C1502E' : ''; $('#mv16').style.boxShadow = t >= 5.2 && t < 6.9 ? '0 0 0 4px rgba(193,80,46,.12)' : '';
+      sheetIn(dim, sh, t, 6.9);
+      const ph = t < 13.2 ? 'a' : t < 18.2 ? 'b' : 'c';
+      $('#p16a').style.display = ph === 'a' ? '' : 'none'; $('#p16b').style.display = ph === 'b' ? '' : 'none'; $('#p16c').style.display = ph === 'c' ? '' : 'none';
+      ans.forEach((a, k) => { a.textContent = '•'.repeat(Math.round(7 * p(t, 14.2 + k * 0.9, 15.0 + k * 0.9))); });
+      $('#go16').style.opacity = t >= 16.9 ? 1 : 0.4;
+      items.forEach((n, k) => { n.style.visibility = t >= 19.6 + k ? 'visible' : 'hidden'; rise(n, t, 19.6 + k, 0.35, 8); });
+      const done = t >= 24.4;
+      $('#h16').textContent = done ? 'You’re on your new wallet' : 'Your money is moving';
+      $('#t16').textContent = done ? 'Save your new recovery phrase now, and give anyone who pays you your new address.' : 'Usually a few minutes. You can leave this screen: we’ll tell you when it’s done.';
+      $('#bi16').className = 'bigic' + (done ? ' ok' : ''); $('#bi16').innerHTML = done ? ic.check(34) : '🚚';
+      if (!done) $('#bi16').style.transform = `translateX(${6 * Math.sin(t * 5)}px)`; else $('#bi16').style.transform = '';
+      $('#new16').style.display = done ? '' : 'none'; $('#dn16').style.display = done ? '' : 'none';
+      if (done) { rise($('#new16'), t, 24.6, 0.4, 12); rise($('#dn16'), t, 25.0, 0.4, 12); }
     };
   }
 

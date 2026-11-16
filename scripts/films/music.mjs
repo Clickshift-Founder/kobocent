@@ -16,8 +16,8 @@ let seed = 1234 + v;
 const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
 const noise = () => rnd() * 2 - 1;
 // Films 4–6 reuse the three styles in new keys: 4 = pop in A, 5 = lo-fi in F, 6 = afro-house in B minor.
-const STYLE = { 1: 1, 2: 2, 3: 3, 4: 3, 5: 2, 6: 1, 7: 3, 8: 1, 9: 2, 10: 1, 11: 2, 12: 3, 13: 1 }[v];
-const TR = { 4: -3, 5: 3, 6: 2, 7: 2, 8: -2, 9: -3, 10: 4, 11: 5, 12: 5, 13: -4 }[v] || 0;
+const STYLE = { 1: 1, 2: 2, 3: 3, 4: 3, 5: 2, 6: 1, 7: 3, 8: 1, 9: 2, 10: 1, 11: 2, 12: 3, 13: 1, 14: 3, 15: 1, 16: 2 }[v];
+const TR = { 4: -3, 5: 3, 6: 2, 7: 2, 8: -2, 9: -3, 10: 4, 11: 5, 12: 5, 13: -4, 14: -5, 15: 5, 16: -1 }[v] || 0;
 const midi = (n) => 440 * Math.pow(2, (n + TR - 69) / 12);
 const TAU = Math.PI * 2;
 
@@ -92,7 +92,7 @@ const SFX = {
 };
 
 /* ── the three tracks ── bars are sized so the end card lands exactly on a downbeat */
-const BARS = v === 4 || v === 13 ? 14 : STYLE === 2 ? 10 : 12;   // film 4 is longer
+const BARS = v === 4 || v === 13 ? 14 : v === 16 ? 12 : STYLE === 2 ? 10 : 12;   // film 4 is longer
 const bar = END / BARS, beat = bar / 4, s16 = beat / 4;
 const kicks = [];
 const K = (t, g) => { if (t < END - 0.01) { kick(t, g); kicks.push(t); } };
