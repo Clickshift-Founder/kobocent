@@ -3,7 +3,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Section, SectionHead } from '@/components/ui/Section';
 import { VideoPlayer } from '@/components/VideoPlayer';
-import { FEATURED, VIDEOS } from '@/data/videos';
+import { FEATURED } from '@/data/videos';
 
 /**
  * Three featured Kobocent films (2026-11-16); the full catalogue is at /videos (src/data/videos.ts feeds both).
@@ -43,7 +43,7 @@ export function Videos() {
         <p className="text-center text-[13.5px] muted mt-5">{v.caption}</p>
         <div className="mt-6 text-center">
           <Link href="/videos" className="inline-flex items-center gap-2 min-h-[44px] px-5 rounded-xl border border-terracotta text-terracotta font-semibold text-[14px] hover:bg-terracotta hover:text-white transition-colors">
-            See all {VIDEOS.length} product videos <span aria-hidden>→</span>
+            See all product videos <span aria-hidden>→</span>
           </Link>
         </div>
       </div>

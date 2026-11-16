@@ -12,9 +12,17 @@ amounts, drawn in the browser frame by frame, so they can be re-rendered wheneve
 | 4 `?v=4` | Trading: paste a token, our read out of 100, buy with USDC, take profit and stop loss, automatic exit | `public/videos/trade.mp4` |
 | 5 `?v=5` | Earn: flexible or locked, stake, earnings build every hour, withdraw with earnings | `public/videos/earn.mp4` |
 | 6 `?v=6` | Cashback: 0.2% adds up, the switch at checkout, pay less | `public/videos/cashback.mp4` |
+| 7 `?v=7` | Send to any wallet: paste, network, 1.5% fee shown, tick the address check, hold to send | `public/videos/send.mp4` |
+| 8 `?v=8` | First deposit: verify once, own account number, bank transfer, naira in and USDC out | `public/videos/add-money.mp4` |
+| 9 `?v=9` | Account protection: freeze, unfreeze with security questions, move to a new wallet | `public/videos/protect.mp4` |
 
 The catalogue page is **/videos** (`src/app/videos/page.tsx`), fed by `src/data/videos.ts`; the landing page shows the first three.
-Films 4–6 reuse the three music styles in new keys. Film 4 ends with "Trading is risky. Not financial advice." and film 5
+**Film 4 was rebuilt on 2026-11-17 to mirror the real screens** (founder: the first cut did not): buy in `TradePanel`
+(Pay with, Speed, amount, Review, "Hold to buy", fee 1%), then the `StrategyPanel` "Protect your ZURI" card — suggested
+levels with "Protect with these", or "Set my own levels" (take profit chips, trail, stop loss chips, "Protect ZURI"), then the
+status going to "Trailing — target reached". **Before drawing any screen, read its component and copy its labels.**
+
+Films 4–9 reuse the three music styles in new keys. Film 4 ends with "Trading is risky. Not financial advice." and film 5
 with "Rates can change and are not guaranteed." Keep both lines.
 
 ## Files

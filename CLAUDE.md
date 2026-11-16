@@ -140,7 +140,9 @@ Backend side (clickbot `.env`): `WEB_ORIGIN=https://kobocent.com,https://www.kob
 - The landing page's "See it working" section plays three self-hosted films from `public/videos` (720×1280, under 2 MB each;
   poster JPGs). Only the poster loads with the page; the MP4 is fetched when someone presses play (`Videos.tsx`). The service
   worker skips `/videos/`. The old YouTube embeds (ClickBot-era films) are gone.
-- **/videos** is the catalogue (six films, grouped by category); `src/data/videos.ts` feeds it and the landing section (first three). A new film = two files in `public/videos` + one entry there.
+- **A film must mirror the real screen** (founder, 2026-11-17: the first trading film did not show the real take profit / stop loss step). Before drawing a screen, read its component and copy its labels and order.
+- No copy states how many films there are (founder: the number will keep changing). The home button says "See all product videos".
+- **/videos** is the catalogue (films grouped by category); `src/data/videos.ts` feeds it and the landing section (first three). A new film = two files in `public/videos` + one entry there.
 - The films are illustrated walkthroughs with example amounts, and the section copy says so. Never call them "real
   transactions". Generator, soundtrack code and re-render steps: `scripts/films/README.md`. 1080×1920 masters are on the
   founder's Desktop (`Kobocent Videos`).
