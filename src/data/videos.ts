@@ -5,7 +5,7 @@
  * two files in /public/videos, and add an entry here; the page, the sitemap and the landing section follow.
  * Nothing on the site states how many films there are, so adding one needs no copy change.
  */
-export type VideoCategory = 'Getting started' | 'Everyday payments' | 'Kobo Pal and safety' | 'Grow your money' | 'Trading';
+export type VideoCategory = 'Getting started' | 'Everyday payments' | 'Swap and bridge' | 'Kobo Pal and safety' | 'Grow your money' | 'Trading';
 
 export interface ProductVideo {
   file: string;
@@ -18,8 +18,9 @@ export interface ProductVideo {
 }
 
 export const VIDEO_CATEGORIES: { name: VideoCategory; blurb: string }[] = [
-  { name: 'Getting started', blurb: 'Open your account number and make your first deposit.' },
+  { name: 'Getting started', blurb: 'Fund your account with naira or with crypto you already hold.' },
   { name: 'Everyday payments', blurb: 'Bills, bank withdrawals, sending to any wallet, and the cashback they earn.' },
+  { name: 'Swap and bridge', blurb: 'Change coins, or bring crypto in from another network.' },
   { name: 'Kobo Pal and safety', blurb: 'Ask in plain words, and protect your account in one tap.' },
   { name: 'Grow your money', blurb: 'Put idle stablecoins to work.' },
   { name: 'Trading', blurb: 'Check a token, buy with USDC, protect your position.' },
@@ -36,6 +37,16 @@ export const VIDEOS: ProductVideo[] = [
 
   { file: 'add-money', title: 'Your first deposit', label: '➕ Add money', category: 'Getting started', seconds: 30,
     caption: 'Verify once, get your own account number, transfer from any Nigerian bank app, and it arrives as USDC.' },
+  { file: 'deposit-crypto', title: 'Deposit crypto from six networks', label: '💎 Deposit crypto', category: 'Getting started', seconds: 34,
+    caption: 'Your two wallets: a Solana address for USDC, USDT and SOL, and one address for Ethereum, BNB Chain, Polygon, Arbitrum and Robinhood Chain. Once it lands you can pay, withdraw, trade or earn.',
+    note: 'Always check the network before anyone sends.' },
+  { file: 'send-bank', title: 'Send naira to any bank account', label: '🏦 Send to bank', category: 'Everyday payments', seconds: 30,
+    caption: 'Pick their bank, enter the account number, check the name, type the naira and hold to send.' },
+  { file: 'swap', title: 'Swap between SOL, USDC and USDT', label: '🔄 Swap', category: 'Swap and bridge', seconds: 30,
+    caption: 'Type what you pay, see what you get and the least you will receive, then hold to swap. The network fee is covered.' },
+  { file: 'bridge', title: 'Bring crypto in from another chain', label: '🌉 Bridge', category: 'Swap and bridge', seconds: 32,
+    caption: 'Move ETH, BNB, USDT or USDC from another chain to USDC on Solana, and track it until it arrives.',
+    note: 'You see the exact fee and what will arrive before you confirm.' },
   { file: 'send', title: 'Send dollars to any wallet', label: '🌍 Send', category: 'Everyday payments', seconds: 30,
     caption: 'Paste their address, pick the network, check the first and last characters, hold to send.',
     note: 'Onchain transfers can’t be reversed. Always check the address and the network.' },

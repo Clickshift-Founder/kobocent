@@ -15,6 +15,10 @@ amounts, drawn in the browser frame by frame, so they can be re-rendered wheneve
 | 7 `?v=7` | Send to any wallet: paste, network, 1.5% fee shown, tick the address check, hold to send | `public/videos/send.mp4` |
 | 8 `?v=8` | First deposit: verify once, own account number, bank transfer, naira in and USDC out | `public/videos/add-money.mp4` |
 | 9 `?v=9` | Account protection: freeze, unfreeze with security questions, move to a new wallet | `public/videos/protect.mp4` |
+| 10 `?v=10` | Send to bank: their bank, account number, name check, naira amount, hold to send | `public/videos/send-bank.mp4` |
+| 11 `?v=11` | Bridge in: ETH on Arbitrum to USDC on Solana, tracker to "Arrived" (no dollar value shown, so the fee rate cannot be derived) | `public/videos/bridge.mp4` |
+| 12 `?v=12` | Swap: USDC to SOL, rate, 1% fee included, "At least", network fee covered | `public/videos/swap.mp4` |
+| 13 `?v=13` | Crypto deposit: Add money, Crypto tab, both address cards, then what the balance can do | `public/videos/deposit-crypto.mp4` |
 
 The catalogue page is **/videos** (`src/app/videos/page.tsx`), fed by `src/data/videos.ts`; the landing page shows the first three.
 **Film 4 was rebuilt on 2026-11-17 to mirror the real screens** (founder: the first cut did not): buy in `TradePanel`

@@ -16,8 +16,8 @@ let seed = 1234 + v;
 const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
 const noise = () => rnd() * 2 - 1;
 // Films 4–6 reuse the three styles in new keys: 4 = pop in A, 5 = lo-fi in F, 6 = afro-house in B minor.
-const STYLE = { 1: 1, 2: 2, 3: 3, 4: 3, 5: 2, 6: 1, 7: 3, 8: 1, 9: 2 }[v];
-const TR = { 4: -3, 5: 3, 6: 2, 7: 2, 8: -2, 9: -3 }[v] || 0;
+const STYLE = { 1: 1, 2: 2, 3: 3, 4: 3, 5: 2, 6: 1, 7: 3, 8: 1, 9: 2, 10: 1, 11: 2, 12: 3, 13: 1 }[v];
+const TR = { 4: -3, 5: 3, 6: 2, 7: 2, 8: -2, 9: -3, 10: 4, 11: 5, 12: 5, 13: -4 }[v] || 0;
 const midi = (n) => 440 * Math.pow(2, (n + TR - 69) / 12);
 const TAU = Math.PI * 2;
 
@@ -92,7 +92,7 @@ const SFX = {
 };
 
 /* ── the three tracks ── bars are sized so the end card lands exactly on a downbeat */
-const BARS = v === 4 ? 14 : STYLE === 2 ? 10 : 12;   // film 4 is longer
+const BARS = v === 4 || v === 13 ? 14 : STYLE === 2 ? 10 : 12;   // film 4 is longer
 const bar = END / BARS, beat = bar / 4, s16 = beat / 4;
 const kicks = [];
 const K = (t, g) => { if (t < END - 0.01) { kick(t, g); kicks.push(t); } };
@@ -106,7 +106,7 @@ if (STYLE === 1) {
   for (let b = 0; b < BARS; b++) {
     const t = b * bar, ch = chords[b % 4], r = roots[b % 4];
     padChord(t, ch.slice(0, 3), bar + 0.2, b < 1 ? 0.6 : 1);
-    for (const [pos, n] of ((b + (v === 6 || v === 8 ? 1 : 0)) % 2 ? hook2 : hook)) kalimba(t + pos * s16, n, b < 1 ? 0.7 : 1, (pos % 4 - 1.5) * 0.25);
+    for (const [pos, n] of ((b + (v === 6 || v === 8 || v === 13 ? 1 : 0)) % 2 ? hook2 : hook)) kalimba(t + pos * s16, n, b < 1 ? 0.7 : 1, (pos % 4 - 1.5) * 0.25);
     for (const pos of [0, 6, 12]) kalimba(t + pos * s16, ch[(pos / 6) | 0] , 0.55, -0.4);
     if (b >= 1) for (let k = 0; k < 16; k++) shaker(t + k * s16 + (k % 2 ? s16 * 0.12 : 0), k % 4 === 2 ? 1 : 0.6);
     if (b >= 2) { for (let q = 0; q < 4; q++) K(t + q * beat); for (const pos of [3, 6, 10, 11, 14]) logdrum(t + pos * s16, r + (pos === 11 ? 12 : 0), 0.34, pos === 3 ? 1 : 0.85); for (let q = 0; q < 4; q++) hat(t + q * beat + beat / 2, 0.9, true); }

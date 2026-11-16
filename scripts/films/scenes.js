@@ -1,5 +1,5 @@
 /* Kobocent films: deterministic scenes. window.seek(t) draws the frame at t seconds; window.VIDEO = { dur, sfx }.
-   ?v=1 bills · ?v=2 withdraw · ?v=3 Kobo Pal · ?v=4 trading · ?v=5 Earn · ?v=6 cashback · ?v=7 send to wallet · ?v=8 first deposit · ?v=9 freeze and new wallet. Every amount is an illustration (the end card says so). */
+   ?v=1 bills · ?v=2 withdraw · ?v=3 Kobo Pal · ?v=4 trading · ?v=5 Earn · ?v=6 cashback · ?v=7 send to wallet · ?v=8 first deposit · ?v=9 freeze and new wallet · ?v=10 send to bank · ?v=11 bridge · ?v=12 swap · ?v=13 crypto deposit. Every amount is an illustration (the end card says so). */
 (() => {
   const V = Number(new URLSearchParams(location.search).get('v') || 1);
   const $ = (s, r = document) => r.querySelector(s);
@@ -50,13 +50,13 @@
         <div class="btns"><div class="b1">+ Add money</div><div class="b2">Card</div></div></div>
       <div class="h">Move money</div>
       <div class="grid">
-        <div class="act"><div class="ic">${ic.up}</div>Send to<br>bank</div>
+        <div class="act" data-k="bank"><div class="ic">${ic.up}</div>Send to<br>bank</div>
         <div class="act" data-k="wallet"><div class="ic">${ic.wallet}</div>Send to<br>wallet</div>
         <div class="act" data-k="bills"><div class="ic">${ic.bolt}</div>Pay bills</div>
         <div class="act" data-k="withdraw"><div class="ic">${ic.bank}</div>Withdraw</div>
-        <div class="act"><div class="ic">${ic.swap}</div>Swap</div>
+        <div class="act" data-k="swap"><div class="ic">${ic.swap}</div>Swap</div>
         <div class="act" data-k="earn"><div class="ic">${ic.leaf}</div>Earn</div>
-        <div class="act"><div class="ic">${ic.bridge}</div>Bridge</div>
+        <div class="act" data-k="bridge"><div class="ic">${ic.bridge}</div>Bridge</div>
         <div class="act" data-k="trade"><div class="ic">${ic.chart}</div>Trade</div>
       </div></div>
     <div class="tabs"><div class="on">${ic.home}Home</div><div>${ic.list}Activity</div><div>${ic.cup}Rewards</div><div>${ic.card}Card</div><div>${ic.cog}Settings</div></div>
@@ -633,6 +633,211 @@
       $('#mb9').style.width = 100 * io(p(t, 21.8, 23.7)) + '%';
       $('#moved9').style.display = t >= 24.0 ? '' : 'none'; rise($('#moved9'), t, 24.0, 0.45, 12);
       $('#mv').style.display = t >= 24.0 ? 'none' : '';
+    };
+  }
+
+  /* ───────── films 10–13 (2026-11-17): send to bank, bridge, swap, crypto deposit. Built from the real screens:
+     app/app/send, app/app/bridge, app/app/swap, components/app/ReceiveCrypto. ───────── */
+  const pill = (sym, sub, col, id) => `<div class="tokp" ${id ? `id="${id}"` : ''}><i style="background:${col}">${sym === 'SOL' ? '◎' : sym === 'ETH' ? 'E' : '$'}</i><span>${sym}${sub ? `<small>${sub}</small>` : ''}</span></div>`;
+
+  if (V === 10) {
+    HOOK = ['Need to pay someone?', 'Send naira from your dollars.'];
+    CAPS = [[3.1, 5.0, 'Step 1', 'Tap <em>Send to bank</em>'], [5.0, 11.2, 'Step 2', 'Their bank and number.<br>We check the <em>name</em>.'], [11.2, 15.4, 'Step 3', 'Type the naira.<br>See what <em>you pay</em>.'], [15.4, 20.0, 'Step 4', 'Review.<br><em>Hold to send.</em>'], [20.0, 24.5, 'Done', 'They get <em>naira</em>,<br>usually in minutes.']];
+    const s1 = add(home('$186.40'));
+    const s2 = add(el(`<div class="scr">${status}
+      <div class="ph"><div class="back">${ic.back}</div><div class="t">Send to bank</div></div>
+      <div class="sub2">Pay anyone in Nigeria from your USDC or USDT — they receive naira, usually in minutes.</div>
+      <div class="field"><div class="card" style="padding:16px"><div class="eyebrow">1 · Their bank</div>
+        <div id="bsrch"><div class="input" style="height:48px;font-size:15px;color:#a39686;margin-top:10px">Search — e.g. GTBank, Opay, Moniepoint</div>
+          <div class="brow" id="bk"><i>AB</i><span>Access Bank</span><em>›</em></div><div class="brow"><i>GT</i><span>GTBank</span><em>›</em></div><div class="brow"><i>OP</i><span>Opay</span><em>›</em></div></div>
+        <div id="bsel" class="bsel"><i>AB</i><span>Access Bank</span><em>Change</em></div></div></div>
+      <div class="field"><div class="card" style="padding:16px" id="c2"><div class="eyebrow">2 · Account number</div>
+        <div class="input" id="an" style="height:56px;margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:21px;letter-spacing:.12em"><span id="acn"></span><span class="caret" id="car10"></span></div>
+        <div id="chk10" style="display:flex;gap:10px;align-items:center;color:#6B5D52;font-size:14px;margin-top:12px"><div class="spin" style="width:20px;height:20px;border-width:2px" id="sp10"></div>Checking with Access Bank…</div>
+        <div id="nm10" class="nmok"><b>${ic.check(16, '#fff')}</b><div><div style="font-size:12.5px;color:#6B5D52">Account name</div><div style="font-weight:700">CHIDI EZE</div></div></div></div></div>
+      <div class="cta" id="ct10">Continue</div></div>`));
+    const s3 = add(el(`<div class="scr">${status}
+      <div class="ph"><div class="back">${ic.back}</div><div class="t">Send to bank</div></div>
+      <div class="field"><div class="card" style="display:flex;align-items:center;gap:12px;padding:12px 14px"><div class="bi">AB</div><div style="flex:1"><div style="font-size:12.5px;color:#6B5D52">Send to</div><div style="font-weight:700">CHIDI EZE</div><div style="font-size:13px;color:#6B5D52">Access Bank · 0123456789</div></div><span style="color:#C1502E;font-weight:600;font-size:13.5px">Change</span></div></div>
+      <div class="field"><div class="card" style="padding:14px 16px"><div class="eyebrow">They receive</div><div style="display:flex;align-items:baseline;gap:4px;margin-top:4px"><span class="display" style="font-size:28px;color:#6B5D52">₦</span><span class="display" style="font-size:38px" id="ng10"></span><span class="caret" id="cr10" style="height:34px"></span></div></div></div>
+      <div class="field"><div class="input" style="height:48px;font-size:14.5px;color:#a39686;margin-top:0">What’s it for? (optional)</div></div>
+      <div class="dark" id="q10"><div style="font-size:13.5px;color:rgba(247,243,238,.7)">You pay</div><div class="big" style="font-size:34px">$17.23 <span style="font-size:15px;font-weight:500;font-family:Inter;opacity:.7">USDC</span></div>
+        <dl><dt>Includes fee</dt><dd class="mono">$0.34</dd><dt>Rate</dt><dd class="mono">₦1,480 / $1</dd><dt>Cashback</dt><dd style="color:#E8895F">0.2% back</dd></dl></div>
+      <div class="cta" id="rv10">Enter an amount</div></div>`));
+    const dim = add(el('<div class="dim"></div>'));
+    const sh = add(el(`<div class="sheet"><div class="grab"></div><div class="t">Review payment</div>
+      <div style="text-align:center;padding:10px 0 2px"><div style="font-size:13.5px;color:#6B5D52">Sending to CHIDI EZE</div><div class="display" style="font-size:40px">₦25,000</div><div style="font-size:13.5px;color:#6B5D52">Access Bank · 0123456789</div></div>
+      <dl class="rows" style="background:#F0E6D8;border-radius:16px;padding:14px"><dt>You pay</dt><dd class="mono">$17.23 USDC</dd><dt>Fee</dt><dd class="mono">$0.34</dd></dl>
+      <div class="hold" id="hold10"><div class="fill" id="fill10"></div><span>Hold to send ₦25,000</span></div><div class="hint">Press and hold so nothing is sent by accident.</div></div>`));
+    const s5 = add(el(`<div class="scr">${status}<div class="done">
+      <div class="tick" id="tk10">${ic.check(50)}</div><div class="t" id="d10">₦25,000 is on its way</div><div class="b" id="b10">To CHIDI EZE at Access Bank. It usually arrives within minutes.</div>
+      <div class="pill" id="cb10">+ ₦50 cashback for next time</div>
+      <div class="more" id="m10" style="flex-direction:column"><div style="flex-direction:row;justify-content:center;background:#C1502E;color:#fff;border-color:#C1502E;min-height:50px;align-items:center">View activity</div><div style="flex-direction:row;justify-content:center;min-height:46px;align-items:center">Send another</div></div></div></div>`));
+    tap(4.35, $('[data-k=bank] .ic', s1)); tap(5.9, $('#bk')); tap(10.7, $('#ct10')); tap(14.9, $('#rv10')); hold(17.4, 19.6, $('#hold10'));
+    typeSfx(6.9, 8.4, 10); typeSfx(12.0, 12.9, 5);
+    sfx.push({ t: 4.6, k: 'whoosh' }, { t: 5.95, k: 'pop' }, { t: 9.6, k: 'ok' }, { t: 11.0, k: 'whoosh' }, { t: 15.2, k: 'whoosh' }, { t: 19.9, k: 'success' }, { t: 21.6, k: 'coin' });
+    draw = (t) => {
+      slide(s2, t, 4.6, s1); if (t < 4.6) set(s1, 1, '');
+      const picked = t >= 5.95;
+      $('#bsrch').style.display = picked ? 'none' : ''; $('#bsel').style.display = picked ? '' : 'none';
+      $('#c2').style.opacity = picked ? 1 : 0.5; $('#an').className = 'input' + (picked && t < 9 ? ' focus' : '');
+      $('#acn').textContent = '0123456789'.slice(0, Math.round(10 * p(t, 6.9, 8.4)));
+      $('#car10').style.opacity = picked && t < 8.5 && Math.floor(t * 2.2) % 2 === 0 ? 1 : 0;
+      const checking = t >= 8.5 && t < 9.6, named = t >= 9.6;
+      $('#chk10').style.display = checking ? 'flex' : 'none'; $('#sp10').style.transform = `rotate(${t * 320}deg)`;
+      $('#nm10').style.display = named ? 'flex' : 'none'; if (named) rise($('#nm10'), t, 9.6, 0.35, 10);
+      $('#ct10').textContent = named ? 'Continue to CHIDI' : 'Continue'; $('#ct10').style.opacity = named ? 1 : 0.4;
+      slide(s3, t, 11.0, s2);
+      const typed = '25,000'.slice(0, Math.round(6 * p(t, 12.0, 12.9)));
+      $('#ng10').textContent = typed; $('#cr10').style.opacity = t >= 11.5 && t < 13.5 && Math.floor(t * 2.2) % 2 === 0 ? 1 : 0;
+      rise($('#q10'), t, 13.2, 0.45, 18);
+      $('#rv10').textContent = t >= 13.2 ? 'Review ₦25,000 to CHIDI' : 'Enter an amount'; $('#rv10').style.opacity = t >= 13.2 ? 1 : 0.4;
+      sheetIn(dim, sh, t, 15.2, 19.9);
+      $('#fill10').style.width = 100 * p(t, 17.5, 19.6) + '%';
+      slide(s5, t, 19.9, null);
+      pop($('#tk10'), t, 20.15); rise($('#d10'), t, 20.4); rise($('#b10'), t, 20.55); pop($('#cb10'), t, 21.6); rise($('#m10'), t, 22.2, 0.45, 20);
+    };
+  }
+
+  if (V === 11) {
+    DUR = 32; END = 26.4; FINE = 'You see the exact fee before you confirm. Screens are illustrations.';
+    HOOK = ['Crypto on another chain?', 'Bring it in, in one step.'];
+    CAPS = [[3.1, 5.2, 'Step 1', 'Open <em>Bridge</em>'], [5.2, 10.6, 'Step 2', 'Pick what you hold.<br><em>Type the amount.</em>'], [10.6, 15.6, 'Step 3', 'See what arrives.<br><em>No gas to buy.</em>'], [15.6, 21.2, 'Moving', 'Track it,<br><em>step by step</em>'], [21.2, 26.2, 'Arrived', 'It’s USDC now.<br><em>Ready to use.</em>']];
+    const s1 = add(home('$12.40'));
+    const s2 = add(el(`<div class="scr">${status}
+      <div class="ph"><div class="back">${ic.back}</div><div class="t">Bridge</div></div>
+      <div class="sub2">Move your money between chains. Every fee comes out of what you move, so there’s no gas to buy.</div>
+      <div class="seg" style="grid-template-columns:repeat(3,1fr)"><div class="on">Bridge in</div><div>Bridge out</div><div>Chain to chain</div></div>
+      <div class="sub2" style="font-size:13px">Move USDT, USDC, ETH, BNB and more from another chain to USDC on Solana.</div>
+      <div class="field" style="position:relative"><div class="card" style="padding:16px"><div style="display:flex;justify-content:space-between;font-size:13px;color:#6B5D52"><span>From · your 0x wallet</span><span>Balance 0.082 <b style="color:#C1502E">Max</b></span></div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:8px"><div style="flex:1;display:flex;align-items:baseline"><span class="display" style="font-size:36px" id="a11"></span><span class="caret" id="c11" style="height:32px"></span><span id="z11" class="display" style="font-size:36px;color:#E4D8C6">0</span></div>${pill('ETH', 'Arbitrum', '#28A0F0', 'pk11')}</div>
+          <div id="u11"></div></div>
+        <div class="flip">${I.svg('<path d="M12 5v14"/><path d="M6 13l6 6 6-6"/>', 20)}</div>
+        <div class="card" style="padding:16px;margin-top:8px"><div style="font-size:13px;color:#6B5D52">To · USDC on Solana</div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:8px"><div style="flex:1" class="display"><span style="font-size:36px" id="r11">0</span></div>${pill('USDC', 'Solana', '#2775CA')}</div></div></div>
+      <div class="field" id="q11"><dl class="card rows" style="margin-top:0;font-size:13.5px"><dt>You receive</dt><dd class="mono" style="font-weight:700">≈ 146.70 USDC</dd><dt>Network fees</dt><dd>~$0.30 <span style="color:#6B5D52">· paid for you</span></dd><dt>Arrives in</dt><dd>about a minute</dd></dl></div>
+      <div class="cta" id="rv11">Review bridge</div></div>`));
+    const dim = add(el('<div class="dim"></div>'));
+    const sh = add(el(`<div class="sheet"><div class="grab"></div><div class="t">Review bridge</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:16px;padding:16px 0 6px"><div style="text-align:center"><div class="display" style="font-size:24px">0.05</div><div style="font-size:13px;color:#6B5D52">ETH · Arbitrum</div></div><span style="color:#C1502E">${ic.bridge}</span><div style="text-align:center"><div class="display" style="font-size:24px">≈ 146.70</div><div style="font-size:13px;color:#6B5D52">USDC · Kobocent</div></div></div>
+      <dl class="rows" style="font-size:13.5px"><dt>Network fees</dt><dd>~$0.30 · paid for you</dd><dt>Arrives in</dt><dd>about a minute</dd></dl>
+      <div class="hold" id="hold11"><div class="fill" id="fill11"></div><span>Hold to bridge</span></div></div>`));
+    const s4 = add(el(`<div class="scr">${status}
+      <div class="ph"><div class="back">${ic.back}</div><div class="t">Bridge</div></div>
+      <div class="field"><div class="card" style="padding:22px 18px;text-align:center"><div class="bigic" id="bi11">${ic.bridge}</div>
+        <div class="display" style="font-size:22px;margin-top:14px" id="h11">On its way</div><div style="font-size:14px;color:#6B5D52;margin-top:4px;line-height:1.4" id="p11">You can leave this screen — we’ll message you on Telegram when it lands.</div>
+        <div class="steps"><div class="st" id="st1"><i></i><span>Sent 0.050000 ETH</span></div><div class="st" id="st2"><i></i><span>Crossing to Solana</span></div><div class="st" id="st3"><i></i><span id="st3t">USDC in your wallet</span></div></div>
+        <div id="nx11"><div style="font-size:13px;color:#6B5D52;margin:16px 0 8px">What next?</div><div class="nx"><div>${ic.bank}Withdraw to bank</div><div>${ic.swap}Swap</div><div>${ic.up}Send to bank</div><div>${ic.wallet}Send to wallet</div></div></div></div></div></div>`));
+    tap(4.5, $('[data-k=bridge] .ic', s1)); tap(6.2, $('#pk11')); tap(10.3, $('#rv11')); hold(13.3, 15.2, $('#hold11'));
+    typeSfx(7.3, 8.3, 4);
+    sfx.push({ t: 4.75, k: 'whoosh' }, { t: 6.25, k: 'pop' }, { t: 9.0, k: 'ok' }, { t: 10.6, k: 'whoosh' }, { t: 15.5, k: 'success' }, { t: 16.4, k: 'ok' }, { t: 21.2, k: 'ding' }, { t: 22.6, k: 'coin' });
+    draw = (t) => {
+      slide(s2, t, 4.75, s1); if (t < 4.75) set(s1, 1, '');
+      const typed = '0.05'.slice(0, Math.round(4 * p(t, 7.3, 8.3)));
+      $('#a11').textContent = typed; $('#z11').style.display = typed ? 'none' : ''; $('#c11').style.opacity = t >= 6.8 && t < 9 && Math.floor(t * 2.2) % 2 === 0 ? 1 : 0;
+      $('#u11').style.opacity = t >= 8.4 ? 1 : 0;
+      const rv = 146.7 * io(p(t, 8.5, 9.4)); $('#r11').textContent = rv ? '≈ ' + rv.toFixed(2) : '0'; $('#r11').style.color = rv ? '' : '#E4D8C6';
+      rise($('#q11'), t, 9.0, 0.4, 14); $('#rv11').style.opacity = t >= 9.0 ? 1 : 0.4;
+      sheetIn(dim, sh, t, 10.6, 15.5);
+      $('#fill11').style.width = 100 * p(t, 13.4, 15.2) + '%';
+      slide(s4, t, 15.5, null);
+      const done = t >= 21.2;
+      $('#st1').className = 'st' + (t >= 16.4 ? ' ok' : ' act'); $('#st2').className = 'st' + (done ? ' ok' : t >= 16.4 ? ' act' : ''); $('#st3').className = 'st' + (done ? ' ok' : '');
+      [...s4.querySelectorAll('.st.act i')].forEach((n) => { n.style.transform = `rotate(${t * 320}deg)`; });
+      [...s4.querySelectorAll('.st:not(.act) i')].forEach((n) => { n.style.transform = ''; });
+      $('#h11').textContent = done ? 'Arrived' : 'On its way'; $('#p11').textContent = done ? 'Your USDC is ready to use.' : 'You can leave this screen — we’ll message you on Telegram when it lands.';
+      $('#st3t').textContent = done ? '≈ 146.70 USDC in your wallet' : 'USDC in your wallet';
+      $('#bi11').className = 'bigic' + (done ? ' ok' : ''); $('#bi11').innerHTML = done ? ic.check(34) : ic.bridge;
+      $('#nx11').style.display = t >= 22.6 ? '' : 'none'; rise($('#nx11'), t, 22.6, 0.45, 16);
+    };
+  }
+
+  if (V === 12) {
+    HOOK = ['Need SOL? Or dollars back?', 'Swap in seconds.'];
+    CAPS = [[3.1, 5.0, 'Step 1', 'Tap <em>Swap</em>'], [5.0, 10.4, 'Step 2', 'Type what you pay.<br>See what <em>you get</em>.'], [10.4, 15.4, 'Step 3', 'Fee included.<br><em>Network fee covered.</em>'], [15.4, 20.2, 'Done', 'Swapped in<br><em>seconds</em>'], [20.2, 24.5, 'Both ways', 'SOL, USDC and USDT.<br><em>Flip any time.</em>']];
+    const s1 = add(home('$120.00'));
+    const s2 = add(el(`<div class="scr">${status}
+      <div class="ph"><div class="back">${ic.back}</div><div class="t">Swap</div></div>
+      <div class="sub2">SOL ↔ USDC or USDT in seconds, at the best route we can find.</div>
+      <div class="field" style="position:relative"><div class="card" style="padding:16px"><div style="display:flex;justify-content:space-between;font-size:13px;color:#6B5D52"><span>You pay</span><span>Balance 120.00 <b style="color:#C1502E">Max</b></span></div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:8px"><div style="flex:1;display:flex;align-items:baseline"><span class="display" style="font-size:38px" id="a12"></span><span class="caret" id="c12" style="height:34px"></span><span id="z12" class="display" style="font-size:38px;color:#E4D8C6">0</span></div>${pill('USDC', '', '#2775CA')}</div></div>
+        <div class="flip" id="fl12">${I.svg('<path d="M8 4v16"/><path d="M4 16l4 4 4-4"/><path d="M16 20V4"/><path d="M12 8l4-4 4 4"/>', 20)}</div>
+        <div class="card" style="padding:16px;margin-top:8px"><div style="font-size:13px;color:#6B5D52">You receive (estimate)</div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:8px"><div style="flex:1" class="display"><span style="font-size:38px" id="r12">0</span></div>${pill('SOL', '', '#20211F')}</div></div></div>
+      <div class="field" id="q12"><dl class="card rows" style="margin-top:0;font-size:13.5px"><dt>Rate</dt><dd class="mono">1 USDC ≈ 0.005942 SOL</dd><dt>Fee</dt><dd>1% (included)</dd><dt>At least</dt><dd class="mono">0.2912 SOL</dd><dt>Network fee</dt><dd style="color:#58834C">Covered by Kobocent</dd></dl></div>
+      <div class="cta" id="rv12">Enter an amount</div></div>`));
+    const dim = add(el('<div class="dim"></div>'));
+    const sh = add(el(`<div class="sheet"><div class="grab"></div><div class="t">Review swap</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:18px;padding:16px 0 8px"><div style="text-align:center"><div class="display" style="font-size:26px">50.00</div><div style="font-size:13px;color:#6B5D52">USDC</div></div><span style="color:#C1502E">${ic.swap}</span><div style="text-align:center"><div class="display" style="font-size:26px">≈ 0.2941</div><div style="font-size:13px;color:#6B5D52">SOL</div></div></div>
+      <p class="hint" style="font-size:13px">You’ll get at least 0.2912 SOL; the final amount depends on the market at the moment of the swap.</p>
+      <div class="hold" id="hold12"><div class="fill" id="fill12"></div><span>Hold to swap</span></div></div>`));
+    const s4 = add(el(`<div class="scr">${status}<div class="done">
+      <div class="tick" id="tk12">${ic.check(50)}</div><div class="t" id="d12">Swap complete</div><div class="b" id="b12">50.00 USDC → SOL. Your new balance shows on Home.</div>
+      <div class="token" id="bal12" style="border-style:solid;border-color:#E4D8C6;text-align:left"><dl class="rows" style="margin-top:0"><dt>USDC</dt><dd class="mono">70.00</dd><dt>SOL</dt><dd class="mono" style="color:#58834C;font-weight:700">+0.2941</dd></dl></div>
+      <div class="netp" id="tr12"><span>SOL → USDC</span><span>SOL → USDT</span><span>USDC → SOL</span><span>USDT → SOL</span></div>
+      <div class="more" style="flex-direction:column" id="m12"><div style="flex-direction:row;justify-content:center;background:#C1502E;color:#fff;border-color:#C1502E;min-height:50px;align-items:center">Go to Home</div><div style="flex-direction:row;justify-content:center;min-height:46px;align-items:center">Swap again</div></div></div></div>`));
+    tap(4.35, $('[data-k=swap] .ic', s1)); tap(10.1, $('#rv12')); hold(12.9, 14.9, $('#hold12'));
+    typeSfx(6.2, 6.9, 2);
+    sfx.push({ t: 4.6, k: 'whoosh' }, { t: 8.3, k: 'ok' }, { t: 10.4, k: 'whoosh' }, { t: 15.2, k: 'success' }, { t: 16.7, k: 'coin' }, { t: 20.4, k: 'pop' });
+    draw = (t) => {
+      slide(s2, t, 4.6, s1); if (t < 4.6) set(s1, 1, '');
+      const typed = '50'.slice(0, Math.round(2 * p(t, 6.2, 6.9)));
+      $('#a12').textContent = typed; $('#z12').style.display = typed ? 'none' : ''; $('#c12').style.opacity = t >= 5.6 && t < 8 && Math.floor(t * 2.2) % 2 === 0 ? 1 : 0;
+      const rv = 0.2941 * io(p(t, 7.2, 8.2)); $('#r12').textContent = rv ? rv.toFixed(4) : '0'; $('#r12').style.color = rv ? '' : '#E4D8C6';
+      rise($('#q12'), t, 8.3, 0.4, 14);
+      $('#rv12').textContent = t >= 8.3 ? 'Review swap' : t >= 6.9 ? 'Finding the best route…' : 'Enter an amount'; $('#rv12').style.opacity = t >= 8.3 ? 1 : 0.4;
+      sheetIn(dim, sh, t, 10.4, 15.2);
+      $('#fill12').style.width = 100 * p(t, 13.0, 14.9) + '%';
+      slide(s4, t, 15.2, null);
+      pop($('#tk12'), t, 15.45); rise($('#d12'), t, 15.7); rise($('#b12'), t, 15.85); rise($('#bal12'), t, 16.4, 0.5, 22);
+      [...$('#tr12').children].forEach((n, k) => pop(n, t, 20.4 + k * 0.16, 0.4));
+      rise($('#m12'), t, 21.6, 0.45, 18);
+    };
+  }
+
+  if (V === 13) {
+    DUR = 34; END = 28.4; FINE = 'Always check the network before anyone sends. Screens are illustrations.';
+    HOOK = ['Already hold crypto?', 'Bring it in from six networks.'];
+    CAPS = [[3.1, 6.0, 'Step 1', '<em>Add money</em>, then<br>the <em>Crypto</em> tab'], [6.0, 11.6, 'Wallet 1', '<em>Solana</em>: USDC, USDT<br>and SOL'], [11.6, 18.2, 'Wallet 2', '<em>One address</em>,<br>five networks'], [18.2, 22.6, 'Arrived', 'Your crypto is<br><em>spendable balance</em>'], [22.6, 28.2, 'Use it', 'Pay, withdraw,<br><em>trade</em> or <em>earn</em>.']];
+    const SOLA = 'DEMo7xKXtg2Cw87d97TXJSDpbD5jBkheZk9fQp', EVMA = '0x71C7dEm0a2B4c6D8e0F1a3B5c7D9e1F3a5dEm0';
+    const acard = (id, tag, title, addr, note) => `<div class="card acard" id="${id}"><div class="eyebrow">${tag}</div><div class="display" style="font-size:17px;margin-top:4px;line-height:1.3">${title}</div>
+        <div class="adr mono">${addr}</div><div style="display:flex;align-items:center;gap:14px;margin-top:12px"><div class="cpb" id="${id}c">Copy address</div><span style="font-size:14px;color:#6B5D52;font-weight:500">Share</span></div>
+        <p style="font-size:12.5px;color:#6B5D52;line-height:1.5;margin-top:12px">${note}</p></div>`;
+    const s1 = add(home('$0.00'));
+    const s2 = add(el(`<div class="scr">${status}
+      <div class="ph" style="position:relative;z-index:3"><div class="back">${ic.back}</div><div class="t">Add money</div></div>
+      <div class="sa" style="top:104px"><div id="pg13" style="padding:0 18px 40px">
+        <div style="font-size:13.5px;color:#6B5D52;line-height:1.4" id="sub13">Send naira from any Nigerian bank app — it arrives in your wallet as USDC.</div>
+        <div class="seg" style="margin:14px 0 0;grid-template-columns:1fr 1fr"><div id="tb">Bank transfer (₦)</div><div id="tc">Crypto</div></div>
+        <div id="bankv" class="card" style="margin-top:14px;padding:18px"><div class="display" style="font-size:20px">Verify once with BVN or NIN</div><div style="font-size:13.5px;color:#6B5D52;margin-top:6px;line-height:1.45">Nigerian rules require it to open an account in your name. Either one works.</div></div>
+        <div id="cryv"><p style="font-size:14px;color:#6B5D52;line-height:1.5;margin-top:14px">Share an address to get paid in crypto. Always check the network before anyone sends.</p>
+          ${acard('ac1', 'Best for USDC, USDT & SOL', 'Solana', SOLA, 'Send USDC or USDT on Solana (SPL), or SOL. Lands as spendable balance right away.')}
+          ${acard('ac2', 'One address, five networks', 'Ethereum · BNB Chain · Polygon · Arbitrum · Robinhood', EVMA, 'Same address on every network listed. Choose the network carefully — Ethereum and Arbitrum both use ETH but are different networks. Once it lands you can spend it directly: Withdraw, Send and Bills pay from any chain.')}
+        </div></div></div></div>`));
+    const s3 = add(home('$0.00'));
+    const uses = el(`<div class="uses"><div><b>${ic.bolt}</b>Pay bills from any chain</div><div><b>${ic.bank}</b>Withdraw to your bank</div><div><b>${ic.chart}</b>Trade on Solana and BNB Chain</div><div><b>${ic.leaf}</b>Earn on USDC, USDT or SOL</div></div>`);
+    $('.pad', s3).appendChild(uses);
+    [...s3.querySelectorAll('.h, .grid')].forEach((n) => { n.style.display = 'none'; });
+    const nt = add(el(`<div class="notif"><div class="app" style="background:#C1502E">${I.mark(26, '#fff')}</div><div><div class="tt">Money in</div><div class="bb">200.00 USDT arrived on BNB Chain</div></div><div style="margin-left:auto;font-size:12px;color:#6B5D52">now</div></div>`));
+    const pg = $('#pg13'), y2 = $('#ac2').offsetTop - 104;
+    tap(4.2, $('.b1', s1)); tapAt(5.6, $('#tc')); tapAt(9.0, $('#ac1c')); tapAt(14.6, $('#ac2c'));
+    sfx.push({ t: 4.45, k: 'whoosh' }, { t: 5.65, k: 'pop' }, { t: 9.05, k: 'ok' }, { t: 11.6, k: 'swish' }, { t: 14.65, k: 'ok' }, { t: 18.0, k: 'whoosh' }, { t: 18.6, k: 'ding' }, { t: 20.6, k: 'coin' });
+    [23.0, 23.5, 24.0, 24.5].forEach((x) => sfx.push({ t: x, k: 'pop' }));
+    draw = (t) => {
+      slide(s2, t, 4.45, s1); if (t < 4.45) set(s1, 1, '');
+      const crypto = t >= 5.65;
+      $('#tb').className = crypto ? '' : 'on'; $('#tc').className = crypto ? 'on' : '';
+      $('#bankv').style.display = crypto ? 'none' : ''; $('#cryv').style.display = crypto ? '' : 'none';
+      $('#sub13').textContent = crypto ? 'Receive USDC, USDT, SOL or ETH from any wallet or exchange.' : 'Send naira from any Nigerian bank app — it arrives in your wallet as USDC.';
+      if (crypto) { rise($('#ac1'), t, 5.8, 0.45, 20); rise($('#ac2'), t, 6.0, 0.45, 20); }
+      pg.style.transform = `translateY(${-lerp(0, y2, io(p(t, 11.6, 12.4)))}px)`;
+      $('#ac1c').textContent = t >= 9.05 && t < 11.4 ? 'Copied ✓' : 'Copy address'; $('#ac1').style.borderColor = t >= 6.4 && t < 11.6 ? '#C1502E' : '';
+      $('#ac2c').textContent = t >= 14.65 && t < 17.6 ? 'Copied ✓' : 'Copy address'; $('#ac2').style.borderColor = t >= 12.4 && t < 18 ? '#C1502E' : '';
+      slide(s3, t, 18.0, null);
+      const n = out3(p(t, 18.6, 19.1)) * (1 - p(t, 22.2, 22.6)); set(nt, n, `translateY(${lerp(-140, 0, n)}px)`);
+      const v = 200 * io(p(t, 19.6, 20.6));
+      $('.amt', s3).textContent = '$' + v.toFixed(2); $('.sub', s3).textContent = 'Stablecoins $' + v.toFixed(2);
+      [...uses.children].forEach((u, k) => rise(u, t, 23.0 + k * 0.5, 0.45, 18));
     };
   }
 
