@@ -135,6 +135,15 @@ Backend side (clickbot `.env`): `WEB_ORIGIN=https://kobocent.com,https://www.kob
 - `$SHIFT` "3× multiplier for early users" (`src/data/faq.ts:54`) — confirm it exists in the
   backend before keeping it.
 
+## Films (2026-11-16)
+
+- The landing page's "See it working" section plays three self-hosted films from `public/videos` (720×1280, under 2 MB each;
+  poster JPGs). Only the poster loads with the page; the MP4 is fetched when someone presses play (`Videos.tsx`). The service
+  worker skips `/videos/`. The old YouTube embeds (ClickBot-era films) are gone.
+- The films are illustrated walkthroughs with example amounts, and the section copy says so. Never call them "real
+  transactions". Generator, soundtrack code and re-render steps: `scripts/films/README.md`. 1080×1920 masters are on the
+  founder's Desktop (`Kobocent Videos`).
+
 ## Main address and notifications (2026-11-16)
 
 - **www.kobocent.com is the main address** (Vercel primary; kobocent.com → 308 → www; `NEXT_PUBLIC_SITE_URL` = https://www.kobocent.com).

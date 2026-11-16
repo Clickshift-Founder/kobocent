@@ -23,6 +23,7 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;          // let third parties through
   if (url.pathname.startsWith('/api/')) return;              // never cache live data
+  if (url.pathname.startsWith('/videos/')) return;           // films stream straight from the network (2026-11-16)
 
   // Network-first so users always get fresh content when online.
   e.respondWith(
