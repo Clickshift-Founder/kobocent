@@ -9,6 +9,13 @@ amounts, drawn in the browser frame by frame, so they can be re-rendered wheneve
 | 1 `?v=1` | Pay an electricity bill: meter check, exact cost, hold to pay, token, cashback | `public/videos/pay-bills.mp4` |
 | 2 `?v=2` | Withdraw to a bank: amount → exact naira, name check, hold to send, bank alert | `public/videos/withdraw.mp4` |
 | 3 `?v=3` | Kobo Pal: airtime from one typed sentence, "what is a stablecoin?", freeze a lost phone | `public/videos/kobo-pal.mp4` |
+| 4 `?v=4` | Trading: paste a token, our read out of 100, buy with USDC, take profit and stop loss, automatic exit | `public/videos/trade.mp4` |
+| 5 `?v=5` | Earn: flexible or locked, stake, earnings build every hour, withdraw with earnings | `public/videos/earn.mp4` |
+| 6 `?v=6` | Cashback: 0.2% adds up, the switch at checkout, pay less | `public/videos/cashback.mp4` |
+
+The catalogue page is **/videos** (`src/app/videos/page.tsx`), fed by `src/data/videos.ts`; the landing page shows the first three.
+Films 4–6 reuse the three music styles in new keys. Film 4 ends with "Trading is risky. Not financial advice." and film 5
+with "Rates can change and are not guaranteed." Keep both lines.
 
 ## Files
 

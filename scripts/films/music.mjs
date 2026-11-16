@@ -15,7 +15,10 @@ const drums = bus(), bass = bus(), keys = bus(), pad = bus(), fx = bus(), send =
 let seed = 1234 + v;
 const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
 const noise = () => rnd() * 2 - 1;
-const midi = (n) => 440 * Math.pow(2, (n - 69) / 12);
+// Films 4–6 reuse the three styles in new keys: 4 = pop in A, 5 = lo-fi in F, 6 = afro-house in B minor.
+const STYLE = { 1: 1, 2: 2, 3: 3, 4: 3, 5: 2, 6: 1 }[v];
+const TR = { 4: -3, 5: 3, 6: 2 }[v] || 0;
+const midi = (n) => 440 * Math.pow(2, (n + TR - 69) / 12);
 const TAU = Math.PI * 2;
 
 /** Render a voice: fn(i, tSec) → sample, for `len` seconds starting at `t0`, panned, into bus b (and reverb send). */
@@ -83,18 +86,18 @@ const SFX = {
   ok: (t) => { bell(fx, t, 84, 0.7, -0.1, 12); bell(fx, t + 0.09, 88, 0.7, 0.1, 12); },
   coin: (t) => { bell(fx, t, 91, 0.75, 0.15, 9); bell(fx, t + 0.08, 96, 0.8, -0.15, 7); },
   ding: (t) => { bell(fx, t, 83, 0.9, 0, 6); bell(fx, t + 0.14, 88, 0.9, 0, 5); bell(fx, t + 0.28, 91, 0.8, 0, 4); },
-  success: (t) => [72, 76, 79, 84].forEach((n, k) => bell(fx, t + k * 0.075, n + (v === 1 ? -3 : v === 2 ? 2 : 0), 1, (k - 1.5) * 0.25, 3.2)),
+  success: (t) => [72, 76, 79, 84].forEach((n, k) => bell(fx, t + k * 0.075, n + (STYLE === 1 ? -3 : STYLE === 2 ? 2 : 0), 1, (k - 1.5) * 0.25, 3.2)),
   impact: (t) => { voice(fx, t, 1.4, (i, x) => Math.sin(TAU * (38 * x + 30 * (1 - Math.exp(-x * 9)) / 9 * 9)) * Math.exp(-x * 3.2), { gain: 0.7 });
     const h = hp(3000); voice(fx, t, 1.8, (i, x) => h(noise()) * Math.exp(-x * 2.6), { gain: 0.16, rev: 0.6 }); },
 };
 
 /* ── the three tracks ── bars are sized so the end card lands exactly on a downbeat */
-const BARS = v === 2 ? 10 : 12;
+const BARS = STYLE === 2 ? 10 : 12;
 const bar = END / BARS, beat = bar / 4, s16 = beat / 4;
 const kicks = [];
 const K = (t, g) => { if (t < END - 0.01) { kick(t, g); kicks.push(t); } };
 
-if (v === 1) {
+if (STYLE === 1) {
   // A minor: Am7 · Fmaj7 · C · G — kalimba hook, log-drum bass, shaker, four-on-the-floor from bar 2
   const roots = [45, 41, 48, 43];
   const chords = [[57, 60, 64, 67], [57, 60, 65, 69], [55, 60, 64, 67], [55, 59, 62, 67]];
@@ -103,7 +106,7 @@ if (v === 1) {
   for (let b = 0; b < BARS; b++) {
     const t = b * bar, ch = chords[b % 4], r = roots[b % 4];
     padChord(t, ch.slice(0, 3), bar + 0.2, b < 1 ? 0.6 : 1);
-    for (const [pos, n] of (b % 2 ? hook2 : hook)) kalimba(t + pos * s16, n, b < 1 ? 0.7 : 1, (pos % 4 - 1.5) * 0.25);
+    for (const [pos, n] of ((b + (v === 6 ? 1 : 0)) % 2 ? hook2 : hook)) kalimba(t + pos * s16, n, b < 1 ? 0.7 : 1, (pos % 4 - 1.5) * 0.25);
     for (const pos of [0, 6, 12]) kalimba(t + pos * s16, ch[(pos / 6) | 0] , 0.55, -0.4);
     if (b >= 1) for (let k = 0; k < 16; k++) shaker(t + k * s16 + (k % 2 ? s16 * 0.12 : 0), k % 4 === 2 ? 1 : 0.6);
     if (b >= 2) { for (let q = 0; q < 4; q++) K(t + q * beat); for (const pos of [3, 6, 10, 11, 14]) logdrum(t + pos * s16, r + (pos === 11 ? 12 : 0), 0.34, pos === 3 ? 1 : 0.85); for (let q = 0; q < 4; q++) hat(t + q * beat + beat / 2, 0.9, true); }
@@ -112,7 +115,7 @@ if (v === 1) {
     if (b === BARS - 1) for (let k = 8; k < 16; k++) clap(t + k * s16, 0.35 + (k - 8) * 0.08);   // fill into the end card
   }
 }
-if (v === 2) {
+if (STYLE === 2) {
   // D major lo-fi: Dmaj7 · Bm7 · Gmaj7 · A — electric piano, lazy drums, sub bass, a soft bell melody
   const chords = [[62, 66, 69, 73], [59, 62, 66, 69], [55, 59, 62, 66], [57, 61, 64, 67]];
   const roots = [38, 35, 43, 45];
@@ -129,7 +132,7 @@ if (v === 2) {
   // tape hiss / crackle bed
   const l = lp(3200); voice(pad, 0, END, () => l(noise()) * 0.5 + (rnd() < 0.0006 ? noise() * 6 : 0), { gain: 0.012 });
 }
-if (v === 3) {
+if (STYLE === 3) {
   // C major pop: C · G · Am · F — sixteenth-note arpeggio, side-chained pad, driving bass
   const chords = [[60, 64, 67, 72], [59, 62, 67, 71], [57, 60, 64, 69], [57, 60, 65, 69]];
   const roots = [36, 43, 45, 41];
@@ -147,7 +150,7 @@ if (v === 3) {
 
 // End card: one held chord, a rising sparkle, no drums
 {
-  const tonic = v === 1 ? [57, 64, 69, 72, 76] : v === 2 ? [50, 57, 62, 66, 69] : [48, 55, 60, 64, 67];
+  const tonic = STYLE === 1 ? [57, 64, 69, 72, 76] : STYLE === 2 ? [50, 57, 62, 66, 69] : [48, 55, 60, 64, 67];
   padChord(END, tonic.slice(0, 4), DUR - END, 1.5);
   tonic.concat(tonic.map((n) => n + 12)).forEach((n, k) => bell(keys, END + 0.5 + k * 0.16, n + 12, 0.6, (k % 3 - 1) * 0.4, 2.2));
 }

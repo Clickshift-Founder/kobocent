@@ -11,6 +11,7 @@ export function BlogShell({ children }: { children: React.ReactNode }) {
           <Link href="/" aria-label="Kobocent home"><LogoLockup /></Link>
           <nav className="flex items-center gap-1 sm:gap-3 text-[14px] font-semibold">
             <Link href="/blog" className="min-h-[44px] inline-flex items-center px-2 text-terracotta">Blog</Link>
+            <Link href="/videos" className="min-h-[44px] inline-flex items-center px-2 text-terracotta">Videos</Link>
             <Link href="/signup" className="btn-primary !px-4 !py-2 !text-[14px]">Get started</Link>
           </nav>
         </div>
@@ -22,6 +23,7 @@ export function BlogShell({ children }: { children: React.ReactNode }) {
           <nav className="flex flex-wrap gap-x-5 gap-y-2">
             <Link href="/" className="hover:text-terracotta">Home</Link>
             <Link href="/blog" className="hover:text-terracotta">Blog</Link>
+            <Link href="/videos" className="hover:text-terracotta">Videos</Link>
             <Link href="/legal" className="hover:text-terracotta">Privacy &amp; Terms</Link>
             <a href="mailto:support@kobocent.com" className="hover:text-terracotta">support@kobocent.com</a>
           </nav>

@@ -1,5 +1,5 @@
 /* Kobocent films: deterministic scenes. window.seek(t) draws the frame at t seconds; window.VIDEO = { dur, sfx }.
-   ?v=1 bills · ?v=2 withdraw · ?v=3 Kobo Pal. Every amount is an illustration (the end card says so). */
+   ?v=1 bills · ?v=2 withdraw · ?v=3 Kobo Pal · ?v=4 trading · ?v=5 Earn · ?v=6 cashback. Every amount is an illustration (the end card says so). */
 (() => {
   const V = Number(new URLSearchParams(location.search).get('v') || 1);
   const $ = (s, r = document) => r.querySelector(s);
@@ -55,9 +55,9 @@
         <div class="act" data-k="bills"><div class="ic">${ic.bolt}</div>Pay bills</div>
         <div class="act" data-k="withdraw"><div class="ic">${ic.bank}</div>Withdraw</div>
         <div class="act"><div class="ic">${ic.swap}</div>Swap</div>
-        <div class="act"><div class="ic">${ic.leaf}</div>Earn</div>
+        <div class="act" data-k="earn"><div class="ic">${ic.leaf}</div>Earn</div>
         <div class="act"><div class="ic">${ic.bridge}</div>Bridge</div>
-        <div class="act"><div class="ic">${ic.chart}</div>Trade</div>
+        <div class="act" data-k="trade"><div class="ic">${ic.chart}</div>Trade</div>
       </div></div>
     <div class="tabs"><div class="on">${ic.home}Home</div><div>${ic.list}Activity</div><div>${ic.cup}Rewards</div><div>${ic.card}Card</div><div>${ic.cog}Settings</div></div>
   </div>`);
@@ -243,8 +243,182 @@
     };
   }
 
+  /* ───────── films 4–6 (2026-11-16): trading, Earn, cashback ───────── */
+  const toggle = (id) => `<div class="tog" id="${id}"><i></i></div>`;
+  const setTog = (node, on) => { node.className = 'tog' + (on ? ' on' : ''); };
+  let FINE = null;
+
+  if (V === 4) {
+    DUR = 32; END = 26.4; FINE = 'Trading is risky. Not financial advice. Screens are illustrations.';
+    HOOK = ['Don’t buy blind.', 'Check the token first.'];
+    CAPS = [[3.1, 6.4, 'Step 1', 'Paste any <em>token</em>'], [6.4, 12.6, 'Step 2', 'Our read, scored<br><em>out of 100</em>'], [12.6, 16.2, 'Step 3', 'Buy with USDC.<br><em>No gas token.</em>'], [16.2, 20.6, 'Protect', 'Set your exit<br><em>before you enter</em>'], [20.6, 26.2, 'Automatic', 'It can sell for you,<br>at <em>your price</em>.']];
+    const s0 = add(home('$186.20'));
+    const s1 = add(el(`<div class="scr">${status}
+      <div class="ph"><div class="back">${ic.back}</div><div class="t">Trade</div></div>
+      <div class="sub2">Trade with USDC, USDT or SOL</div>
+      <div class="field"><div class="input" id="srch" style="gap:10px"><span style="color:#6B5D52">${I.svg('<circle cx="11" cy="11" r="6"/><path d="M20 20l-4-4"/>', 20)}</span><span id="addr" class="mono" style="font-size:15px"></span><span id="addrph" style="color:#a39686;font-size:15px">Paste a token address</span></div></div>
+      <div class="field" id="res"><div class="eyebrow">Result</div><div class="card" style="margin-top:8px;display:flex;align-items:center;gap:12px" id="row">
+        <div class="tkn">Z</div><div style="flex:1"><div style="font-weight:700">ZURI</div><div style="font-size:12.5px;color:#6B5D52">Zuri · Solana</div></div>
+        <div style="text-align:right"><div class="mono" style="font-weight:600">$0.0412</div><div style="font-size:12.5px;color:#58834C;font-weight:600">+4.2% today</div></div></div></div>
+      <div class="field"><div class="eyebrow">Your tokens</div><div class="card" style="margin-top:8px;color:#6B5D52;font-size:13.5px">Nothing yet. Tokens you buy show up here.</div></div></div>`));
+    const s2 = add(el(`<div class="scr">${status}
+      <div class="ph"><div class="back">${ic.back}</div><div class="tkn" style="width:36px;height:36px;font-size:16px">Z</div><div><div class="t" style="font-size:21px">ZURI</div></div><div style="margin-left:auto;font-size:12px;font-weight:600;color:#6B5D52;border:1px solid #E4D8C6;border-radius:999px;padding:5px 10px">Solana</div></div>
+      <div class="pad" style="padding-top:12px"><div class="display" style="font-size:36px">$0.0412</div><div style="color:#58834C;font-weight:600;font-size:13.5px;margin-top:2px">+4.2% today</div>
+        <svg width="354" height="92" viewBox="0 0 354 92" style="margin-top:8px"><path id="ch1" d="M0 70 L30 66 L58 72 L90 58 L120 62 L150 48 L182 52 L212 38 L244 44 L276 30 L308 34 L354 20" fill="none" stroke="#C1502E" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/></svg></div>
+      <div class="field" style="margin-top:8px"><div class="card" id="read"><div style="display:flex;align-items:center;gap:14px">
+          <div class="gauge"><svg width="78" height="78" viewBox="0 0 78 78"><circle cx="39" cy="39" r="32" fill="none" stroke="#F0E6D8" stroke-width="8"/><circle id="arc" cx="39" cy="39" r="32" fill="none" stroke="#58834C" stroke-width="8" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100" transform="rotate(-90 39 39)"/></svg><div class="gn"><b id="sc">0</b><span>of 100</span></div></div>
+          <div><div class="eyebrow">Our read right now</div><div style="font-weight:700;font-size:16px;margin-top:4px">Six live signals checked</div></div></div>
+        <ul class="sig"><li id="g1">Liquidity $412K, locked</li><li id="g2">Top holder owns 3.1%</li><li id="g3">Buy pressure is rising</li><li id="g4">No red flags in the contract</li></ul></div></div>
+      <div class="cta" id="buy">Buy ZURI</div></div>`));
+    const dim = add(el('<div class="dim"></div>'));
+    const sh = add(el(`<div class="sheet"><div class="grab"></div><div class="t">Buy ZURI</div>
+      <div class="chips" style="margin-top:14px"><div class="chip">$10</div><div class="chip" id="c20">$20</div><div class="chip">$50</div></div>
+      <dl class="rows" id="brows"><dt>You pay</dt><dd class="mono">$20.00 USDC</dd><dt>You get</dt><dd class="mono">≈ 480 ZURI</dd><dt>Network fee</dt><dd>Covered by Kobocent</dd></dl>
+      <div class="line"></div>
+      <div class="eyebrow" style="margin-top:14px">Protect your token</div>
+      <div class="prow"><div><b>Take profit</b><span>Sell when it is up 25%</span></div>${toggle('t1')}</div>
+      <div class="prow"><div><b>Stop loss</b><span>Sell if it drops 10%</span></div>${toggle('t2')}</div>
+      <div class="hold" id="hold4"><div class="fill" id="fill4"></div><span>Hold to buy $20 of ZURI</span></div></div>`));
+    const s4 = add(el(`<div class="scr">${status}
+      <div class="ph"><div class="back">${ic.back}</div><div class="tkn" style="width:36px;height:36px;font-size:16px">Z</div><div class="t" style="font-size:21px">ZURI</div></div>
+      <div class="pad" style="padding-top:12px"><div class="eyebrow">Your position</div><div class="display" style="font-size:38px;margin-top:4px" id="pv">$19.80</div>
+        <div style="font-size:13.5px;color:#6B5D52;margin-top:2px">480 ZURI · price <span class="mono" id="pp">$0.0412</span></div>
+        <svg width="354" height="110" viewBox="0 0 354 110" style="margin-top:10px"><line x1="0" y1="22" x2="354" y2="22" stroke="#58834C" stroke-width="1.5" stroke-dasharray="5 5"/><text x="354" y="15" text-anchor="end" font-size="11" fill="#58834C" font-family="Inter" font-weight="600">Take profit $0.0515</text>
+          <line x1="0" y1="96" x2="354" y2="96" stroke="#B84A40" stroke-width="1.5" stroke-dasharray="5 5"/><text x="354" y="108" text-anchor="end" font-size="11" fill="#B84A40" font-family="Inter" font-weight="600">Stop loss $0.0371</text>
+          <path id="ch2" d="M0 76 L34 72 L64 78 L98 66 L130 70 L162 56 L196 60 L228 46 L262 50 L296 36 L326 30 L354 22" fill="none" stroke="#C1502E" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/></svg>
+        <div class="card" style="margin-top:12px;display:flex;gap:12px;align-items:center" id="prot"><div style="width:40px;height:40px;border-radius:13px;background:rgba(88,131,76,.14);display:grid;place-items:center">${ic.check(22)}</div>
+          <div><div style="font-weight:700">Protected</div><div style="font-size:13px;color:#6B5D52">Take profit at $0.0515 · Stop loss at $0.0371</div></div></div>
+        <div class="card" style="margin-top:10px;border-color:#58834C;background:rgba(88,131,76,.08)" id="sold"><div style="font-weight:700;color:#58834C">Sold at your take profit</div><div style="font-size:13px;color:#6B5D52;margin-top:2px">480 ZURI sold at $0.0515 · USDC is back in your balance</div></div></div></div>`));
+    const nt = add(el(`<div class="notif"><div class="app" style="background:#C1502E">${I.mark(26, '#fff')}</div><div><div class="tt">Take profit reached</div><div class="bb">ZURI sold automatically at $0.0515</div></div><div style="margin-left:auto;font-size:12px;color:#6B5D52">now</div></div>`));
+    tap(3.75, $('[data-k=trade] .ic', s0)); tap(4.7, $('#srch')); tap(6.1, $('#row')); tap(12.2, $('#buy')); tap(13.4, $('#c20')); tap(16.8, $('#t1')); tap(17.8, $('#t2')); hold(18.7, 20.3, $('#hold4'));
+    sfx.push({ t: 3.95, k: 'whoosh' }, { t: 5.05, k: 'pop' }, { t: 5.5, k: 'ok' }, { t: 6.3, k: 'whoosh' }, { t: 8.6, k: 'ok' }, { t: 8.9, k: 'key' }, { t: 9.5, k: 'key' }, { t: 10.1, k: 'key' }, { t: 10.7, k: 'key' }, { t: 12.45, k: 'whoosh' }, { t: 20.55, k: 'success' }, { t: 23.6, k: 'ding' }, { t: 24.4, k: 'coin' });
+    draw = (t) => {
+      slide(s1, t, 3.95, s0); if (t < 3.95) set(s0, 1, '');
+      $('#srch').className = 'input' + (t >= 4.7 ? ' focus' : '');
+      $('#addr').textContent = t >= 5.05 ? '7xKXt…Zuri9fQp' : ''; $('#addrph').style.display = t >= 5.05 ? 'none' : '';
+      rise($('#res'), t, 5.45, 0.4, 14);
+      slide(s2, t, 6.3, s1);
+      $('#ch1').setAttribute('stroke-dashoffset', 1 - io(p(t, 6.7, 8.0)));
+      const sc = Math.round(78 * io(p(t, 7.3, 8.6))); $('#sc').textContent = sc; $('#arc').setAttribute('stroke-dasharray', `${sc} 100`);
+      [['#g1', 8.9], ['#g2', 9.5], ['#g3', 10.1], ['#g4', 10.7]].forEach(([s, a]) => rise($(s), t, a, 0.35, 10));
+      $('#buy').style.opacity = t >= 11 ? 1 : 0.4;
+      sheetIn(dim, sh, t, 12.45, 20.55);
+      $('#c20').className = 'chip' + (t >= 13.45 ? ' on' : '');
+      rise($('#brows'), t, 13.6, 0.4, 12);
+      setTog($('#t1'), t >= 16.85); setTog($('#t2'), t >= 17.85);
+      $('#fill4').style.width = 100 * p(t, 18.8, 20.3) + '%';
+      slide(s4, t, 20.55, null);
+      const q = io(p(t, 21.3, 23.5));
+      $('#ch2').setAttribute('stroke-dashoffset', 1 - q);
+      const pr = lerp(0.0412, 0.0515, q); $('#pp').textContent = '$' + pr.toFixed(4); $('#pv').textContent = '$' + (480 * pr).toFixed(2);
+      const n = out3(p(t, 23.6, 24.1)) * (1 - p(t, 25.8, 26.2)); set(nt, n, `translateY(${lerp(-140, 0, n)}px)`);
+      $('#prot').style.display = t >= 24.3 ? 'none' : ''; $('#sold').style.display = t >= 24.3 ? '' : 'none'; rise($('#sold'), t, 24.3, 0.4, 14);
+    };
+  }
+
+  if (V === 5) {
+    FINE = 'Rates can change and are not guaranteed. Screens are illustrations.';
+    HOOK = ['Dollars sitting idle?', 'Put them to work.'];
+    CAPS = [[3.1, 5.0, 'Step 1', 'Open <em>Earn</em>'], [5.0, 9.4, 'Step 2', 'Flexible or locked.<br><em>You choose.</em>'], [9.4, 15.3, 'Step 3', 'Stake any amount.<br><em>No network fees.</em>'], [15.3, 20.6, 'Watch', 'Earnings build<br><em>every hour</em>'], [20.6, 24.5, 'Yours', 'Withdraw <em>anytime</em>:<br>stake plus earnings.']];
+    const s1 = add(home('$540.00'));
+    const s2 = add(el(`<div class="scr">${status}
+      <div class="ph"><div class="back">${ic.back}</div><div class="t">Earn</div></div>
+      <div class="sub2">Put idle stablecoins to work. Earnings build every hour.</div>
+      <div class="hero"><div class="r1"></div><div style="font-size:13.5px;opacity:.9">Earn up to</div><div class="display" style="font-size:42px;color:#fff">14% <span style="font-size:17px;font-weight:600;font-family:Inter">a year</span></div><div style="font-size:13.5px;opacity:.9;margin-top:4px;max-width:250px">on USDC, USDT or SOL. Pick a plan below.</div></div>
+      <div class="plan" id="pf"><div><b>Flexible</b><span>Withdraw anytime</span><em>$100 earns ≈ $0.42 a month</em></div><div class="rt"><b>5%</b><span>a year · current rate</span></div></div>
+      <div class="plan"><div><b>90-day lock</b><span>Locked 90 days</span><em>$100 earns ≈ $1.17 a month</em></div><div class="rt"><b>14%</b><span>a year · current rate</span></div></div>
+      <div class="sub2" style="font-size:12.5px">Rates are what each plan pays today and can change.</div></div>`));
+    const dim = add(el('<div class="dim"></div>'));
+    const sh = add(el(`<div class="sheet"><div class="grab"></div><div class="t">Flexible · 5%</div>
+      <div class="eyebrow" style="margin-top:14px">Amount</div>
+      <div class="input focus" style="height:62px;font-family:Fraunces,serif;font-weight:700;font-size:29px">$<span id="amt5"></span><span class="caret" id="car5" style="height:28px"></span><span style="margin-left:auto;font-family:Inter;font-size:14px;font-weight:600;color:#6B5D52">USDC</span></div>
+      <dl class="rows" id="r5"><dt>Your stake</dt><dd class="mono">$200.00 USDC</dd><dt>Per day</dt><dd class="mono">≈ $0.027</dd><dt>Network fee</dt><dd>Covered by Kobocent</dd></dl>
+      <div class="hint" style="text-align:left;margin-top:14px">Withdraw anytime, stake plus earnings. At today’s rate; rates can change.</div>
+      <div class="hold" id="hold5"><div class="fill" id="fill5"></div><span>Hold to stake $200.00 USDC</span></div></div>`));
+    const s4 = add(el(`<div class="scr">${status}
+      <div class="ph"><div class="back">${ic.back}</div><div class="t">Earn</div></div>
+      <div class="pad"><div class="eyebrow">Your positions</div>
+        <div class="card" style="margin-top:10px;padding:18px" id="pos"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-weight:700;font-size:16px">Flexible</div><div style="font-size:13px;color:#6B5D52">5% a year · Withdraw anytime</div></div><div class="daychip" id="day">Day 1</div></div>
+          <div class="line"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px"><div><div class="eyebrow">Staked</div><div class="display" style="font-size:26px;margin-top:4px">$200.00</div></div><div><div class="eyebrow">Earned so far</div><div class="display" style="font-size:26px;margin-top:4px;color:#58834C" id="earned">$0.0000</div></div></div>
+          <div class="barw"><i id="eb"></i></div>
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;color:#6B5D52;margin-top:8px"><span>Earning now</span><span>Added every hour</span></div></div>
+        <div class="wd" id="wd">Withdraw</div>
+        <div class="pill" id="got" style="margin-top:14px">You’ll receive about $200.82</div></div></div>`));
+    tap(4.35, $('[data-k=earn] .ic', s1)); tap(8.85, $('#pf')); hold(12.7, 15.0, $('#hold5')); tap(20.9, $('#wd'));
+    typeSfx(10.0, 10.9, 3); sfx.push({ t: 4.6, k: 'whoosh' }, { t: 9.15, k: 'whoosh' }, { t: 15.25, k: 'success' }, { t: 21.3, k: 'coin' });
+    for (let k = 0; k < 10; k++) sfx.push({ t: 16.6 + k * 0.36, k: 'key' });
+    draw = (t) => {
+      slide(s2, t, 4.6, s1); if (t < 4.6) set(s1, 1, '');
+      sheetIn(dim, sh, t, 9.15, 15.25);
+      $('#amt5').textContent = '200'.slice(0, Math.round(3 * p(t, 10.0, 10.9)));
+      $('#car5').style.opacity = t < 11.3 && Math.floor(t * 2.2) % 2 === 0 ? 1 : 0;
+      rise($('#r5'), t, 11.1, 0.4, 12);
+      $('#hold5').style.opacity = t >= 11.1 ? 1 : 0.4;
+      $('#fill5').style.width = 100 * p(t, 12.8, 15.0) + '%';
+      slide(s4, t, 15.25, null);
+      rise($('#pos'), t, 15.5, 0.5, 24);
+      const d = 1 + 29 * io(p(t, 16.4, 20.2));
+      $('#day').textContent = 'Day ' + Math.round(d);
+      $('#earned').textContent = '$' + ((200 * 0.05) / 365 * (d - 1 + p(t, 15.9, 16.4))).toFixed(4);
+      $('#eb').style.width = 100 * ((d - 1) / 29) + '%';
+      rise($('#wd'), t, 15.8, 0.5, 20);
+      $('#wd').className = 'wd' + (t >= 20.95 ? ' on' : '');
+      pop($('#got'), t, 21.3);
+    };
+  }
+
+  if (V === 6) {
+    HOOK = ['Every payment pays you back.', 'Here’s how to spend it.'];
+    CAPS = [[3.1, 9.3, 'Earn it', '<em>0.2% back</em> on every<br>bill and withdrawal'], [9.3, 13.6, 'From ₦50', 'A switch appears<br>at <em>checkout</em>'], [13.6, 18.9, 'Use it', 'Turn it on.<br><em>Pay less.</em>'], [18.9, 24.5, 'Repeat', 'And every payment<br>earns <em>more</em>.']];
+    const rowsData = [['bolt', 'Electricity', '₦5,000', 10, 4.0], ['bank', 'Withdrawal', '₦148,000', 296, 5.0], ['phone', 'Airtime', '₦1,000', 2, 6.0], ['up', 'Bank transfer', '₦25,000', 50, 7.0]];
+    const s1 = add(el(`<div class="scr">${status}
+      <div class="ph"><div class="back">${ic.back}</div><div class="t">Cashback</div></div>
+      <div class="hero" style="margin-top:14px"><div class="r1"></div><div style="font-size:13.5px;opacity:.9">Your cashback</div><div class="display" style="font-size:46px;color:#fff" id="cbt">₦0</div><div style="font-size:13.5px;opacity:.9;margin-top:4px">0.2% of every bill, bank transfer and withdrawal</div></div>
+      <div class="field"><div class="eyebrow">From your payments</div>
+        ${rowsData.map(([i, n, a, c2], k) => `<div class="lrow" id="lr${k}"><div class="lic">${ic[i]}</div><div style="flex:1"><b>${n}</b><span>${a}</span></div><div class="plus">+₦${c2}</div></div>`).join('')}</div>
+      <div style="display:flex;justify-content:center"><div class="pill" id="ready">${ic.check(18)} Ready to use at checkout</div></div></div>`));
+    const s2 = add(el(`<div class="scr">${status}
+      <div class="ph"><div class="back">${ic.back}</div><div class="t">Pay bills</div></div>
+      <div class="seg"><div>Airtime</div><div>Data</div><div class="on">Electricity</div><div>Cable TV</div></div>
+      <div class="field"><div class="eyebrow">Meter number</div><div class="input">0101 2345 678</div><div class="ok">${ic.check(18)} ADA OKAFOR · Wuse, Abuja</div></div>
+      <div class="field"><div class="eyebrow">Amount</div><div class="chips"><div class="chip">₦2,000</div><div class="chip">₦5,000</div><div class="chip on">₦10,000</div></div></div>
+      <div class="cta">Review ₦10,000 electricity</div></div>`));
+    const dim = add(el('<div class="dim"></div>'));
+    const sh = add(el(`<div class="sheet"><div class="grab"></div><div class="t">Review electricity</div>
+      <dl class="rows"><dt>Meter</dt><dd class="mono">0101 2345 678</dd><dt>Electricity</dt><dd>₦10,000</dd><dt>You pay</dt><dd class="mono"><s id="old" style="color:#6B5D52;margin-right:6px">$6.76</s><span id="pay">$6.76 USDC</span></dd><dt id="cbk">Cashback</dt><dd id="cbv" class="mono" style="color:#58834C">−$0.10</dd></dl>
+      <div class="cbt" id="cbx"><div class="gift">${I.svg('<rect x="4" y="10" width="16" height="10" rx="2"/><path d="M3 7h18v3H3z"/><path d="M12 7v13"/><path d="M12 7c-2-4-6-3-5-1s5 1 5 1c0 0 4 1 5-1s-3-3-5 1z"/>', 18)}</div>
+        <div style="flex:1"><b>Use ₦150 cashback</b><span id="cbs">You have ₦358 spendable from your payments.</span></div>${toggle('t6')}</div>
+      <div class="hold" id="hold6"><div class="fill" id="fill6"></div><span>Hold to pay ₦10,000</span></div><div class="hint">Press and hold so nothing is paid by accident.</div></div>`));
+    const s4 = add(el(`<div class="scr">${status}<div class="done">
+      <div class="tick" id="tick6">${ic.check(50)}</div><div class="t" id="dt6">₦10,000 electricity paid</div><div class="b" id="db6">Your cashback paid ₦150 of the fee.</div>
+      <div class="token" id="left6" style="border-style:solid;border-color:#E4D8C6;text-align:left"><dl class="rows" style="margin-top:0"><dt>Cashback used</dt><dd style="color:#58834C;font-weight:700">₦150</dd><dt>New from this bill</dt><dd style="color:#58834C;font-weight:700">+₦20</dd><dt>Left for next time</dt><dd style="font-weight:700">₦228</dd></dl></div>
+      <div class="pill" id="cb6">Every payment adds more</div></div></div>`));
+    const totals = [[4.0, 0, 10], [5.0, 10, 306], [6.0, 306, 308], [7.0, 308, 358]];
+    tap(14.2, $('#t6')); hold(16.3, 18.5, $('#hold6'));
+    rowsData.forEach((r, k) => sfx.push({ t: r[4], k: 'coin' }));
+    sfx.push({ t: 8.2, k: 'ok' }, { t: 9.5, k: 'whoosh' }, { t: 10.15, k: 'whoosh' }, { t: 14.3, k: 'pop' }, { t: 18.8, k: 'success' }, { t: 20.6, k: 'coin' });
+    draw = (t) => {
+      rowsData.forEach((r, k) => rise($('#lr' + k), t, r[4], 0.4, 16));
+      let tot = 0; for (const [a, from, to] of totals) if (t >= a) tot = lerp(from, to, io(p(t, a, a + 0.7)));
+      $('#cbt').textContent = '₦' + Math.round(tot);
+      pop($('#ready'), t, 8.2);
+      slide(s2, t, 9.5, s1); if (t < 9.5) set(s1, 1, '');
+      sheetIn(dim, sh, t, 10.15, 18.8);
+      const on = t >= 14.25;
+      setTog($('#t6'), on); $('#cbx').className = 'cbt' + (on ? ' on' : '');
+      $('#cbs').textContent = on ? 'You pay ₦150 less. ₦208 stays for next time.' : 'You have ₦358 spendable from your payments.';
+      $('#old').style.display = on ? '' : 'none'; $('#pay').textContent = on ? '$6.66 USDC' : '$6.76 USDC';
+      $('#cbk').style.display = $('#cbv').style.display = on ? '' : 'none';
+      $('#fill6').style.width = 100 * p(t, 16.4, 18.5) + '%';
+      slide(s4, t, 18.8, null);
+      pop($('#tick6'), t, 19.05); rise($('#dt6'), t, 19.3); rise($('#db6'), t, 19.45); rise($('#left6'), t, 19.9, 0.5, 24); pop($('#cb6'), t, 20.6);
+    };
+  }
+
   /* ───────── captions, hook, phone, end card ───────── */
   const capEls = CAPS.map(([a, b, step, txt]) => { const n = el(`<div class="cap"><div class="step">${step}</div><div class="txt display">${txt}</div></div>`); caps.appendChild(n); return { n, a, b }; });
+  if (FINE) $('#fine').textContent = FINE;
   $('#hk1').textContent = HOOK[0]; $('#hk2').textContent = HOOK[1];
   if (HOOK[0].length > 18) $('#hk1').style.fontSize = '118px';
   sfx.push({ t: 0.25, k: 'whoosh' }, { t: 2.55, k: 'whoosh' }, { t: END, k: 'impact' });

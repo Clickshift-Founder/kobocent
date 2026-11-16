@@ -150,6 +150,38 @@
   #endin .cta2 { margin-top: 90px; background: #fff; color: var(--terra); font-weight: 700; font-size: 46px; padding: 30px 56px; border-radius: 999px; box-shadow: 0 20px 50px rgba(0,0,0,.18); }
   #endin .m2 { margin-top: 70px; font-size: 32px; letter-spacing: .04em; color: #FBE9DF; font-weight: 500; }
   #fine { position: absolute; left: 0; right: 0; bottom: 70px; text-align: center; font-size: 24px; color: rgba(255,255,255,.72); }
+
+  /* films 4–6 */
+  .tog { width: 52px; height: 30px; border-radius: 999px; background: var(--border); position: relative; flex: none; }
+  .tog i { position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2); display: block; }
+  .tog.on { background: var(--terra); } .tog.on i { left: 25px; }
+  .tkn { width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(135deg, #E8895F, #9A3E22); color: #fff; display: grid; place-items: center; font-family: 'Fraunces', serif; font-weight: 700; font-size: 19px; flex: none; }
+  .gauge { position: relative; width: 78px; height: 78px; flex: none; }
+  .gauge .gn { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; }
+  .gauge .gn b { font-family: 'Fraunces', serif; font-size: 25px; } .gauge .gn span { font-size: 9.5px; color: var(--muted); margin-top: 2px; }
+  .sig { list-style: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); display: grid; gap: 9px; font-size: 14px; }
+  .sig li { display: flex; gap: 9px; align-items: center; } .sig li::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex: none; }
+  .prow { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
+  .prow b { display: block; font-size: 15px; } .prow span { font-size: 13px; color: var(--muted); }
+  .hero { margin: 14px 18px 0; border-radius: 24px; background: var(--terra); color: #fff; padding: 20px; position: relative; overflow: hidden; }
+  .hero .r1 { position: absolute; right: -30px; top: -30px; width: 140px; height: 140px; border-radius: 50%; border: 16px solid rgba(255,255,255,.14); }
+  .plan { margin: 12px 18px 0; background: #fff; border: 1.5px solid var(--border); border-radius: 20px; padding: 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .plan b { display: block; font-size: 16px; } .plan span { display: block; font-size: 13px; color: var(--muted); margin-top: 2px; } .plan em { display: block; font-style: normal; font-size: 12.5px; color: var(--ink); margin-top: 8px; }
+  .plan .rt { text-align: right; } .plan .rt b { font-family: 'Fraunces', serif; font-size: 30px; color: var(--terra); line-height: 1; } .plan .rt span { font-size: 11.5px; }
+  .daychip { background: rgba(193,80,46,.1); color: var(--terra); font-weight: 700; font-size: 13px; padding: 7px 12px; border-radius: 999px; font-family: 'IBM Plex Mono', monospace; }
+  .barw { height: 8px; border-radius: 4px; background: var(--warm); margin-top: 16px; overflow: hidden; } .barw i { display: block; height: 100%; width: 0; background: var(--ok); border-radius: 4px; }
+  .wd { margin-top: 14px; height: 54px; border-radius: 17px; border: 1.5px solid var(--terra); color: var(--terra); display: grid; place-items: center; font-weight: 700; font-size: 15.5px; background: #fff; }
+  .wd.on { background: var(--terra); color: #fff; }
+  .lrow { display: flex; align-items: center; gap: 12px; background: #fff; border: 1px solid var(--border); border-radius: 16px; padding: 12px 14px; margin-top: 8px; }
+  .lrow .lic { width: 38px; height: 38px; border-radius: 12px; background: rgba(193,80,46,.09); color: var(--terra); display: grid; place-items: center; flex: none; }
+  .lrow b { display: block; font-size: 14.5px; } .lrow span { font-size: 12.5px; color: var(--muted); }
+  .lrow .plus { color: var(--ok); font-weight: 700; font-size: 14.5px; background: rgba(88,131,76,.12); padding: 6px 10px; border-radius: 999px; }
+  .cbt { margin-top: 16px; border: 1.5px solid var(--border); border-radius: 18px; padding: 14px; display: flex; align-items: center; gap: 12px; background: #fff; }
+  .cbt.on { border-color: var(--terra); background: rgba(193,80,46,.05); }
+  .cbt .gift { width: 40px; height: 40px; border-radius: 13px; background: var(--warm); color: var(--terra); display: grid; place-items: center; flex: none; }
+  .cbt.on .gift { background: var(--terra); color: #fff; }
+  .cbt b { display: block; font-size: 15px; } .cbt span { font-size: 13px; color: var(--muted); line-height: 1.35; display: block; margin-top: 2px; }
+
 </style>
 </head>
 <body>
