@@ -9,6 +9,12 @@ import { nativePushPermission, nativePushToken } from './native';
 
 export type PushState = 'unsupported' | 'ios-install' | 'off-server' | 'denied' | 'on' | 'off';
 
+// On by default (founder, 2026-11-16): notifications are turned on for every signed-in user; only a user who turns them
+// off in Settings stays off. This flag records that choice on this device.
+const OPT_OUT = 'kc-push-optout';
+export const pushOptedOut = () => { try { return localStorage.getItem(OPT_OUT) === '1'; } catch { return false; } };
+const setOptOut = (v: boolean) => { try { if (v) localStorage.setItem(OPT_OUT, '1'); else localStorage.removeItem(OPT_OUT); } catch { /* private mode */ } };
+
 const isIOS = () => typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent);
 export const isStandalone = () => typeof window !== 'undefined' &&
   (window.matchMedia?.('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true);
@@ -66,11 +72,54 @@ export async function pushState(): Promise<PushState> {
   if (Notification.permission === 'denied') return 'denied';
   const reg = await navigator.serviceWorker.getRegistration();
   const sub = await reg?.pushManager.getSubscription();
-  return sub && Notification.permission === 'granted' ? 'on' : 'off';
+  // A live subscription is the truth. iPhone can report Notification.permission as "default" after the app restarts even
+  // though it is allowed, which made "Turn on notifications" come back on every sign-in (fixed 2026-11-16).
+  return sub ? 'on' : 'off';
+}
+
+/** Subscribe this device (permission already granted) and tell the backend. Safe to repeat: the backend upserts. */
+async function subscribeWeb(key: string): Promise<void> {
+  const reg = (await navigator.serviceWorker.getRegistration()) || (await navigator.serviceWorker.register('/sw.js'));
+  await navigator.serviceWorker.ready;
+  let sub = await reg.pushManager.getSubscription();
+  if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(key) as BufferSource });
+  await kc('push/subscribe', { method: 'POST', body: { subscription: sub.toJSON(), standalone: isStandalone() } });
+}
+
+/**
+ * Once per app start, signed in: turn notifications on without asking whenever the device already allows them, and
+ * re-register this device with the backend (it may have dropped it). Returns 'ask' when the browser still needs the
+ * person to allow them (that needs a tap, so the app shows a one-time prompt). Never throws.
+ */
+let autoRan = false;
+export async function autoEnablePush(): Promise<'on' | 'ask' | 'none'> {
+  if (autoRan) return 'none';
+  autoRan = true;
+  try {
+    if (pushOptedOut()) return 'none';
+    if (nativePlatform()) {
+      if (!(await nativeReady())) return 'none';
+      let perm = await nativePushPermission(false);
+      if (perm === 'prompt') perm = await nativePushPermission(true);   // apps may ask at start; the phone shows its own dialog
+      if (perm !== 'granted') return 'none';
+      await registerNative(!savedToken());
+      return 'on';
+    }
+    if (!supported()) return 'none';
+    const key = await serverKey();
+    if (!key || Notification.permission === 'denied') return 'none';
+    const reg = await navigator.serviceWorker.getRegistration();
+    const sub = await reg?.pushManager.getSubscription();
+    if (sub || Notification.permission === 'granted') { await subscribeWeb(key); return 'on'; }
+    return 'ask';
+  } catch {
+    return 'none';
+  }
 }
 
 /** Ask permission (must run from a tap), subscribe this device, register it with the backend. */
 export async function enablePush(): Promise<PushState> {
+  setOptOut(false);
   if (nativePlatform()) {
     if (!(await nativeReady())) return 'off-server';
     const perm = await nativePushPermission(true);
@@ -83,15 +132,13 @@ export async function enablePush(): Promise<PushState> {
   if (!key) return 'off-server';
   const perm = await Notification.requestPermission();
   if (perm !== 'granted') return perm === 'denied' ? 'denied' : 'off';
-  const reg = (await navigator.serviceWorker.getRegistration()) || (await navigator.serviceWorker.register('/sw.js'));
-  await navigator.serviceWorker.ready;
-  let sub = await reg.pushManager.getSubscription();
-  if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(key) as BufferSource });
-  await kc('push/subscribe', { method: 'POST', body: { subscription: sub.toJSON(), standalone: isStandalone() } });
+  await subscribeWeb(key);
   return 'on';
 }
 
+/** Turning them off in Settings is remembered on this device, so they are never turned back on by themselves. */
 export async function disablePush(): Promise<PushState> {
+  setOptOut(true);
   if (nativePlatform()) {
     const token = savedToken();
     if (token) await kc('push/native/unregister', { method: 'POST', body: { token } }).catch(() => {});

@@ -10,6 +10,7 @@ import { SecurityProvider } from './SecurityProvider';
 import { GuideProvider } from './GuideProvider';
 import { PalButton } from './Pal';
 import { NotificationsBell } from './Notifications';
+import { AutoPush } from './AutoPush';
 import { Suspense } from 'react';
 import { BOT_URL, loadProfile, clearProfile, type LocalProfile } from '@/lib/kc';
 
@@ -54,6 +55,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-[100dvh] lg:flex">
+      <AutoPush />
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex lg:flex-col w-64 shrink-0 border-r border-cream-border dark:border-night-border px-5 py-6 sticky top-0 h-screen">
         <Link href="/app" aria-label="Kobocent home" className="mb-10 px-2"><LogoLockup /></Link>

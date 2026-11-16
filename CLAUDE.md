@@ -135,6 +135,15 @@ Backend side (clickbot `.env`): `WEB_ORIGIN=https://kobocent.com,https://www.kob
 - `$SHIFT` "3× multiplier for early users" (`src/data/faq.ts:54`) — confirm it exists in the
   backend before keeping it.
 
+## Main address and notifications (2026-11-16)
+
+- **www.kobocent.com is the main address** (Vercel primary; kobocent.com → 308 → www; `NEXT_PUBLIC_SITE_URL` = https://www.kobocent.com).
+  Installed iPhone/Android apps live there: changing the primary domain makes iPhone show Safari's bar inside the app and
+  loses notification permission. Code that recognises our own links accepts both (`/^https://(www.)?kobocent.com/`).
+- **Notifications are on by default** (`src/lib/push.ts` `autoEnablePush`, `src/components/app/AutoPush.tsx`): turned on
+  silently where the device already allows it, a one-time sheet where the browser needs a tap, never again after the user
+  turns them off in Settings (`kc-push-optout`). A live push subscription counts as "on" (iPhone misreports permission).
+
 ## Blog (2026-11-13)
 
 - **/blog** and **/blog/[slug]**: server pages that read the backend's public `GET /api/blog` (`src/lib/blog.ts`), rebuilt

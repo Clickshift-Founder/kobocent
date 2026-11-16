@@ -38,11 +38,11 @@ function Inlines({ c }: { c: Inline[] }) {
         if (x.t === 'b') return <strong key={i} className="font-semibold text-ink dark:text-cream-warm">{x.v}</strong>;
         if (x.t === 'i') return <em key={i}>{x.v}</em>;
         if (x.t === 'a') {
-          const external = /^https?:\/\//.test(x.href) && !x.href.startsWith('https://kobocent.com');
+          const external = /^https?:\/\//.test(x.href) && !/^https:\/\/(www\.)?kobocent\.com/.test(x.href);   // our site, with or without www
           return external ? (
             <a key={i} href={x.href} target="_blank" rel="noopener noreferrer" className="text-terracotta font-semibold underline underline-offset-4">{x.v}</a>
           ) : (
-            <Link key={i} href={x.href.replace('https://kobocent.com', '') || '/'} className="text-terracotta font-semibold underline underline-offset-4">{x.v}</Link>
+            <Link key={i} href={x.href.replace(/^https:\/\/(www\.)?kobocent\.com/, '') || '/'} className="text-terracotta font-semibold underline underline-offset-4">{x.v}</Link>
           );
         }
         return <span key={i}>{x.v}</span>;

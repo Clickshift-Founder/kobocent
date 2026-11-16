@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { kc } from '@/lib/kc';
 import { Sheet } from './ui';
 import { IconBell } from './Icons';
-import { pushState, enablePush, type PushState } from '@/lib/push';
+import { pushState, enablePush, pushOptedOut, type PushState } from '@/lib/push';
 
 /**
  * Notifications bell (2026-10-06). The backend (GET /notifications) lists what the user should finish
@@ -43,7 +43,8 @@ export function NotificationsBell({ label }: { label?: string }) {
 
   if (items === null) return null;
   // This device can get phone notifications but hasn't turned them on → offer it here (one tap).
-  const local: Item[] = push === 'off' ? [{ id: 'push-off', tone: 'action', title: 'Turn on notifications', body: 'Know the moment money arrives, a payment finishes, or support replies — even when the app is closed.', action: { label: 'Turn on', event: 'kc-push-enable' }, dismissible: true }]
+  // Not shown to someone who turned notifications off in Settings: that was their choice (2026-11-16).
+  const local: Item[] = push === 'off' && !pushOptedOut() ? [{ id: 'push-off', tone: 'action', title: 'Turn on notifications', body: 'Know the moment money arrives, a payment finishes, or support replies — even when the app is closed.', action: { label: 'Turn on', event: 'kc-push-enable' }, dismissible: true }]
     : push === 'ios-install' ? [{ id: 'push-ios', tone: 'info', title: 'Get notifications on iPhone', body: 'Tap Share → “Add to Home Screen”, open Kobocent from there, and turn notifications on in Settings.', dismissible: true }]
     : [];
   const visible = [...local, ...items].filter(i => !dismissed.has(i.id));

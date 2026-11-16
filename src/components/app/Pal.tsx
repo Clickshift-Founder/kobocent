@@ -319,7 +319,7 @@ function PalPanel({ onClose, ask }: { onClose: () => void; ask?: string }) {
                     {/* Blog articles Pal suggested: a tappable link each (2026-11-13). Only kobocent.com/blog links are shown. */}
                     {!!m.links?.length && (
                       <div className="mt-2 flex flex-col gap-2">
-                        {m.links.filter(l => l.url.startsWith('https://kobocent.com/blog/')).slice(0, 2).map(l => (
+                        {m.links.filter(l => /^https:\/\/(www\.)?kobocent\.com\/blog\//.test(l.url)).slice(0, 2).map(l => (
                           <a key={l.url} href={l.url} target="_blank" rel="noopener noreferrer" className="rounded-2xl border border-terracotta/40 bg-terracotta-soft text-terracotta px-3.5 py-2.5 min-h-[44px] inline-flex items-center gap-2 text-[13.5px] font-semibold">
                             <span aria-hidden>📖</span><span>Read: {l.title}</span>
                           </a>
